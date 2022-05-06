@@ -12,6 +12,7 @@
 #include <condition_variable>
 #include <deque>
 #include <typeinfo>
+#include <unordered_map>
 #include <set>
 
 namespace st {
@@ -20,11 +21,16 @@ namespace st {
  * @brief Interthread type erased message container
  */
 struct message : public std::enable_shared_from_this<message> {
+private:
+    typedef void(*deleter_t)(void*);
+    typedef std::unique_ptr<void,deleter_t> data_pointer_t;
+
+public:
     /**
      * @brief Typedef representing the unqualified type of T
      */
     template <typename T>
-    using base = typename std::remove_cv<T>::type;
+    using base = typename std::remove_reference<typename std::remove_cv<T>::type>::type;
 
     /**
      * @return an unsigned integer representing a data type.
@@ -52,7 +58,7 @@ struct message : public std::enable_shared_from_this<message> {
      * ```
      */
     template <typename T>
-    constexpr std::size_t code() const {
+    static constexpr std::size_t code() {
         return typeid(base<T>).hash_code();
     }
 
@@ -112,7 +118,7 @@ struct message : public std::enable_shared_from_this<message> {
     bool copy_data_to(T& t) {
         std::lock_guard<std::mutex> lk(m_mtx);
         if(is<T>()) {
-            t = *((base<T>*)m_data);
+            t = *((base<T>*)(m_data.get()));
             return true;
         } else {
             return false;
@@ -129,7 +135,7 @@ struct message : public std::enable_shared_from_this<message> {
     bool move_data_to(T& t) {
         std::lock_guard<std::mutex> lk(m_mtx);
         if(is<T>()) {
-            std::swap(t, *((base<T>*)m_data));
+            std::swap(t, *((base<T>*)(m_data.get())));
             return true;
         } else {
             return false;
@@ -142,13 +148,13 @@ private:
     message(message&& rhs) = delete;
 
     message(std::size_t c, std::size_t t, data_pointer_t p) :
-        id(c),
+        m_id(c),
         m_data_type(t),
         m_data(std::move(p))
     { }
 
     template <typename T>
-    void* allocate(T&& t) {
+    static void* allocate(T&& t) {
         return (void*)(new base<T>(std::forward<T>(t)));
     }
 
@@ -157,13 +163,63 @@ private:
         delete (base<T>*)p;
     }
 
-    typedef void(*deleter_t)(void*);
-    typedef std::unique_ptr<void,deleter_t> data_pointer_t;
-
     std::mutex m_mtx;
     const std::size_t m_id;
     const std::size_t m_data_type;
     data_pointer_t m_data;
+};
+
+/** 
+ * @brief Runtime replacement for C switch operator. 
+ *
+ * Useful for handling messages with multiple possible payload types.
+ */
+template <typename T=std::size_t>
+struct select {
+    select() : m_flag(false), m_id(0) {}
+    select(std::size_t id) : m_flag(true), m_id(id) {}
+    ~select() {
+        if(m_flag) {
+            operator()(m_id);
+        }
+    }
+
+    /**
+     * @brief Replacement for `case:` statement
+     */
+    inline select& clause(std::size_t i, std::function<void()> f) {
+        m_map[i] = std::move(f);
+        return *this;
+    }
+
+    /**
+     * @brief Replacement for `default:` case statement
+     */
+    inline select& other(std::function<void()> f) {
+        m_other = std::move(f);
+        return *this;
+    }
+
+    inline void operator()(const T& i) {
+        auto it = m_map.find(i);
+        if(it == m_map.end()) {
+            if(m_other) {
+                m_other();
+            }
+        } else {
+            it->second();
+        }
+    }
+    
+    inline void operator()(T&& i) {
+        operator()(i);
+    }
+
+private:
+    bool m_flag;
+    std::size_t m_id;
+    std::unordered_map<T,std::function<void()>> m_map;
+    std::function<void()> m_other;
 };
 
 /**
@@ -209,6 +265,16 @@ struct channel : public std::enable_shared_from_this<channel> {
     template <typename T>
     bool send(std::size_t id, T&& t) {
         return send(message::make(id, std::forward<T>(t)));
+    }
+    
+    /**
+     * Send a message over the channel with given parameter
+     *
+     * @param id an unsigned integer representing which type of message 
+     * @return true on success, false if channel is closed
+     */
+    bool send(std::size_t id) {
+        return send(message::make(id, 0));
     }
 
     /**
@@ -260,7 +326,7 @@ private:
 
     bool m_closed;
     std::mutex m_mtx;
-    std:;condition_variable m_cv;
+    std::condition_variable m_cv;
     std::deque<std::shared_ptr<message>> m_msg_q;
 };
 
@@ -292,7 +358,7 @@ struct worker: public std::enable_shared_from_this<worker> {
      * @return allocated running worker thread shared_ptr
      */
     template <typename FUNCTOR, typename... As>
-    std::shared_ptr<worker> make(As&&... as) {
+    static std::shared_ptr<worker> make(As&&... as) {
         return std::shared_ptr<worker>(new worker(
                     type_hint<FUNCTOR>(), 
                     std::forward<As>(as)...));
@@ -338,7 +404,7 @@ struct worker: public std::enable_shared_from_this<worker> {
             auto hdl = m_generate_handler();
 
             while(m_ch->recv(m)) {
-                (*hdl)(m);
+                hdl(m);
                 m.reset();
             }
 
@@ -352,7 +418,7 @@ struct worker: public std::enable_shared_from_this<worker> {
      * @return true on success, false if channel is closed
      */
     inline bool send(std::shared_ptr<message> m) {
-        return m_ch.send(std::move(m));
+        return m_ch->send(std::move(m));
     }
 
     /**
@@ -364,7 +430,7 @@ struct worker: public std::enable_shared_from_this<worker> {
      */
     template <typename T>
     bool send(std::size_t id, T&& t) {
-        return m_ch.send(message::make(id, std::forward<T>(t)));
+        return m_ch->send(message::make(id, std::forward<T>(t)));
 ;
     }
 
@@ -401,10 +467,10 @@ private:
         // generate handler s called late and allocates a shared_ptr to allow 
         // for a single construction and destruction of type FUNCTOR in the 
         // worker thread environment. 
-        m_generate_handler = ([=]() mutable { 
+        m_generate_handler = [=]() mutable -> handler{ 
             auto fp = std::shared_ptr<FUNCTOR>(new FUNCTOR(std::forward<As>(as)...));
             return [=](std::shared_ptr<message> m) { (*fp)(std::move(m)); };
-        })
+        };
         restart();
     }
 
@@ -425,7 +491,7 @@ private:
     }
 
     std::mutex m_mtx;
-    std::function<std::shared_ptr<handler>()> m_generate_handler;
+    std::function<handler()> m_generate_handler;
     std::shared_ptr<channel> m_ch;
     std::thread m_thd;
 };
@@ -439,18 +505,18 @@ struct service {
         return *(sw.m_wkr);
     }
 
-    inline void shutdown_all() {
+    static inline void shutdown_all() {
         workers::instance().shutdown_all();
     }
 
-    inline void restart_all() {
+    static inline void restart_all() {
         workers::instance().restart_all();
     }
 
 private:
     struct workers {
         static inline workers& instance() {
-            workers ws;
+            static workers ws;
             return ws;
         }
 
@@ -461,7 +527,7 @@ private:
 
         inline void unregister_worker(worker* w) {
             std::lock_guard<std::mutex> lk(m_mtx);
-            auto it = m_ws.find(&w);
+            auto it = m_ws.find(w);
             if(it != m_ws.end()) {
                 m_ws.erase(it);
             }
@@ -471,7 +537,7 @@ private:
             std::lock_guard<std::mutex> lk(m_mtx);
 
             for(auto w : m_ws) {
-                m_ws->shutdown();
+                w->shutdown();
             }
         }
 
@@ -479,7 +545,7 @@ private:
             std::lock_guard<std::mutex> lk(m_mtx);
 
             for(auto w : m_ws) {
-                m_ws->restart();
+                w->restart();
             }
         }
 
@@ -499,7 +565,7 @@ private:
 
         std::shared_ptr<worker> m_wkr;
     };
-}
+};
 }
 /** @endcond */
 
@@ -528,7 +594,7 @@ static inline worker& service() {
  * by a single call to this function.
  */
 inline void shutdown_all_services() {
-    detail::service::instance().shutdown_all();
+    detail::service::shutdown_all();
 }
 
 /**
@@ -538,7 +604,7 @@ inline void shutdown_all_services() {
  * by a single call to this function.
  */
 inline void restart_all_services() {
-    detail::service::instance().restart_all();
+    detail::service::restart_all();
 }
 
 }
