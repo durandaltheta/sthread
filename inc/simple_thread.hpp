@@ -102,25 +102,6 @@ public:
      *
      * The data type value is acquired by removing const and volatile 
      * qualifiers and then by acquiring the type_info::hash_code().
-     *
-     * As a note, because this is a constexpr this can be used as switch case:
-     * ```
-     * switch(msg->type()) {
-     *     case message::code<int>(): 
-     *         int i=0;
-     *         msg->copy_data_to(i);
-     *         std::cout << "i: " << i << std::endl;
-     *         break;
-     *     case message::code<std::string>(): 
-     *         std::string s;
-     *         msg->copy_data_to(s);
-     *         std::cout << "s: " << s << std::endl;
-     *         break;
-     *     default:
-     *         std::cout << "unknown type" << std::endl;
-     *         break;
-     * }
-     * ```
      */
     template <typename T>
     static constexpr std::size_t code() {
