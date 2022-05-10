@@ -66,7 +66,138 @@ $(function() {
 </div><!--header-->
 <div class="contents">
 <div class="textblock"><p>Simple threading and communication.</p>
-<p><a href="https://durandaltheta.github.io/sthread/">Documentation</a> </p>
+<p><a href="https://durandaltheta.github.io/sthread/">Documentation</a> <a href="tst/simple_thread_tst.cpp">Unit Test Examples</a></p>
+<p>Install: cmake . sudo make install</p>
+<p>Usage Steps:</p><ul>
+<li>Install the library or include the header <code><a class="el" href="simple__thread_8hpp.html" title="Simple interprocess threading and messaging.">simple_thread.hpp</a></code> somehow</li>
+<li>Include <code>&lt;<a class="el" href="simple__thread_8hpp.html" title="Simple interprocess threading and messaging.">simple_thread.hpp</a>&gt;</code></li>
+<li>Create a class or struct with <code>void operator()(std::shared_ptr&lt;st:message&gt;)</code> to handle received messages (also called a 'functor')</li>
+<li>Define some enum to distinguish different messages</li>
+<li>Launch your thread with <code><a class="el" href="structst_1_1worker.html#a14b3199e47af486fe4c189846d634ee7">st::worker::make</a>&lt;YourClass&gt;()</code></li>
+</ul>
+<p>Example: </p><div class="fragment"><div class="line">#include &lt;iostream&gt;</div>
+<div class="line">#include &lt;simple_thread.hpp&gt;</div>
+<div class="line"> </div>
+<div class="line">struct MyClass {</div>
+<div class="line">    enum op {</div>
+<div class="line">        hello,</div>
+<div class="line">        world</div>
+<div class="line">    };</div>
+<div class="line"> </div>
+<div class="line">    inline void operator()(std::shared_ptr&lt;st:message&gt; m) {</div>
+<div class="line">        switch(msg-&gt;id()) {</div>
+<div class="line">            case op::hello:</div>
+<div class="line">                std::cout &lt;&lt; &quot;hello &quot; &lt;&lt; std::endl;</div>
+<div class="line">                break;</div>
+<div class="line">            case op::world:</div>
+<div class="line">                std::cout &lt;&lt; &quot;world&quot; &lt;&lt; std::endl;</div>
+<div class="line">                break;</div>
+<div class="line">        }</div>
+<div class="line">    }</div>
+<div class="line">};</div>
+<div class="line"> </div>
+<div class="line">int main() {</div>
+<div class="line">    std::shared_ptr&lt;st::worker&gt; my_worker = st::worker::make&lt;MyClass&gt;();</div>
+<div class="line"> </div>
+<div class="line">    my_worker-&gt;send(MyClass::op::hello);</div>
+<div class="line">    my_worker-&gt;send(MyClass::op::world);</div>
+<div class="line">}</div>
+</div><!-- fragment --><p>Terminal output might be: </p><div class="fragment"><div class="line">$./a.out</div>
+<div class="line">hello world</div>
+</div><!-- fragment --><p>Singleton worker threads can be accessed by reference with the <code>st::service&lt;FUNCTOR&gt;()</code> function: </p><div class="fragment"><div class="line">#include &lt;iostream&gt;</div>
+<div class="line">#include &lt;simple_thread.hpp&gt;</div>
+<div class="line"> </div>
+<div class="line">struct MyClass {</div>
+<div class="line">    enum op {</div>
+<div class="line">        say_something</div>
+<div class="line">    };</div>
+<div class="line"> </div>
+<div class="line">    inline void operator()(std::shared_ptr&lt;st:message&gt; m) {</div>
+<div class="line">        switch(msg-&gt;id()) {</div>
+<div class="line">            case op::say_something:</div>
+<div class="line">                std::cout &lt;&lt; &quot;I&#39;m a singleton worker thread!&quot; &lt;&lt; std::endl;</div>
+<div class="line">                break;</div>
+<div class="line">        }</div>
+<div class="line">    }</div>
+<div class="line">};</div>
+<div class="line"> </div>
+<div class="line">int main() {</div>
+<div class="line">    st::service&lt;MyClass&gt;().send(MyClass::op::say_something);</div>
+<div class="line">}</div>
+</div><!-- fragment --><p>Terminal output might be: </p><div class="fragment"><div class="line">$./a.out</div>
+<div class="line">I&#39;m a singleton worker thread!</div>
+</div><!-- fragment --><p>Message data payloads can be of any type: </p><div class="fragment"><div class="line">#include &lt;iostream&gt;</div>
+<div class="line">#include &lt;string&gt;</div>
+<div class="line">#include &lt;simple_thread.hpp&gt;</div>
+<div class="line"> </div>
+<div class="line">struct MyClass {</div>
+<div class="line">    enum op {</div>
+<div class="line">        print</div>
+<div class="line">    };</div>
+<div class="line"> </div>
+<div class="line">    inline void operator()(std::shared_ptr&lt;st:message&gt; m) {</div>
+<div class="line">        switch(msg-&gt;id()) {</div>
+<div class="line">            case op::print:</div>
+<div class="line">            {</div>
+<div class="line">                std::string s;</div>
+<div class="line">                if(msg-&gt;copy_data_to&lt;std::string&gt;(s)) {</div>
+<div class="line">                    std::cout &lt;&lt; s &lt;&lt; std::endl;</div>
+<div class="line">                }</div>
+<div class="line">                break;</div>
+<div class="line">            }</div>
+<div class="line">        }</div>
+<div class="line">    }</div>
+<div class="line">};</div>
+<div class="line"> </div>
+<div class="line">int main() {</div>
+<div class="line">    std::shared_ptr&lt;st::worker&gt; my_worker = st::worker::make&lt;MyClass&gt;();</div>
+<div class="line"> </div>
+<div class="line">    std::string s(&quot;hello again&quot;);</div>
+<div class="line">    my_worker-&gt;send(MyClass::op::print, s);</div>
+<div class="line">}</div>
+</div><!-- fragment --><p>Terminal output might be: </p><div class="fragment"><div class="line">$./a.out</div>
+<div class="line">hello again</div>
+</div><!-- fragment --><p><code><a class="el" href="structst_1_1message.html#a712cfd7aa3954f29645561f4e29a4af3">st::message::copy_data_to</a>&lt;T&gt;(T&amp;&amp; t)</code> and <code><a class="el" href="structst_1_1message.html#a8cfc67f035589432aefcb8d5a8da7b83">st::message::move_data_to</a>&lt;T&gt;(T&amp;&amp; t)</code> will return true only if the stored payload type matches type <code>T</code>, otherwise it returns false. Payload types can also be easily checked with <code><a class="el" href="structst_1_1message.html#a23536bf1bda738b333fc6723c8502eb0">st::message::is</a>&lt;T&gt;()</code> (returns true if type match, else false) which is useful if a message might contain several different potential types: </p><div class="fragment"><div class="line">#include &lt;iostream&gt;</div>
+<div class="line">#include &lt;string&gt;</div>
+<div class="line">#include &lt;simple_thread.hpp&gt;</div>
+<div class="line"> </div>
+<div class="line">struct MyClass {</div>
+<div class="line">    enum op {</div>
+<div class="line">        print</div>
+<div class="line">    };</div>
+<div class="line"> </div>
+<div class="line">    inline void operator()(std::shared_ptr&lt;st:message&gt; m) {</div>
+<div class="line">        switch(msg-&gt;id()) {</div>
+<div class="line">            case op::print:</div>
+<div class="line">                if(msg-&gt;is&lt;std::string&gt;()) {</div>
+<div class="line">                    std::string s;</div>
+<div class="line">                    if(msg-&gt;copy_data_to&lt;std::string&gt;(s)) {</div>
+<div class="line">                        std::cout &lt;&lt; s;</div>
+<div class="line">                    }</div>
+<div class="line">                } else if(msg-&gt;is&lt;int&gt;()) {</div>
+<div class="line">                    int i;</div>
+<div class="line">                    if(msg-&gt;copy_data_to&lt;int&gt;(i)) {</div>
+<div class="line">                        std::cout &lt;&lt; i;</div>
+<div class="line">                    }</div>
+<div class="line">                }</div>
+<div class="line">                break;</div>
+<div class="line">        }</div>
+<div class="line">    }</div>
+<div class="line">};</div>
+<div class="line"> </div>
+<div class="line">int main() {</div>
+<div class="line">    std::shared_ptr&lt;st::worker&gt; my_worker = st::worker::make&lt;MyClass&gt;();</div>
+<div class="line"> </div>
+<div class="line">    std::string s(&quot;hello &quot;);</div>
+<div class="line">    my_worker-&gt;send(MyClass::op::print, s);</div>
+<div class="line">    int i = 1;</div>
+<div class="line">    my_worker-&gt;send(MyClass::op::print, i);</div>
+<div class="line">    s = &quot; more time\n&quot;;</div>
+<div class="line">    my_worker-&gt;send(MyClass::op::print, s);</div>
+<div class="line">}</div>
+</div><!-- fragment --><p>Terminal output might be: </p><div class="fragment"><div class="line">$./a.out</div>
+<div class="line">hello 1 more time</div>
+</div><!-- fragment --><p><code><a class="el" href="structst_1_1worker.html" title="Managed system worker thread.">st::worker</a></code>s will automatically shutdown and join when they are destructed. This can be done early with <code><a class="el" href="structst_1_1worker.html#a133398baf331cadfb8905af314f3593e" title="Shutdown the worker thread.">st::worker::shutdown()</a></code>. <code><a class="el" href="structst_1_1worker.html" title="Managed system worker thread.">st::worker</a></code>s can also be restarted at any time with <code><a class="el" href="structst_1_1worker.html#ac5e5dd3493266723a84ee9d3ed22309d" title="Restart the worker thread.">st::worker::restart()</a></code>. See <a href="https://durandaltheta.github.io/sthread/">documentation</a> for more info. </p>
 </div></div><!-- contents -->
 </div><!-- PageDoc -->
 <!-- start footer part -->
