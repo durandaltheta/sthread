@@ -13,15 +13,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
-        with:
-          submodules: "true"
+        uses: actions/checkout@v3 
+
       - name: Install Doxygen
-        run: sudo apt-get install doxygen -y
+        run: sudo apt-get install doxygen -y 
+
       - name: Generate Doxygen Documentation
-        run: doxygen
+        run: doxygen 
+
       - name: Create .nojekyll
         run: touch ${{ inputs.folder }}/.nojekyll
+
       - name: Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@4.3.3
         with:
