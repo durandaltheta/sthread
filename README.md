@@ -1,6 +1,7 @@
 Simple threading and communication.
 
 [Documentation](https://durandaltheta.github.io/sthread/)
+
 [Unit Test Examples](tst/simple_thread_tst.cpp)
 
 Install:
