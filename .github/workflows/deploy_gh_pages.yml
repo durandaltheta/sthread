@@ -1,9 +1,4 @@
 name: 'Deploy to GitHub Pages'
-description: 'This action will handle the deployment process the project to GitHub Pages.'
-author: 'Blayne Dennis <blaynetdennis@gmail.com>'
-branding:
-  icon: 'git-commit'
-  color: 'orange'
 on: 
   push: 
     branches: 
