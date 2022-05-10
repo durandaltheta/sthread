@@ -5,7 +5,9 @@ Simple threading and communication.
 [Unit Test Examples](tst/simple_thread_tst.cpp)
 
 Install:
+
 cmake .
+
 sudo make install
 
 Usage Steps:
