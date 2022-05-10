@@ -1,0 +1,23 @@
+name: CMake
+
+on: [pull_request]
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  build-and-test:
+    concurrency:  ci-${{ github.ref }}
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Configure CMake
+      run: cmake -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+
+    - name: Build
+      run: make all
+
+    - name: Test
+      working-directory: ${{github.workspace}}/tst
+      run: simple_thread_tst
