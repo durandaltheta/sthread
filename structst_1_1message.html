@@ -147,23 +147,8 @@ template&lt;typename T &gt; </div>
 </table>
 </div><div class="memdoc">
 <dl class="section return"><dt>Returns</dt><dd>an unsigned integer representing a data type.</dd></dl>
-<p>The data type value is acquired by removing const and volatile qualifiers and then by acquiring the type_info::hash_code().</p>
-<p>As a note, because this is a constexpr this can be used as switch case: </p><div class="fragment"><div class="line"><span class="keywordflow">switch</span>(msg-&gt;type()) {</div>
-<div class="line">    <span class="keywordflow">case</span> message::code&lt;int&gt;(): </div>
-<div class="line">        int i=0;</div>
-<div class="line">        msg-&gt;copy_data_to(i);</div>
-<div class="line">        std::cout &lt;&lt; <span class="stringliteral">&quot;i: &quot;</span> &lt;&lt; i &lt;&lt; std::endl;</div>
-<div class="line">        <span class="keywordflow">break</span>;</div>
-<div class="line">    <span class="keywordflow">case</span> message::code&lt;std::string&gt;(): </div>
-<div class="line">        std::string s;</div>
-<div class="line">        msg-&gt;copy_data_to(s);</div>
-<div class="line">        std::cout &lt;&lt; <span class="stringliteral">&quot;s: &quot;</span> &lt;&lt; s &lt;&lt; std::endl;</div>
-<div class="line">        <span class="keywordflow">break</span>;</div>
-<div class="line">    <span class="keywordflow">default</span>:</div>
-<div class="line">        std::cout &lt;&lt; <span class="stringliteral">&quot;unknown type&quot;</span> &lt;&lt; std::endl;</div>
-<div class="line">        <span class="keywordflow">break</span>;</div>
-<div class="line">}</div>
-</div><!-- fragment --> 
+<p>The data type value is acquired by removing const and volatile qualifiers and then by acquiring the type_info::hash_code(). </p>
+
 </div>
 </div>
 <a id="a712cfd7aa3954f29645561f4e29a4af3"></a>
