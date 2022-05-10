@@ -5,10 +5,8 @@ Simple threading and communication.
 [Unit Test Examples](tst/simple_thread_tst.cpp)
 
 Install:
-
-cmake .
-
-sudo make install
+- cmake .
+- sudo make install
 
 Usage Steps:
 - Install the library or include the header `simple_thread.hpp` somehow
