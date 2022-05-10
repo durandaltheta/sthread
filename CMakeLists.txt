@@ -7,6 +7,12 @@ set(CMAKE_BUILD_TYPE Debug)
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -O3 -Wall")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -Wall")
 
+# Uncomment this to enable verbose runtime logging
+#add_definitions(
+    #-D__SIMPLE_THREADING_DEBUG__
+    #-D__SIMPLE_THREADING_DEBUG_DEFAULT__
+    #)
+
 project(libst)
 
 set(ST_HEADER_FILES 
@@ -19,4 +25,4 @@ target_include_directories(st INTERFACE inc)
 install(TARGETS st DESTINATION lib)
 install(FILES ${ST_HEADER_FILES} DESTINATION include/st)
 
-add_subdirectory(tst EXCLUDE_FROM_ALL)
+add_subdirectory(tst)

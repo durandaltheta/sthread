@@ -17,6 +17,71 @@
 
 namespace st {
 
+/** @cond HIDDEN_SYMBOLS */
+#ifdef __SIMPLE_THREADING_DEBUG__ 
+namespace log {
+
+#include <ostream>
+
+namespace detail {
+
+static std::ostream& debug_stream();
+static std::ostream& error_stream();
+
+#ifdef __SIMPLE_THREADING_DEBUG_DEFAULT__
+static inline std::ostream& debug_stream() {
+    return std::cout;
+}
+
+static inline std::ostream& error_stream() {
+    return std::cerr;
+}
+#endif 
+
+inline void log(std::ostream& os) {
+    os << std::endl;
+}
+
+template <typename T, typename... As>
+void log(std::ostream& os, T&& t, As&&... as) {
+    os << t;
+    log(os, std::forward<As>(as)...);
+}
+
+struct log_mutex {
+    static std::mutex& instance() {
+        static std::mutex log_mutex;
+        return log_mutex;
+    }
+};
+
+}
+
+template <typename... As>
+void debug(const char* funcname, As&&... as) {
+    std::lock_guard<std::mutex> lk(detail::log_mutex::instance());
+    detail::debug_stream() << "[" << std::this_thread::get_id() << "]::" << funcname << "::";
+    detail::log(detail::debug_stream(), std::forward<As>(as)...);
+}
+
+template <typename... As>
+void error(const char* funcname, As&&... as) {
+    std::lock_guard<std::mutex> lk(detail::log_mutex::instance());
+    detail::error_stream() << "[" << std::this_thread::get_id() << "]!!" << funcname << "!!";
+    detail::log(detail::error_stream(), std::forward<As>(as)...);
+}
+
+}
+
+#define STDEBUG(...) st::log::debug(__VA_ARGS__)
+#define STERROR(...) st::log::error(__VA_ARGS__)
+#else 
+#define STDEBUG(...)
+#define STERROR(...)
+#endif
+/** @endcond */
+
+
 /**
  * @brief Interthread type erased message container
  */
@@ -169,59 +234,6 @@ private:
     data_pointer_t m_data;
 };
 
-/** 
- * @brief Runtime replacement for C switch operator. 
- *
- * Useful for handling messages with multiple possible payload types.
- */
-template <typename T=std::size_t>
-struct select {
-    select() : m_flag(false), m_id(0) {}
-    select(std::size_t id) : m_flag(true), m_id(id) {}
-    ~select() {
-        if(m_flag) {
-            operator()(m_id);
-        }
-    }
-
-    /**
-     * @brief Replacement for `case:` statement
-     */
-    inline select& clause(std::size_t i, std::function<void()> f) {
-        m_map[i] = std::move(f);
-        return *this;
-    }
-
-    /**
-     * @brief Replacement for `default:` case statement
-     */
-    inline select& other(std::function<void()> f) {
-        m_other = std::move(f);
-        return *this;
-    }
-
-    inline void operator()(const T& i) {
-        auto it = m_map.find(i);
-        if(it == m_map.end()) {
-            if(m_other) {
-                m_other();
-            }
-        } else {
-            it->second();
-        }
-    }
-    
-    inline void operator()(T&& i) {
-        operator()(i);
-    }
-
-private:
-    bool m_flag;
-    std::size_t m_id;
-    std::unordered_map<T,std::function<void()>> m_map;
-    std::function<void()> m_other;
-};
-
 /**
  * @brief Interthread message passing queue
  *
@@ -235,7 +247,10 @@ struct channel : public std::enable_shared_from_this<channel> {
      * @return a channel shared_ptr
      */
     static inline std::shared_ptr<channel> make() {
-        return std::shared_ptr<channel>(new channel);
+        STDEBUG(__FUNCTION__, "+");
+        auto ch = std::shared_ptr<channel>(new channel);
+        STDEBUG(__FUNCTION__, "-");
+        return ch;
     }
 
     /**
@@ -244,14 +259,18 @@ struct channel : public std::enable_shared_from_this<channel> {
      * @return true on success, false if channel is closed
      */
     inline bool send(std::shared_ptr<message> m) {
+        STDEBUG(__FUNCTION__, "+");
         {
             std::lock_guard<std::mutex> lk(m_mtx);
-            if(!m_closed) {
+            if(m_closed) {
+                STERROR(__FUNCTION__, "closed");
                 return false;
             }
             m_msg_q.push_back(std::move(m));
         }
         m_cv.notify_one();
+        STDEBUG(__FUNCTION__, "sent");
+        STDEBUG(__FUNCTION__, "-");
         return true;
     }
 
@@ -283,16 +302,22 @@ struct channel : public std::enable_shared_from_this<channel> {
      * @return true on success, false if channel is closed
      */
     bool recv(std::shared_ptr<message>& m) {
+        STDEBUG(__FUNCTION__, "+");
         std::unique_lock<std::mutex> lk(m_mtx);
         while(m_msg_q.empty() && !m_closed) {
+            STERROR(__FUNCTION__, "waiting");
             m_cv.wait(lk);
         }
 
         if(m_closed) {
+            STERROR(__FUNCTION__, "closed");
+            STDEBUG(__FUNCTION__, "-");
             return false;
         } else {
             m = m_msg_q.front();
             m_msg_q.pop_front();
+            STERROR(__FUNCTION__, "received");
+            STDEBUG(__FUNCTION__, "-");
             return true;
         }
     }
@@ -301,7 +326,9 @@ struct channel : public std::enable_shared_from_this<channel> {
      * @return true if channel is closed, else false 
      */
     inline bool closed() {
+        STDEBUG(__FUNCTION__, "+");
         std::lock_guard<std::mutex> lk(m_mtx);
+        STDEBUG(__FUNCTION__, "-");
         return m_closed;
     }
 
@@ -311,12 +338,15 @@ struct channel : public std::enable_shared_from_this<channel> {
      * Ends all current and future operations on the channel 
      */
     inline void close() {
+        STDEBUG(__FUNCTION__, "+");
         {
             std::lock_guard<std::mutex> lk(m_mtx);
+            STDEBUG(__FUNCTION__, "set to closed");
             m_closed = true;
         }
 
         m_cv.notify_one();
+        STDEBUG(__FUNCTION__, "-");
     }
 
 private:
@@ -375,17 +405,22 @@ struct worker: public std::enable_shared_from_this<worker> {
      * @return true if worker thread is running, else false
      */
     inline bool running() {
+        STDEBUG(__FUNCTION__, "+");
         std::lock_guard<std::mutex> lk(m_mtx);
-        return m_thd.joinable() && !m_ch->closed();
-
+        bool r = m_thd.joinable() && !m_ch->closed();
+        STDEBUG(__FUNCTION__, "running[", r, "]");
+        STDEBUG(__FUNCTION__, "+");
+        return r;
     }
 
     /** 
      * @brief Shutdown the worker thread
      */
     inline void shutdown() {
+        STDEBUG(__FUNCTION__, "+");
         std::lock_guard<std::mutex> lk(m_mtx);
         inner_shutdown();
+        STDEBUG(__FUNCTION__, "-");
     }
 
     /**
@@ -394,22 +429,40 @@ struct worker: public std::enable_shared_from_this<worker> {
      * Shutdown threads and reset state when necessary. 
      */
     inline void restart() {
-        std::lock_guard<std::mutex> lk(m_mtx);
+        STDEBUG(__FUNCTION__, "+");
+        std::unique_lock<std::mutex> lk(m_mtx);
         inner_shutdown();
         m_ch = channel::make();
+        STDEBUG(__FUNCTION__, "launching worker");
         m_thd = std::thread([&]{
+            STDEBUG("worker_thread", "+");
             std::shared_ptr<message> m;
             tl_worker() = this; // set the thread local worker pointer
 
             auto hdl = m_generate_handler();
 
+            {
+                std::lock_guard<std::mutex> lk(m_mtx);
+                m_thread_started_flag = true;
+            }
+            m_cv.notify_one();
+
+            STDEBUG("worker_thread", "receiving message");
             while(m_ch->recv(m)) {
+                STDEBUG("worker_thread", "handling message");
                 hdl(m);
                 m.reset();
             }
 
             tl_worker() = nullptr; // reset the thread local worker pointer
+            STDEBUG("worker_thread", "-");
         });
+
+        while(!m_thread_started_flag) {
+            m_cv.wait(lk);
+        }
+
+        STDEBUG(__FUNCTION__, "-");
     }
 
     /**
@@ -435,6 +488,17 @@ struct worker: public std::enable_shared_from_this<worker> {
     }
 
     /**
+     * Send a message over the channel with given parameter
+     *
+     * @param id an unsigned integer representing which type of message 
+     * @return true on success, false if channel is closed
+     */
+    bool send(std::size_t id) {
+        return send(id, 0);
+;
+    }
+
+    /**
      * @brief Provide access to calling worker thread shared_ptr
      *
      * If not called by a running worker, returned pointer is null. Useful when 
@@ -443,10 +507,15 @@ struct worker: public std::enable_shared_from_this<worker> {
      * @return calling thread's worker shared_ptr. 
      */
     static inline std::shared_ptr<worker> this_worker() {
+        STDEBUG(__FUNCTION__, "+");
         auto w = tl_worker();
         if(w) {
+            STDEBUG(__FUNCTION__, "got this_worker");
+            STDEBUG(__FUNCTION__, "-");
             return w->shared_from_this();
         } else {
+            STERROR(__FUNCTION__, "failed to get this_worker");
+            STDEBUG(__FUNCTION__, "-");
             return std::shared_ptr<worker>();
         }
     }
@@ -463,7 +532,8 @@ private:
     }
 
     template <typename FUNCTOR, typename... As>
-    worker(type_hint<FUNCTOR> t, As&&... as) { 
+    worker(type_hint<FUNCTOR> t, As&&... as) : m_thread_started_flag(false) { 
+        STDEBUG(__FUNCTION__, "+");
         // generate handler s called late and allocates a shared_ptr to allow 
         // for a single construction and destruction of type FUNCTOR in the 
         // worker thread environment. 
@@ -472,6 +542,7 @@ private:
             return [=](std::shared_ptr<message> m) { (*fp)(std::move(m)); };
         };
         restart();
+        STDEBUG(__FUNCTION__, "-");
     }
 
     // thread local worker by-reference getter 
@@ -482,15 +553,23 @@ private:
 
     // close the worker channel and join the thread if necessary
     inline void inner_shutdown() {
+        STDEBUG(__FUNCTION__, "+");
         if(m_thd.joinable()) {
             if(m_ch && !m_ch->closed()) {
+                STDEBUG(__FUNCTION__, "closing worker channel");
                 m_ch->close();
             }
+            STDEBUG(__FUNCTION__, "joining worker");
             m_thd.join();
         }
+
+        m_thread_started_flag = false;
+        STDEBUG(__FUNCTION__, "-");
     }
 
+    bool m_thread_started_flag;
     std::mutex m_mtx;
+    std::condition_variable m_cv;
     std::function<handler()> m_generate_handler;
     std::shared_ptr<channel> m_ch;
     std::thread m_thd;
