@@ -16,9 +16,6 @@ jobs:
       - name: Generate Doxygen Documentation
         run: doxygen 
 
-      - name: Create .nojekyll
-        run: touch ${{ inputs.folder }}/.nojekyll
-
       - name: Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4.3.3
         with:
