@@ -1,11 +1,10 @@
 cmake_minimum_required(VERSION 3.20)
-
+project(simple_thread)
+set(LIBRARY ${CMAKE_PROJECT_NAME})
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-#set(CMAKE_BUILD_TYPE Release) 
-set(CMAKE_BUILD_TYPE Debug) 
-#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -O3 -Wall")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -Wall")
+set(CMAKE_BUILD_TYPE Release) 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -O3 -Wall")
 
 # Uncomment this to enable verbose runtime logging
 #add_definitions(
@@ -13,16 +12,11 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -Wall")
     #-D__SIMPLE_THREADING_DEBUG_DEFAULT__
     #)
 
-project(libst)
+set(HEADER_FILES ${CMAKE_CURRENT_LIST_DIR}/inc/simple_thread.hpp)
+add_library(${LIBRARY} INTERFACE)
+target_include_directories(${LIBRARY} INTERFACE inc) 
 
-set(ST_HEADER_FILES 
-    ${CMAKE_CURRENT_LIST_DIR}/inc/simple_thread.hpp
-    )
-
-add_library(st INTERFACE)
-target_include_directories(st INTERFACE inc) 
-
-install(TARGETS st DESTINATION lib)
-install(FILES ${ST_HEADER_FILES} DESTINATION include/st)
+install(TARGETS ${LIBRARY} DESTINATION lib)
+install(FILES ${HEADER_FILES} DESTINATION include/${LIBRARY})
 
 add_subdirectory(tst)

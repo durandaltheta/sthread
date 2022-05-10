@@ -1,21 +1,7 @@
-cmake_minimum_required(VERSION 3.20)
-
-project(st_ut) 
-
-set(CMAKE_CXX_STANDARD 11)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-#set(CMAKE_BUILD_TYPE Release) 
-set(CMAKE_BUILD_TYPE Debug) 
-#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -O3 -Wall")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -Wall")
-
+set(BINARY ${CMAKE_PROJECT_NAME}_tst)
+file(GLOB_RECURSE TEST_SOURCES LIST_DIRECTORIES false *.h *.hpp *.cpp)
+set(SOURCES ${TEST_SOURCES})
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/googletest)
-
-add_executable(st_ut
-    simple_thread_ut.cpp
-)
-
-target_link_libraries(st_ut 
-    gtest 
-    gtest_main
-    st)
+add_executable(${BINARY} ${BINARY}.cpp)
+add_test(simple_thread_unit_test ${BINARY} COMMAND ${BINARY}) 
+target_link_libraries(${BINARY} PUBLIC ${CMAKE_PROJECT_NAME} gtest gtest_main)
