@@ -322,3 +322,11 @@ int main() {
     my_thread.join(); // join thread
 }
 ```
+
+Terminal output might be:
+```
+$./a.out 
+You say goodbye
+And I say hello
+thread done 
+```
