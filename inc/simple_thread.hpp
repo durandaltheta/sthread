@@ -353,13 +353,13 @@ struct worker: public std::enable_shared_from_this<worker> {
      * operator overload which accepts an std::shared_ptr<message>, ex:
      * ```
      * struct MyFunctor {
-     *     void operator()(std::shared_ptr<message> m);
+     *     void operator()(std::shared_ptr<st::message> m);
      * };
      * ```
      *
      * Using a functor is useful because it allows member data to persist
-     * between calls to `void operator()(std::shared_ptr<message> m)` and for 
-     * all member data to be easily accessible. 
+     * between calls to `void operator()(std::shared_ptr<st::message> m)` and 
+     * for all member data to be easily accessible. 
      *
      * Another distinct advantage is functors are able to make intelligent use 
      * of C++ RAII semantics, as the functor will come into existence on a 
