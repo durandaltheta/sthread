@@ -137,14 +137,12 @@ struct MyClass {
             case op::print:
                 if(msg->is<std::string>()) {
                     std::string s;
-                    if(msg->copy_data_to<std::string>(s)) {
-                        std::cout << s;
-                    }
+                    msg->copy_data_to<std::string>(s);
+                    std::cout << s;
                 } else if(msg->is<int>()) {
                     int i;
-                    if(msg->copy_data_to<int>(i)) {
-                        std::cout << i;
-                    }
+                    msg->copy_data_to<int>(i);
+                    std::cout << i;
                 }
                 break;
         }
