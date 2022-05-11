@@ -323,7 +323,7 @@ Example 7:</h3>
 <div class="line">#include &lt;thread&gt;</div>
 <div class="line">#include &lt;simple_thread.hpp&gt;</div>
 <div class="line"> </div>
-<div class="line">void looping_recv(std::shared_ptr&lt;st::channel&gt; ch, std::shared_ptr&lt;st::channel&gt; conf_ch) {</div>
+<div class="line">void looping_recv(std::shared_ptr&lt;st::channel&gt; ch) {</div>
 <div class="line">    std::shared_ptr&lt;st::message&gt; msg;</div>
 <div class="line"> </div>
 <div class="line">    while(ch-&gt;recv(msg)) {</div>
@@ -331,7 +331,6 @@ Example 7:</h3>
 <div class="line">        if(msg-&gt;copy_data_to(s)) {</div>
 <div class="line">            std::cout &lt;&lt; s &lt;&lt; std::endl;</div>
 <div class="line">        }</div>
-<div class="line">        conf_ch-&gt;send(0,0);</div>
 <div class="line">    }</div>
 <div class="line"> </div>
 <div class="line">    std::cout &lt;&lt; &quot;thread done&quot; &lt;&lt; std::endl;</div>
@@ -339,15 +338,11 @@ Example 7:</h3>
 <div class="line"> </div>
 <div class="line">int main() {</div>
 <div class="line">    std::shared_ptr&lt;st::channel&gt; my_channel = st::channel::make();</div>
-<div class="line">    std::shared_ptr&lt;st::channel&gt; my_confirmation_channel = st::channel::make();</div>
-<div class="line">    std::thread my_thread(looping_recv, my_channel, my_confirmation_channel);</div>
+<div class="line">    std::thread my_thread(looping_recv, my_channel);</div>
 <div class="line">    std::shared_ptr&lt;st::message&gt; msg;</div>
 <div class="line"> </div>
 <div class="line">    my_channel-&gt;send(0, std::string(&quot;You say goodbye&quot;));</div>
-<div class="line">    my_confirmation_channel-&gt;recv(msg); // confirm thread received message</div>
-<div class="line"> </div>
 <div class="line">    my_channel-&gt;send(0, std::string(&quot;And I say hello&quot;));</div>
-<div class="line">    my_confirmation_channel-&gt;recv(msg);</div>
 <div class="line"> </div>
 <div class="line">    my_channel-&gt;close(); // end thread looping </div>
 <div class="line">    my_thread.join(); // join thread</div>
