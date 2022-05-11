@@ -1,4 +1,5 @@
 var searchData=
 [
-  ['worker_23',['worker',['../structst_1_1worker.html',1,'st']]]
+  ['this_5fworker_22',['this_worker',['../structst_1_1worker.html#a62296e5dccf5fb9ba6bc9c8d37c4ecf5',1,'st::worker']]],
+  ['type_23',['type',['../structst_1_1message.html#ad5aa6102d07ce7a9db428d161cad1aa8',1,'st::message']]]
 ];

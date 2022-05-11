@@ -87,6 +87,8 @@ Inheritance diagram for st::channel:</div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
+<tr class="memitem:a97fc0ed740a24c5483fed5a6b52a4d96"><td class="memItemLeft" align="right" valign="top">std::size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structst_1_1channel.html#a97fc0ed740a24c5483fed5a6b52a4d96">queued</a> ()</td></tr>
+<tr class="separator:a97fc0ed740a24c5483fed5a6b52a4d96"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ac8be7ee6e79c7bc931d6b621efd1ef41"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structst_1_1channel.html#ac8be7ee6e79c7bc931d6b621efd1ef41">send</a> (std::shared_ptr&lt; <a class="el" href="structst_1_1message.html">message</a> &gt; m)</td></tr>
 <tr class="memdesc:ac8be7ee6e79c7bc931d6b621efd1ef41"><td class="mdescLeft">&#160;</td><td class="mdescRight">Send a message over the channel.  <a href="structst_1_1channel.html#ac8be7ee6e79c7bc931d6b621efd1ef41">More...</a><br /></td></tr>
 <tr class="separator:ac8be7ee6e79c7bc931d6b621efd1ef41"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -100,9 +102,9 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:a8728270df53a15139f91100ad396377f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a5055f2993a20b50d85df93d840d2bed8"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structst_1_1channel.html#a5055f2993a20b50d85df93d840d2bed8">closed</a> ()</td></tr>
 <tr class="separator:a5055f2993a20b50d85df93d840d2bed8"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a53e2c90fe46465833f2164968c7b9e17"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structst_1_1channel.html#a53e2c90fe46465833f2164968c7b9e17">close</a> ()</td></tr>
-<tr class="memdesc:a53e2c90fe46465833f2164968c7b9e17"><td class="mdescLeft">&#160;</td><td class="mdescRight">Close the channel.  <a href="structst_1_1channel.html#a53e2c90fe46465833f2164968c7b9e17">More...</a><br /></td></tr>
-<tr class="separator:a53e2c90fe46465833f2164968c7b9e17"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae2a319160262483ed2e290d81390c456"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structst_1_1channel.html#ae2a319160262483ed2e290d81390c456">close</a> (bool process_remaining_messages=true)</td></tr>
+<tr class="memdesc:ae2a319160262483ed2e290d81390c456"><td class="mdescLeft">&#160;</td><td class="mdescRight">Close the channel.  <a href="structst_1_1channel.html#ae2a319160262483ed2e290d81390c456">More...</a><br /></td></tr>
+<tr class="separator:ae2a319160262483ed2e290d81390c456"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-static-methods"></a>
 Static Public Member Functions</h2></td></tr>
@@ -114,8 +116,8 @@ Static Public Member Functions</h2></td></tr>
 <div class="textblock"><p>Interthread message passing queue. </p>
 <p>The internal mechanism used by this library to communicate between managed system threads. Provided here as a convenience for communicating from managed system threads to other user threads. </p>
 </div><h2 class="groupheader">Member Function Documentation</h2>
-<a id="a53e2c90fe46465833f2164968c7b9e17"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a53e2c90fe46465833f2164968c7b9e17">&#9670;&nbsp;</a></span>close()</h2>
+<a id="ae2a319160262483ed2e290d81390c456"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae2a319160262483ed2e290d81390c456">&#9670;&nbsp;</a></span>close()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -126,7 +128,8 @@ Static Public Member Functions</h2></td></tr>
         <tr>
           <td class="memname">void st::channel::close </td>
           <td>(</td>
-          <td class="paramname"></td><td>)</td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>process_remaining_messages</em> = <code>true</code></td><td>)</td>
           <td></td>
         </tr>
       </table>
@@ -138,7 +141,13 @@ Static Public Member Functions</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Close the channel. </p>
-<p>Ends all current and future operations on the channel </p>
+<p>Ends all current and future operations on the channel</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">process_remaining_messages</td><td>if true allow <a class="el" href="structst_1_1channel.html#a8728270df53a15139f91100ad396377f" title="Receive a message over the channel.">recv()</a> to succeed until queue empty before closing </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>
@@ -193,6 +202,32 @@ Static Public Member Functions</h2></td></tr>
 
 <p>Construct a channel as a shared_ptr. </p>
 <dl class="section return"><dt>Returns</dt><dd>a channel shared_ptr </dd></dl>
+
+</div>
+</div>
+<a id="a97fc0ed740a24c5483fed5a6b52a4d96"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a97fc0ed740a24c5483fed5a6b52a4d96">&#9670;&nbsp;</a></span>queued()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::size_t st::channel::queued </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<dl class="section return"><dt>Returns</dt><dd>count of messages in the queue </dd></dl>
 
 </div>
 </div>

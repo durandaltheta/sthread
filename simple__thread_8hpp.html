@@ -104,18 +104,18 @@ Functions</h2></td></tr>
 <tr class="memitem:aa34c816c9813dd38ab74b1feb35807c2"><td class="memTemplItemLeft" align="right" valign="top">static worker &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="simple__thread_8hpp.html#aa34c816c9813dd38ab74b1feb35807c2">st::service</a> ()</td></tr>
 <tr class="memdesc:aa34c816c9813dd38ab74b1feb35807c2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Access a singleton instance of a worker thread.  <a href="simple__thread_8hpp.html#aa34c816c9813dd38ab74b1feb35807c2">More...</a><br /></td></tr>
 <tr class="separator:aa34c816c9813dd38ab74b1feb35807c2"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aef03c8dc0cd1d65c1871f9f0531d8c91"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="simple__thread_8hpp.html#aef03c8dc0cd1d65c1871f9f0531d8c91">st::shutdown_all_services</a> ()</td></tr>
-<tr class="memdesc:aef03c8dc0cd1d65c1871f9f0531d8c91"><td class="mdescLeft">&#160;</td><td class="mdescRight">Shutdown all singleton worker threads.  <a href="simple__thread_8hpp.html#aef03c8dc0cd1d65c1871f9f0531d8c91">More...</a><br /></td></tr>
-<tr class="separator:aef03c8dc0cd1d65c1871f9f0531d8c91"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a6614fa4261e42e8ceb42ba498587d399"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="simple__thread_8hpp.html#a6614fa4261e42e8ceb42ba498587d399">st::restart_all_services</a> ()</td></tr>
-<tr class="memdesc:a6614fa4261e42e8ceb42ba498587d399"><td class="mdescLeft">&#160;</td><td class="mdescRight">Restart all singleton worker threads.  <a href="simple__thread_8hpp.html#a6614fa4261e42e8ceb42ba498587d399">More...</a><br /></td></tr>
-<tr class="separator:a6614fa4261e42e8ceb42ba498587d399"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a038163345bb426927e78d6c04599f774"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="simple__thread_8hpp.html#a038163345bb426927e78d6c04599f774">st::shutdown_all_services</a> (bool process_remaining_messages=true)</td></tr>
+<tr class="memdesc:a038163345bb426927e78d6c04599f774"><td class="mdescLeft">&#160;</td><td class="mdescRight">Shutdown all singleton worker threads.  <a href="simple__thread_8hpp.html#a038163345bb426927e78d6c04599f774">More...</a><br /></td></tr>
+<tr class="separator:a038163345bb426927e78d6c04599f774"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:acbb7c31ddf25ad2cdbf47531db59d7d2"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="simple__thread_8hpp.html#acbb7c31ddf25ad2cdbf47531db59d7d2">st::restart_all_services</a> (bool process_remaining_messages=true)</td></tr>
+<tr class="memdesc:acbb7c31ddf25ad2cdbf47531db59d7d2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Restart all singleton worker threads.  <a href="simple__thread_8hpp.html#acbb7c31ddf25ad2cdbf47531db59d7d2">More...</a><br /></td></tr>
+<tr class="separator:acbb7c31ddf25ad2cdbf47531db59d7d2"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Simple interprocess threading and messaging. </p>
 </div><h2 class="groupheader">Function Documentation</h2>
-<a id="a6614fa4261e42e8ceb42ba498587d399"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a6614fa4261e42e8ceb42ba498587d399">&#9670;&nbsp;</a></span>restart_all_services()</h2>
+<a id="acbb7c31ddf25ad2cdbf47531db59d7d2"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#acbb7c31ddf25ad2cdbf47531db59d7d2">&#9670;&nbsp;</a></span>restart_all_services()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -126,7 +126,8 @@ Functions</h2></td></tr>
         <tr>
           <td class="memname">void st::restart_all_services </td>
           <td>(</td>
-          <td class="paramname"></td><td>)</td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>process_remaining_messages</em> = <code>true</code></td><td>)</td>
           <td></td>
         </tr>
       </table>
@@ -138,7 +139,13 @@ Functions</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Restart all singleton worker threads. </p>
-<p>All worker threads created by calls to <a class="el" href="simple__thread_8hpp.html#aa34c816c9813dd38ab74b1feb35807c2" title="Access a singleton instance of a worker thread.">service&lt;FUNCTOR&gt;()</a> can be restarted by a single call to this function. </p>
+<p>All worker threads created by calls to <a class="el" href="simple__thread_8hpp.html#aa34c816c9813dd38ab74b1feb35807c2" title="Access a singleton instance of a worker thread.">service&lt;FUNCTOR&gt;()</a> can be restarted by a single call to this function.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">process_remaining_messages</td><td>if true allow recv() to succeed until queue empty before closing </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>
@@ -174,8 +181,8 @@ template&lt;typename FUNCTOR &gt; </div>
 
 </div>
 </div>
-<a id="aef03c8dc0cd1d65c1871f9f0531d8c91"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#aef03c8dc0cd1d65c1871f9f0531d8c91">&#9670;&nbsp;</a></span>shutdown_all_services()</h2>
+<a id="a038163345bb426927e78d6c04599f774"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a038163345bb426927e78d6c04599f774">&#9670;&nbsp;</a></span>shutdown_all_services()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -186,7 +193,8 @@ template&lt;typename FUNCTOR &gt; </div>
         <tr>
           <td class="memname">void st::shutdown_all_services </td>
           <td>(</td>
-          <td class="paramname"></td><td>)</td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>process_remaining_messages</em> = <code>true</code></td><td>)</td>
           <td></td>
         </tr>
       </table>
@@ -198,7 +206,13 @@ template&lt;typename FUNCTOR &gt; </div>
 </div><div class="memdoc">
 
 <p>Shutdown all singleton worker threads. </p>
-<p>All worker threads created by calls to <a class="el" href="simple__thread_8hpp.html#aa34c816c9813dd38ab74b1feb35807c2" title="Access a singleton instance of a worker thread.">service&lt;FUNCTOR&gt;()</a> can be shutdown by a single call to this function. </p>
+<p>All worker threads created by calls to <a class="el" href="simple__thread_8hpp.html#aa34c816c9813dd38ab74b1feb35807c2" title="Access a singleton instance of a worker thread.">service&lt;FUNCTOR&gt;()</a> can be shutdown by a single call to this function.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">process_remaining_messages</td><td>if true allow recv() to succeed until queue empty before closing </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>

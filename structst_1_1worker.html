@@ -96,13 +96,12 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:a74aad1110dd95970565861c6f8234469"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a4a3d6b7c743dd8e168d08b6b10faacff"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structst_1_1worker.html#a4a3d6b7c743dd8e168d08b6b10faacff">running</a> ()</td></tr>
 <tr class="separator:a4a3d6b7c743dd8e168d08b6b10faacff"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a133398baf331cadfb8905af314f3593e"><td class="memItemLeft" align="right" valign="top"><a id="a133398baf331cadfb8905af314f3593e"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structst_1_1worker.html#a133398baf331cadfb8905af314f3593e">shutdown</a> ()</td></tr>
-<tr class="memdesc:a133398baf331cadfb8905af314f3593e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Shutdown the worker thread. <br /></td></tr>
-<tr class="separator:a133398baf331cadfb8905af314f3593e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac5e5dd3493266723a84ee9d3ed22309d"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structst_1_1worker.html#ac5e5dd3493266723a84ee9d3ed22309d">restart</a> ()</td></tr>
-<tr class="memdesc:ac5e5dd3493266723a84ee9d3ed22309d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Restart the worker thread.  <a href="structst_1_1worker.html#ac5e5dd3493266723a84ee9d3ed22309d">More...</a><br /></td></tr>
-<tr class="separator:ac5e5dd3493266723a84ee9d3ed22309d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3f98d0479ad642ed572fd723caeb893d"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structst_1_1worker.html#a3f98d0479ad642ed572fd723caeb893d">shutdown</a> (bool process_remaining_messages=true)</td></tr>
+<tr class="memdesc:a3f98d0479ad642ed572fd723caeb893d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Shutdown the worker thread.  <a href="structst_1_1worker.html#a3f98d0479ad642ed572fd723caeb893d">More...</a><br /></td></tr>
+<tr class="separator:a3f98d0479ad642ed572fd723caeb893d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2e3f89739083c6d6779712081d30d459"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structst_1_1worker.html#a2e3f89739083c6d6779712081d30d459">restart</a> (bool process_remaining_messages=true)</td></tr>
+<tr class="memdesc:a2e3f89739083c6d6779712081d30d459"><td class="mdescLeft">&#160;</td><td class="mdescRight">Restart the worker thread.  <a href="structst_1_1worker.html#a2e3f89739083c6d6779712081d30d459">More...</a><br /></td></tr>
+<tr class="separator:a2e3f89739083c6d6779712081d30d459"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a9fdbdc777304056f87302fa60c266de0"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structst_1_1worker.html#a9fdbdc777304056f87302fa60c266de0">send</a> (std::shared_ptr&lt; <a class="el" href="structst_1_1message.html">message</a> &gt; m)</td></tr>
 <tr class="memdesc:a9fdbdc777304056f87302fa60c266de0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Send a message over the channel.  <a href="structst_1_1worker.html#a9fdbdc777304056f87302fa60c266de0">More...</a><br /></td></tr>
 <tr class="separator:a9fdbdc777304056f87302fa60c266de0"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -166,8 +165,8 @@ template&lt;typename FUNCTOR , typename... As&gt; </div>
 
 </div>
 </div>
-<a id="ac5e5dd3493266723a84ee9d3ed22309d"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ac5e5dd3493266723a84ee9d3ed22309d">&#9670;&nbsp;</a></span>restart()</h2>
+<a id="a2e3f89739083c6d6779712081d30d459"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a2e3f89739083c6d6779712081d30d459">&#9670;&nbsp;</a></span>restart()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -178,7 +177,8 @@ template&lt;typename FUNCTOR , typename... As&gt; </div>
         <tr>
           <td class="memname">void st::worker::restart </td>
           <td>(</td>
-          <td class="paramname"></td><td>)</td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>process_remaining_messages</em> = <code>true</code></td><td>)</td>
           <td></td>
         </tr>
       </table>
@@ -190,7 +190,13 @@ template&lt;typename FUNCTOR , typename... As&gt; </div>
 </div><div class="memdoc">
 
 <p>Restart the worker thread. </p>
-<p>Shutdown threads and reset state when necessary. </p>
+<p>Shutdown threads and reset state when necessary.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">process_remaining_messages</td><td>if true allow recv() to succeed until queue empty before closing </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>
@@ -334,6 +340,40 @@ template&lt;typename T &gt; </div>
   </dd>
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>true on success, false if channel is closed </dd></dl>
+
+</div>
+</div>
+<a id="a3f98d0479ad642ed572fd723caeb893d"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a3f98d0479ad642ed572fd723caeb893d">&#9670;&nbsp;</a></span>shutdown()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void st::worker::shutdown </td>
+          <td>(</td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>process_remaining_messages</em> = <code>true</code></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Shutdown the worker thread. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">process_remaining_messages</td><td>if true allow recv() to succeed until queue empty before closing </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>
