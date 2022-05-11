@@ -121,7 +121,7 @@ $./a.out
 hello again
 ```
 
-`st::message::copy_data_to<T>(T&& t)` and `st::message::move_data_to<T>(T&& t)` will return true only if the stored payload type matches type `T`, otherwise it returns false. Payload types can also be easily checked with `st::message::is<T>()` (returns true if type match, else false) which is useful if a message might contain several different potential types:
+`st::message::copy_data_to<T>(T&& t)` and `st::message::move_data_to<T>(T&& t)` will return `true` only if the stored payload type matches type `T`, otherwise it returns `false`. Payload types can also be easily checked with `st::message::is<T>()` (returns `true` if type match, else `false`) which is useful if a message might contain several different potential types:
 ```
 #include <iostream>
 #include <string>
