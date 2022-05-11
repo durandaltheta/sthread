@@ -300,6 +300,8 @@ Example 6:</h3>
 <div class="line">        std::cout &lt;&lt; s &lt;&lt; std::endl;</div>
 <div class="line">    }</div>
 <div class="line">}</div>
+</div><!-- fragment --><p>Terminal output might be: </p><div class="fragment"><div class="line">$./a.out </div>
+<div class="line">forward this string</div>
 </div><!-- fragment --><h2><a class="anchor" id="autotoc_md16"></a>
 Close, Shutdown, and Restart</h2>
 <p>In looping <code><a class="el" href="structst_1_1channel.html#a8728270df53a15139f91100ad396377f" title="Receive a message over the channel.">st::channel::recv()</a></code> operations <code><a class="el" href="structst_1_1channel.html#ae2a319160262483ed2e290d81390c456" title="Close the channel.">st::channel::close()</a></code> can be manually called to force all operations to cease on the <code><a class="el" href="structst_1_1channel.html" title="Interthread message passing queue.">st::channel</a></code> (operations will return <code>false</code>). The default behavior for <code><a class="el" href="structst_1_1channel.html#ae2a319160262483ed2e290d81390c456" title="Close the channel.">st::channel::close()</a></code> is to cause all current and future all <code><a class="el" href="structst_1_1channel.html#ac8be7ee6e79c7bc931d6b621efd1ef41" title="Send a message over the channel.">st::channel::send()</a></code> operations to fail early but to allow <code><a class="el" href="structst_1_1channel.html#a8728270df53a15139f91100ad396377f" title="Receive a message over the channel.">st::channel::recv()</a></code> to continue succeeding until the internal message queue is empty.</p>
