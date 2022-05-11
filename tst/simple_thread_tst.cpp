@@ -1,6 +1,9 @@
 #include <gtest/gtest.h>
 #include "simple_thread.hpp"
 #include <tuple>
+#include <thread>
+#include <string>
+#include <iostream>
 
 TEST(simple_thread, message) {
     enum op {
@@ -558,7 +561,7 @@ TEST(simple_thread, service_messaging) {
                 {
                     int i;
 
-                    if(msg->copy_data_to<int>(i)) {
+                    if(msg->copy_data_to(i)) {
                         std::cout << "int: " << i << std::endl;
                         hdl::ret_ch().send(op::print_int);
                     } else {
@@ -571,7 +574,7 @@ TEST(simple_thread, service_messaging) {
                 {
                     std::string s;
 
-                    if(msg->copy_data_to<std::string>(s)) {
+                    if(msg->copy_data_to(s)) {
                         std::cout << "string: " << s << std::endl;
                         hdl::ret_ch().send(op::print_string);
                     } else {
@@ -660,4 +663,193 @@ TEST(simple_thread, service_messaging) {
    
     // end excess threads for test sanity reasons
     st::shutdown_all_services();
+}
+
+
+// README EXAMPLES 
+TEST(simple_thread, readme_example1) {
+    struct MyClass {
+        enum op {
+            hello,
+            world
+        };
+
+        inline void operator()(std::shared_ptr<st::message> msg) {
+            switch(msg->id()) {
+                case op::hello:
+                    std::cout << "hello " << std::endl;
+                    break;
+                case op::world:
+                    std::cout << "world" << std::endl;
+                    break;
+            }
+        }
+    };
+
+    std::shared_ptr<st::worker> my_worker = st::worker::make<MyClass>();
+
+    my_worker->send(MyClass::op::hello);
+    my_worker->send(MyClass::op::world);
+}
+
+TEST(simple_thread, readme_example2) {
+    struct MyClass {
+        enum op {
+            say_something
+        };
+
+        inline void operator()(std::shared_ptr<st::message> msg) {
+            switch(msg->id()) {
+                case op::say_something:
+                    std::cout << "I'm a singleton worker thread!" << std::endl;
+                    break;
+            }
+        }
+    };
+
+    st::service<MyClass>().send(MyClass::op::say_something);
+    st::service<MyClass>().shutdown();
+}
+
+TEST(simple_thread, readme_example3) {
+    struct MyClass {
+        enum op {
+            print
+        };
+
+        inline void operator()(std::shared_ptr<st::message> msg) {
+            switch(msg->id()) {
+                case op::print:
+                {
+                    std::string s;
+                    if(msg->copy_data_to(s)) {
+                        std::cout << s << std::endl;
+                    }
+                    break;
+                }
+            }
+        }
+    };
+
+    std::shared_ptr<st::worker> my_worker = st::worker::make<MyClass>();
+
+    std::string s("hello again");
+    my_worker->send(MyClass::op::print, s);
+}
+
+TEST(simple_thread, readme_example4) {
+    struct MyClass {
+        enum op {
+            print
+        };
+
+        inline void operator()(std::shared_ptr<st::message> msg) {
+            switch(msg->id()) {
+                case op::print:
+                    if(msg->is<std::string>()) {
+                        std::string s;
+                        msg->copy_data_to(s);
+                        std::cout << s;
+                    } else if(msg->is<int>()) {
+                        int i = 0;
+                        msg->copy_data_to(i);
+                        std::cout << i;
+                    }
+                    break;
+            }
+        }
+    };
+
+    std::shared_ptr<st::worker> my_worker = st::worker::make<MyClass>();
+
+    std::string s("hello ");
+    my_worker->send(MyClass::op::print, s);
+    int i = 1;
+    my_worker->send(MyClass::op::print, i);
+    s = " more time\n";
+    my_worker->send(MyClass::op::print, s);
+}
+
+TEST(simple_thread, readme_example5) {
+    struct MyClass {
+        MyClass(std::string constructor_string, std::string destructor_string) :
+            m_destructor_string(destructor_string)
+        {
+            std::cout << constructor_string << std::endl;
+        }
+
+        ~MyClass() {
+            std::cout << m_destructor_string << std::endl;
+        }
+
+        inline void operator()(std::shared_ptr<st::message> msg) { }
+
+        std::string m_destructor_string;
+    };
+
+    std::shared_ptr<st::worker> wkr = st::worker::make<MyClass>("hello", "goodbye");
+}
+
+TEST(simple_thread, readme_example6) {
+    struct MyClass {
+        enum op {
+            forward
+        };
+
+        MyClass(std::shared_ptr<st::channel> fwd_ch) : m_fwd_ch(fwd_ch) { }
+
+        inline void operator()(std::shared_ptr<st::message> msg) {
+            switch(msg->id()) {
+                case op::forward:
+                    m_fwd_ch->send(msg);
+                    break;
+            }
+        }
+
+        std::shared_ptr<st::channel> m_fwd_ch;
+    };
+
+    std::shared_ptr<st::channel> my_channel = st::channel::make();
+    std::shared_ptr<st::worker> my_worker = st::worker::make<MyClass>(my_channel);
+
+    my_worker->send(MyClass::op::forward, std::string("forward this string"));
+    
+    std::shared_ptr<st::message> msg;
+    my_channel->recv(msg);
+
+    std::string s;
+    if(msg->copy_data_to(s)) {
+        std::cout << s << std::endl;
+    }
+}
+
+TEST(simple_thread, readme_example7) {
+    auto looping_recv = [](std::shared_ptr<st::channel> ch, 
+                           std::shared_ptr<st::channel> conf_ch) {
+        std::shared_ptr<st::message> msg;
+
+        while(ch->recv(msg)) {
+            std::string s;
+            if(msg->copy_data_to(s)) {
+                std::cout << s << std::endl;
+            }
+            conf_ch->send(0,0);
+        }
+
+        std::cout << "thread done" << std::endl;
+    };
+
+    std::shared_ptr<st::channel> my_channel = st::channel::make();
+    std::shared_ptr<st::channel> my_confirmation_channel = st::channel::make();
+    std::thread my_thread(looping_recv, my_channel, my_confirmation_channel);
+    std::shared_ptr<st::message> msg;
+
+    my_channel->send(0, std::string("You say goodbye"));
+    my_confirmation_channel->recv(msg); // confirm thread received message
+
+    my_channel->send(0, std::string("And I say hello"));
+    my_confirmation_channel->recv(msg);
+
+    my_channel->close(); // end thread looping 
+    my_thread.join(); // join thread
 }

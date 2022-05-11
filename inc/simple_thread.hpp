@@ -235,6 +235,14 @@ struct channel : public std::enable_shared_from_this<channel> {
     }
 
     /**
+     * @return count of messages in the queue
+     */
+    inline std::size_t queued() {
+        std::lock_guard<std::mutex> lk(m_mtx);
+        return m_msg_q.size();
+    }
+
+    /**
      * @brief Send a message over the channel
      * @param m interprocess message object
      * @return true on success, false if channel is closed
@@ -290,17 +298,17 @@ struct channel : public std::enable_shared_from_this<channel> {
             m_cv.wait(lk);
         }
 
-        if(m_closed) {
-            STERROR(__FUNCTION__, "closed");
-            STDEBUG(__FUNCTION__, "-");
-            return false;
-        } else {
+        if(!m_closed || (!m_msg_q.empty() && m_proc_rem_msgs)) {
             m = m_msg_q.front();
             m_msg_q.pop_front();
             STERROR(__FUNCTION__, "received");
             STDEBUG(__FUNCTION__, "-");
             return true;
-        }
+        } else {
+            STERROR(__FUNCTION__, "closed");
+            STDEBUG(__FUNCTION__, "-");
+            return false;
+        } 
     }
 
     /**
@@ -317,13 +325,16 @@ struct channel : public std::enable_shared_from_this<channel> {
      * @brief Close the channel 
      *
      * Ends all current and future operations on the channel 
+     *
+     * @param process_remaining_messages if true allow recv() to succeed until queue empty before closing
      */
-    inline void close() {
+    inline void close(bool process_remaining_messages=true) {
         STDEBUG(__FUNCTION__, "+");
         {
             std::lock_guard<std::mutex> lk(m_mtx);
             STDEBUG(__FUNCTION__, "set to closed");
             m_closed = true;
+            m_proc_rem_msgs = process_remaining_messages;
         }
 
         m_cv.notify_one();
@@ -331,11 +342,12 @@ struct channel : public std::enable_shared_from_this<channel> {
     }
 
 private:
-    channel() : m_closed(false) { }
+    channel() : m_closed(false), m_proc_rem_msgs(false) { }
     channel(const channel& rhs) = delete;
     channel(channel&& rhs) = delete;
 
     bool m_closed;
+    bool m_proc_rem_msgs;
     std::mutex m_mtx;
     std::condition_variable m_cv;
     std::deque<std::shared_ptr<message>> m_msg_q;
@@ -396,11 +408,13 @@ struct worker: public std::enable_shared_from_this<worker> {
 
     /** 
      * @brief Shutdown the worker thread
+     *
+     * @param process_remaining_messages if true allow recv() to succeed until queue empty before closing
      */
-    inline void shutdown() {
+    inline void shutdown(bool process_remaining_messages=true) {
         STDEBUG(__FUNCTION__, "+");
         std::lock_guard<std::mutex> lk(m_mtx);
-        inner_shutdown();
+        inner_shutdown(process_remaining_messages);
         STDEBUG(__FUNCTION__, "-");
     }
 
@@ -408,11 +422,13 @@ struct worker: public std::enable_shared_from_this<worker> {
      * @brief Restart the worker thread 
      *
      * Shutdown threads and reset state when necessary. 
+     *
+     * @param process_remaining_messages if true allow recv() to succeed until queue empty before closing
      */
-    inline void restart() {
+    inline void restart(bool process_remaining_messages=true) {
         STDEBUG(__FUNCTION__, "+");
         std::unique_lock<std::mutex> lk(m_mtx);
-        inner_shutdown();
+        inner_shutdown(process_remaining_messages);
         m_ch = channel::make();
         STDEBUG(__FUNCTION__, "launching worker");
         m_thd = std::thread([&]{
@@ -533,12 +549,12 @@ private:
     }
 
     // close the worker channel and join the thread if necessary
-    inline void inner_shutdown() {
+    inline void inner_shutdown(bool proc_rem_msgs=true) {
         STDEBUG(__FUNCTION__, "+");
         if(m_thd.joinable()) {
             if(m_ch && !m_ch->closed()) {
                 STDEBUG(__FUNCTION__, "closing worker channel");
-                m_ch->close();
+                m_ch->close(proc_rem_msgs);
             }
             STDEBUG(__FUNCTION__, "joining worker");
             m_thd.join();
@@ -565,12 +581,12 @@ struct service {
         return *(sw.m_wkr);
     }
 
-    static inline void shutdown_all() {
-        workers::instance().shutdown_all();
+    static inline void shutdown_all(bool proc_rem_msgs) {
+        workers::instance().shutdown_all(proc_rem_msgs);
     }
 
-    static inline void restart_all() {
-        workers::instance().restart_all();
+    static inline void restart_all(bool proc_rem_msgs) {
+        workers::instance().restart_all(proc_rem_msgs);
     }
 
 private:
@@ -593,19 +609,19 @@ private:
             }
         }
 
-        inline void shutdown_all() {
+        inline void shutdown_all(bool proc_rem_msgs) {
             std::lock_guard<std::mutex> lk(m_mtx);
 
             for(auto w : m_ws) {
-                w->shutdown();
+                w->shutdown(proc_rem_msgs);
             }
         }
 
-        inline void restart_all() {
+        inline void restart_all(bool proc_rem_msgs) {
             std::lock_guard<std::mutex> lk(m_mtx);
 
             for(auto w : m_ws) {
-                w->restart();
+                w->restart(proc_rem_msgs);
             }
         }
 
@@ -652,9 +668,11 @@ static inline worker& service() {
  *
  * All worker threads created by calls to service<FUNCTOR>() can be shutdown 
  * by a single call to this function.
+ *
+ * @param process_remaining_messages if true allow recv() to succeed until queue empty before closing
  */
-inline void shutdown_all_services() {
-    detail::service::shutdown_all();
+inline void shutdown_all_services(bool process_remaining_messages=true) {
+    detail::service::shutdown_all(process_remaining_messages);
 }
 
 /**
@@ -662,9 +680,11 @@ inline void shutdown_all_services() {
  *
  * All worker threads created by calls to service<FUNCTOR>() can be restarted
  * by a single call to this function.
+ *
+ * @param process_remaining_messages if true allow recv() to succeed until queue empty before closing
  */
-inline void restart_all_services() {
-    detail::service::restart_all();
+inline void restart_all_services(bool process_remaining_messages=true) {
+    detail::service::restart_all(process_remaining_messages);
 }
 
 }
