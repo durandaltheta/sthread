@@ -102,6 +102,8 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a2e3f89739083c6d6779712081d30d459"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structst_1_1worker.html#a2e3f89739083c6d6779712081d30d459">restart</a> (bool process_remaining_messages=true)</td></tr>
 <tr class="memdesc:a2e3f89739083c6d6779712081d30d459"><td class="mdescLeft">&#160;</td><td class="mdescRight">Restart the worker thread.  <a href="structst_1_1worker.html#a2e3f89739083c6d6779712081d30d459">More...</a><br /></td></tr>
 <tr class="separator:a2e3f89739083c6d6779712081d30d459"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8cfc10372a6d1fb26b867313d190acc8"><td class="memItemLeft" align="right" valign="top">std::size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structst_1_1worker.html#a8cfc10372a6d1fb26b867313d190acc8">queued</a> ()</td></tr>
+<tr class="separator:a8cfc10372a6d1fb26b867313d190acc8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a9fdbdc777304056f87302fa60c266de0"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structst_1_1worker.html#a9fdbdc777304056f87302fa60c266de0">send</a> (std::shared_ptr&lt; <a class="el" href="structst_1_1message.html">message</a> &gt; m)</td></tr>
 <tr class="memdesc:a9fdbdc777304056f87302fa60c266de0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Send a message over the channel.  <a href="structst_1_1worker.html#a9fdbdc777304056f87302fa60c266de0">More...</a><br /></td></tr>
 <tr class="separator:a9fdbdc777304056f87302fa60c266de0"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -162,6 +164,32 @@ template&lt;typename FUNCTOR , typename... As&gt; </div>
   </dd>
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>allocated running worker thread shared_ptr </dd></dl>
+
+</div>
+</div>
+<a id="a8cfc10372a6d1fb26b867313d190acc8"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a8cfc10372a6d1fb26b867313d190acc8">&#9670;&nbsp;</a></span>queued()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::size_t st::worker::queued </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<dl class="section return"><dt>Returns</dt><dd>count of messages in the queue </dd></dl>
 
 </div>
 </div>
