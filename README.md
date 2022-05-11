@@ -4,6 +4,9 @@ Simple threading and communication.
 
 [Unit Test Examples](tst/simple_thread_tst.cpp)
 
+Requirements:
+- C++11
+
 Install:
 - cmake .
 - sudo make install
