@@ -73,8 +73,7 @@ $(function() {
 <li>sudo make install</li>
 </ul>
 <p>Usage Steps:</p><ul>
-<li>Install the library or include the header <code><a class="el" href="simple__thread_8hpp.html" title="Simple interprocess threading and messaging.">simple_thread.hpp</a></code> somehow</li>
-<li>Include <code>&lt;<a class="el" href="simple__thread_8hpp.html" title="Simple interprocess threading and messaging.">simple_thread.hpp</a>&gt;</code></li>
+<li>Install the library and include the header <code><a class="el" href="simple__thread_8hpp.html" title="Simple interprocess threading and messaging.">simple_thread.hpp</a></code></li>
 <li>Create a class or struct with <code>void operator()(std::shared_ptr&lt;st:message&gt;)</code> to handle received messages (also called a 'functor')</li>
 <li>Define some enum to distinguish different messages</li>
 <li>Launch your thread with <code><a class="el" href="structst_1_1worker.html#a14b3199e47af486fe4c189846d634ee7">st::worker::make</a>&lt;YourClass&gt;()</code></li>
