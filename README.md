@@ -226,7 +226,7 @@ $./a.out
 
 
 ### Channels
-The object that `st::worker`s use for communication in their `send()` methods is called `st::channel`. `st::channel`s can be created and used outside of `st::worker` objects desired. 
+The object that `st::worker`s use for communication in their `send()` methods is called `st::channel`. `st::channel`s can be created and used outside of `st::worker` objects if desired. 
 
 #### Example 6:
 ```
