@@ -1,4 +1,4 @@
-# Simple threading and communication.
+# Simple Threading and Communication
 
 [Documentation](https://durandaltheta.github.io/sthread/)
 
