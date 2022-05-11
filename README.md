@@ -9,8 +9,7 @@ Install:
 - sudo make install
 
 Usage Steps:
-- Install the library or include the header `simple_thread.hpp` somehow
-- Include `<simple_thread.hpp>`
+- Install the library and include the header `simple_thread.hpp`
 - Create a class or struct with `void operator()(std::shared_ptr<st:message>)` to 
 handle received messages (also called a 'functor')
 - Define some enum to distinguish different messages 
