@@ -268,6 +268,12 @@ int main() {
 }
 ```
 
+Terminal output might be:
+```
+$./a.out 
+forward this string
+```
+
 ### Close, Shutdown, and Restart
 In looping `st::channel::recv()` operations `st::channel::close()` can be manually called to force all operations to cease on the `st::channel` (operations will return `false`). The default behavior for `st::channel::close()` is to cause all current and future all `st::channel::send()` operations to fail early but to allow `st::channel::recv()` to continue succeeding until the internal message queue is empty. 
 
