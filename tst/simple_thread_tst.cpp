@@ -4,6 +4,7 @@
 #include <thread>
 #include <string>
 #include <iostream>
+#include <chrono>
 
 TEST(simple_thread, message) {
     enum op {
@@ -229,15 +230,23 @@ TEST(simple_thread, worker_lifecycle) {
         hdl(bool* running_ptr) : m_running_ptr(running_ptr) { *m_running_ptr = true; }
         ~hdl() { *m_running_ptr = false; }
 
-        inline void operator()(std::shared_ptr<st::message> msg) { }
+        inline void operator()(std::shared_ptr<st::message> msg) { 
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
         bool* m_running_ptr;
     };
+
 
     // shutdown via `st::worker::shutdown()`
     {
         // prove hdl destructor was called
         bool thread_running = true;
         std::shared_ptr<st::worker> wkr = st::worker::make<hdl>(&thread_running);
+
+        // fill message q
+        for(int i=0; i<10; i++) {
+            wkr->send(0,0);
+        }
 
         EXPECT_TRUE(thread_running);
         EXPECT_TRUE(wkr->running());
@@ -246,6 +255,28 @@ TEST(simple_thread, worker_lifecycle) {
 
         EXPECT_FALSE(thread_running);
         EXPECT_FALSE(wkr->running());
+        EXPECT_EQ(wkr->queued(),0);
+    }
+
+    // hard shutdown via `st::worker::shutdown(false)`
+    {
+        // prove hdl destructor was called
+        bool thread_running = true;
+        std::shared_ptr<st::worker> wkr = st::worker::make<hdl>(&thread_running);
+
+        // fill message q
+        for(int i=0; i<10; i++) {
+            wkr->send(0,0);
+        }
+
+        EXPECT_TRUE(thread_running);
+        EXPECT_TRUE(wkr->running());
+
+        wkr->shutdown(false);
+
+        EXPECT_FALSE(thread_running);
+        EXPECT_FALSE(wkr->running());
+        EXPECT_NE(wkr->queued(),0);
     }
 
     // shutdown via `st::~worker()`
@@ -253,6 +284,11 @@ TEST(simple_thread, worker_lifecycle) {
         // prove hdl destructor was called
         bool thread_running = true;
         std::shared_ptr<st::worker> wkr = st::worker::make<hdl>(&thread_running);
+
+        // fill message q
+        for(int i=0; i<10; i++) {
+            wkr->send(0,0);
+        }
 
         EXPECT_TRUE(thread_running);
         EXPECT_TRUE(wkr->running());
@@ -269,23 +305,73 @@ TEST(simple_thread, worker_lifecycle) {
         bool thread_running = true;
         std::shared_ptr<st::worker> wkr = st::worker::make<hdl>(&thread_running);
 
+        // fill message q
+        for(int i=0; i<10; i++) {
+            wkr->send(0,0);
+        }
+
         EXPECT_TRUE(thread_running);
         EXPECT_TRUE(wkr->running());
-
-        wkr->shutdown();
-
-        EXPECT_FALSE(thread_running);
-        EXPECT_FALSE(wkr->running());
 
         wkr->restart();
 
         EXPECT_TRUE(thread_running);
         EXPECT_TRUE(wkr->running());
+        EXPECT_EQ(wkr->queued(),0);
+    }
+
+    // restart & shutdown via `st::worker::restart()`
+    {
+        // prove hdl destructor was called
+        bool thread_running = true;
+        std::shared_ptr<st::worker> wkr = st::worker::make<hdl>(&thread_running);
+
+        // fill message q
+        for(int i=0; i<10; i++) {
+            wkr->send(0,0);
+        }
+
+        EXPECT_TRUE(thread_running);
+        EXPECT_TRUE(wkr->running());
 
         wkr->shutdown();
 
         EXPECT_FALSE(thread_running);
         EXPECT_FALSE(wkr->running());
+        EXPECT_EQ(wkr->queued(),0);
+
+        wkr->restart();
+
+        EXPECT_TRUE(thread_running);
+        EXPECT_TRUE(wkr->running());
+        EXPECT_EQ(wkr->queued(),0);
+    }
+
+    // hard restart & shutdown via `st::worker::restart(false)`
+    {
+        // prove hdl destructor was called
+        bool thread_running = true;
+        std::shared_ptr<st::worker> wkr = st::worker::make<hdl>(&thread_running);
+
+        // fill message q
+        for(int i=0; i<10; i++) {
+            wkr->send(0,0);
+        }
+
+        EXPECT_TRUE(thread_running);
+        EXPECT_TRUE(wkr->running());
+
+        wkr->shutdown(false);
+
+        EXPECT_FALSE(thread_running);
+        EXPECT_FALSE(wkr->running());
+        EXPECT_NE(wkr->queued(),0);
+
+        wkr->restart(false);
+
+        EXPECT_TRUE(thread_running);
+        EXPECT_TRUE(wkr->running());
+        EXPECT_EQ(wkr->queued(),0);
     }
 }
 

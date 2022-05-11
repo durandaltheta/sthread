@@ -463,11 +463,20 @@ struct worker: public std::enable_shared_from_this<worker> {
     }
 
     /**
+     * @return count of messages in the queue
+     */
+    inline std::size_t queued() {
+        std::lock_guard<std::mutex> lk(m_mtx);
+        return m_ch->queued();
+    }
+
+    /**
      * @brief Send a message over the channel
      * @param m interprocess message object
      * @return true on success, false if channel is closed
      */
     inline bool send(std::shared_ptr<message> m) {
+        std::lock_guard<std::mutex> lk(m_mtx);
         return m_ch->send(std::move(m));
     }
 
