@@ -326,7 +326,7 @@ struct channel : public std::enable_shared_from_this<channel> {
      *
      * Ends all current and future operations on the channel 
      *
-     * @param process_remaining_messages if true allow recv() to succeed until queue empty before closing
+     * @param process_remaining_messages if true allow recv() to succeed until queue empty
      */
     inline void close(bool process_remaining_messages=true) {
         STDEBUG(__FUNCTION__, "+");
@@ -409,7 +409,7 @@ struct worker: public std::enable_shared_from_this<worker> {
     /** 
      * @brief Shutdown the worker thread
      *
-     * @param process_remaining_messages if true allow recv() to succeed until queue empty before closing
+     * @param process_remaining_messages if true allow recv() to succeed until queue empty
      */
     inline void shutdown(bool process_remaining_messages=true) {
         STDEBUG(__FUNCTION__, "+");
@@ -423,7 +423,7 @@ struct worker: public std::enable_shared_from_this<worker> {
      *
      * Shutdown threads and reset state when necessary. 
      *
-     * @param process_remaining_messages if true allow recv() to succeed until queue empty before closing
+     * @param process_remaining_messages if true allow recv() to succeed until queue empty
      */
     inline void restart(bool process_remaining_messages=true) {
         STDEBUG(__FUNCTION__, "+");
@@ -678,7 +678,7 @@ static inline worker& service() {
  * All worker threads created by calls to service<FUNCTOR>() can be shutdown 
  * by a single call to this function.
  *
- * @param process_remaining_messages if true allow recv() to succeed until queue empty before closing
+ * @param process_remaining_messages if true allow recv() to succeed until queue empty
  */
 inline void shutdown_all_services(bool process_remaining_messages=true) {
     detail::service::shutdown_all(process_remaining_messages);
@@ -690,7 +690,7 @@ inline void shutdown_all_services(bool process_remaining_messages=true) {
  * All worker threads created by calls to service<FUNCTOR>() can be restarted
  * by a single call to this function.
  *
- * @param process_remaining_messages if true allow recv() to succeed until queue empty before closing
+ * @param process_remaining_messages if true allow recv() to succeed until queue empty
  */
 inline void restart_all_services(bool process_remaining_messages=true) {
     detail::service::restart_all(process_remaining_messages);
