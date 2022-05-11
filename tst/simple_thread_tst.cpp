@@ -708,7 +708,6 @@ TEST(simple_thread, readme_example2) {
     };
 
     st::service<MyClass>().send(MyClass::op::say_something);
-    st::service<MyClass>().shutdown();
 }
 
 TEST(simple_thread, readme_example3) {
@@ -775,11 +774,11 @@ TEST(simple_thread, readme_example5) {
         MyClass(std::string constructor_string, std::string destructor_string) :
             m_destructor_string(destructor_string)
         {
-            std::cout << constructor_string << std::endl;
+            std::cout << std::this_thread::get_id() << ":" << constructor_string << std::endl;
         }
 
         ~MyClass() {
-            std::cout << m_destructor_string << std::endl;
+            std::cout << std::this_thread::get_id() << ":" <<  m_destructor_string << std::endl;
         }
 
         inline void operator()(std::shared_ptr<st::message> msg) { }
@@ -787,6 +786,7 @@ TEST(simple_thread, readme_example5) {
         std::string m_destructor_string;
     };
 
+    std::cout << std::this_thread::get_id() << ":" <<  "parent thread started" << std::endl;
     std::shared_ptr<st::worker> wkr = st::worker::make<MyClass>("hello", "goodbye");
 }
 

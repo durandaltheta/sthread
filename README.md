@@ -1,24 +1,25 @@
-Simple threading and communication.
+#Simple threading and communication.
 
 [Documentation](https://durandaltheta.github.io/sthread/)
 
 [Unit Test and Example Code](tst/simple_thread_tst.cpp)
 
-Requirements:
+##Requirements
 - C++11
 
-Install:
+##Installation
 - cmake .
 - sudo make install
 
-Usage Steps:
+##Usage
 - Install the library and include the header `simple_thread.hpp`
 - Create a class or struct with `void operator()(std::shared_ptr<st::message>)` to 
 handle received messages (also called a 'functor')
 - Define some enum to distinguish different messages 
 - Launch your thread with `st::worker::make<YourClass>()`
 
-Example 1:
+###Basic Usage
+####Example 1:
 ```
 #include <iostream>
 #include <simple_thread.hpp>
@@ -55,9 +56,10 @@ $./a.out
 hello world
 ```
 
-Singleton worker threads can be accessed by reference with the `st::service<FUNCTOR>()` function.
+###Singleton Service Threads
+Singleton worker threads can be accessed (and launched as necessary) by reference with the `st::service<FUNCTOR>()` function.
 
-Example 2:
+####Example 3
 ```
 #include <iostream>
 #include <simple_thread.hpp>
@@ -87,9 +89,10 @@ $./a.out
 I'm a singleton worker thread!
 ```
 
-Message data payloads can be of any type
+###Message Payload Data
+Message data payloads can be of any type and can be copied to argument `T t` with `st::message::copy_data_to<T>(T&& t)` or rvalue swapped with `st::message::move_data_to<T>(T&& t)`.
 
-Example 3:
+####Example 3:
 ```
 #include <iostream>
 #include <string>
@@ -128,9 +131,10 @@ $./a.out
 hello again
 ```
 
+###Payload Type Checking
 `st::message::copy_data_to<T>(T&& t)` and `st::message::move_data_to<T>(T&& t)` will return `true` only if the stored payload type matches type `T`, otherwise it returns `false`. Payload types can also be easily checked with `st::message::is<T>()` (returns `true` if type match, else `false`) which is useful if a message might contain several different potential types.
 
-Example 4:
+####Example 4:
 ```
 #include <iostream>
 #include <string>
@@ -180,8 +184,10 @@ hello 1 more time
 [documentation](https://durandaltheta.github.io/sthread/) for more info.
 
 
+###Worker Constructor Arguments and Lifecycle
 `st::worker`s can be passed constructor arguments in `st::worker::make<FUNCTOR>(As&&...)`. The FUNCTOR class will be created on the new thread and destroyed before said thread ends.
 
+####Example 5
 ```
 #include <iostream>
 #include <string>
@@ -191,11 +197,11 @@ struct MyClass {
     MyClass(std::string constructor_string, std::string destructor_string) :
         m_destructor_string(destructor_string)
     {
-        std::cout << constructor_string << std::endl;
+        std::cout << std::this_thread::get_id() << ":" << constructor_string << std::endl;
     }
 
     ~MyClass() {
-        std::cout << m_destructor_string << std::endl;
+        std::cout << std::this_thread::get_id() << ":" <<  m_destructor_string << std::endl;
     }
 
     inline void operator()(std::shared_ptr<st::message> msg) { }
@@ -204,6 +210,7 @@ struct MyClass {
 };
 
 int main() {
+    std::cout << std::this_thread::get_id() << ":" <<  "parent thread started" << std::endl;
     std::shared_ptr<st::worker> wkr = st::worker::make<MyClass>("hello", "goodbye");
 }
 
@@ -211,15 +218,17 @@ int main() {
 
 Terminal output might be:
 ```
-$./a.out
-hello
-goodbye
+$./a.out 
+0x800018040:parent thread started
+0x800098150:hello
+0x800098150:goodbye
 ```
 
 
+###Channels
 The object that `st::worker`s use for communication in their `send()` methods is called `st::channel`. `st::channel`s can be created and used outside of `st::worker` objects desired. 
 
-Example 6:
+####Example 6:
 ```
 #include <iostream>
 #include <thread>
@@ -259,10 +268,24 @@ int main() {
 }
 ```
 
+###Close, Shutdown, and Restart
+In looping `st::channel::recv()` operations `st::channel::close()` can be manually called to force all operations to cease on the `st::channel` (operations will return `false`). The default behavior for `st::channel::close()` is to cause all current and future all `st::channel::send()` operations to fail early but to allow `st::channel::recv()` to continue succeeding until the internal message queue is empty. 
 
-In looping `st::channel::recv()` operations `st::channel::close()` can be manually called to force all operations to cease on the `st::channel` (operations will return `false`). 
+This is the default behavior of several functions:
+- `st::channel::close(/* default true */)`
+- `st::worker::shutdown(/* default true */)`
+- `st::worker::restart(/* default true */)`
+- `st::shutdown_all_services(/* default true */)`
+- `st::restart_all_services(/* default true */)`
 
-Example 7:
+Alternatively, the user can call said functions with explicit `false` to immediately end all operations on the channel:
+- `st::channel::close(false)`
+- `st::worker::shutdown(false)`
+- `st::worker::restart(false)`
+- `st::shutdown_all_services(false)`
+- `st::restart_all_services(false)`
+
+####Example 7:
 ```
 #include <iostream>
 #include <thread>
