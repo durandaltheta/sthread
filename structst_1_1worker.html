@@ -221,7 +221,7 @@ template&lt;typename FUNCTOR , typename... As&gt; </div>
 <p>Shutdown threads and reset state when necessary.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramname">process_remaining_messages</td><td>if true allow recv() to succeed until queue empty before closing </td></tr>
+    <tr><td class="paramname">process_remaining_messages</td><td>if true allow recv() to succeed until queue empty </td></tr>
   </table>
   </dd>
 </dl>
@@ -398,7 +398,7 @@ template&lt;typename T &gt; </div>
 <p>Shutdown the worker thread. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramname">process_remaining_messages</td><td>if true allow recv() to succeed until queue empty before closing </td></tr>
+    <tr><td class="paramname">process_remaining_messages</td><td>if true allow recv() to succeed until queue empty </td></tr>
   </table>
   </dd>
 </dl>
