@@ -59,7 +59,7 @@ hello world
 ### Singleton Service Threads
 Singleton worker threads can be accessed (and launched as necessary) by reference with the `st::service<FUNCTOR>()` function.
 
-#### Example 3
+#### Example 2
 ```
 #include <iostream>
 #include <simple_thread.hpp>
