@@ -291,7 +291,7 @@ Alternatively, the user can call said functions with explicit `false` to immedia
 #include <thread>
 #include <simple_thread.hpp>
 
-void looping_recv(std::shared_ptr<st::channel> ch, std::shared_ptr<st::channel> conf_ch) {
+void looping_recv(std::shared_ptr<st::channel> ch) {
     std::shared_ptr<st::message> msg;
 
     while(ch->recv(msg)) {
@@ -299,7 +299,6 @@ void looping_recv(std::shared_ptr<st::channel> ch, std::shared_ptr<st::channel> 
         if(msg->copy_data_to(s)) {
             std::cout << s << std::endl;
         }
-        conf_ch->send(0,0);
     }
 
     std::cout << "thread done" << std::endl;
@@ -307,15 +306,11 @@ void looping_recv(std::shared_ptr<st::channel> ch, std::shared_ptr<st::channel> 
 
 int main() {
     std::shared_ptr<st::channel> my_channel = st::channel::make();
-    std::shared_ptr<st::channel> my_confirmation_channel = st::channel::make();
-    std::thread my_thread(looping_recv, my_channel, my_confirmation_channel);
+    std::thread my_thread(looping_recv, my_channel);
     std::shared_ptr<st::message> msg;
 
     my_channel->send(0, std::string("You say goodbye"));
-    my_confirmation_channel->recv(msg); // confirm thread received message
-
     my_channel->send(0, std::string("And I say hello"));
-    my_confirmation_channel->recv(msg);
 
     my_channel->close(); // end thread looping 
     my_thread.join(); // join thread
