@@ -761,7 +761,7 @@ struct workerpool {
 
     /**
      * @brief Construct a workerpool as a shared_ptr 
-     * @param thread_count specify the number of threads managed by the threadpool. Default value is hardware specific.
+     * @param thread_count specify the number of threads managed by the workerpool. Default value is hardware specific.
      * @return a workerpool shared_ptr
      */
     static inline std::shared_ptr<workerpool> make(const std::size_t thread_count = 
@@ -772,14 +772,19 @@ struct workerpool {
     }
 
     /**
-     * @return the count of worker threads managed by the threadpool
+     * @return the count of worker threads managed by the workerpool
      */
     inline std::size_t worker_count() const {
-        return m_threads.size();
+        return m_workers.size();
     }
 
     /**
      * @brief schedule argument thunk for execution on a workerpool worker thread
+     *
+     * If argument function type is directly convertable to thunk this overload 
+     * will be selected.
+     *
+     * @param t thunk that will be executed on worker thread
      */
     inline void schedule(thunk t) {
         m_schedule_ptr(this, std::move(t));
@@ -787,6 +792,9 @@ struct workerpool {
 
     /**
      * @brief schedule arguments for execution on a workerpool worker thread
+     * @param f function to be executed on worker thread 
+     * @param t first argument for function f
+     * @param as remaining arguments for function f
      */
     template <typename F, typename T, typename... As>
     void schedule(F&& f, T&& t, As&&... as) {
@@ -794,18 +802,25 @@ struct workerpool {
             f(std::forward<T>(t), std::forward<As>(as)...); 
         });
     }
-        
+
     /**
-     * @brief Provide access to calling workerpool object pointer
+     * @brief schedule argument thunk on the parent workerpool object for the calling worker thread 
      *
-     * If not called by a running workerpool worker, returned pointer is null. 
-     * Useful when the workerpool pointer is needed from within an executing 
-     * task for rescheduling purposes.
+     * Useful for breaking up long tasks into multiple scheduled calls in order
+     * to allow other tasks to be processed. 
      *
-     * @return calling thread's workerpool pointer
+     * @param as arguments to be passed to schedule()
+     * @return true if executing on a workerpool worker, else false
      */
-    inline workerpool* this_workerpool() {
-        return tl_workerpool();
+    template <typename... As>
+    static bool reschedule(As&&... as) {
+        workerpool* wp = workerpool::tl_workerpool();
+        if(wp) {
+            wp->schedule(std::forward<As>(as)...);
+            return true;
+        } else {
+            return false;
+        }
     }
 
 private:
@@ -816,11 +831,11 @@ private:
 
     struct executor_thread {
         executor_thread(workerpool* tp){ 
-            st::workerpool::this_workerpool() = tp;
+            st::workerpool::tl_workerpool() = tp;
         }
 
         ~executor_thread() {
-            st::workerpool::this_workerpool() = nullptr;
+            st::workerpool::tl_workerpool() = nullptr;
         }
 
         inline void operator()(std::shared_ptr<st::message> msg) {
@@ -856,7 +871,6 @@ private:
             }
         }
 
-        auto msg = st::message::make(0,std::move(t));
         (*cur)->send(0,std::move(t));
     }
     
@@ -878,13 +892,11 @@ private:
             cur = prev;
         }
 
-        auto msg = st::message::make(0,std::move(t));
         (*cur)->send(0,std::move(t));
     }
 
     // For use if workerpool manages a single thread
     inline void schedule_1(workerpool* wp, thunk t) {
-        auto msg = st::message::make(0,std::move(t));
         wp->m_cur_wkr->send(0,std::move(t));
     }
 
@@ -928,7 +940,7 @@ private:
 /** @cond HIDDEN_SYMBOLS */
 namespace detail {
 
-// make a template so that it is not created by compiler unless called
+// is template so that it is not created by compiler unless called
 template <typename FOO=int>
 struct default_workerpool {
     static inline workerpool& instance() {
@@ -941,7 +953,7 @@ struct default_workerpool {
 /** @endcond */
 
 /**
- * @brief Schedule a Callable on a process wide default threadpool
+ * @brief Schedule a Callable on a process wide default workerpool
  */
 template <typename... As>
 static void schedule(As&&... as) {
