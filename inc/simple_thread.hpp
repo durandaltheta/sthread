@@ -750,8 +750,8 @@ inline void restart_all_services(bool process_remaining_messages=true) {
  * @brief Container for one or more worker threads 
  *
  * Allows scheduling of Callable objects convertable to `workerpool::thunk` on 
- * worker threads. Will to schedule on a relatively idle worker using a constant 
- * time algorithm.
+ * worker threads. Will attempt to schedule on a relatively idle worker using a 
+ * constant time algorithm.
  */
 struct workerpool {
     /**
