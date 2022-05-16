@@ -10,80 +10,12 @@
 #include <thread>
 #include <mutex>
 #include <condition_variable>
-#include <atomic>
 #include <deque>
+#include <atomic>
 #include <typeinfo>
-#include <unordered_map>
-#include <set>
-#include <vector>
 #include <functional>
 
 namespace st {
-
-/** @cond HIDDEN_SYMBOLS */
-#ifdef __SIMPLE_THREADING_DEBUG__ 
-namespace log {
-
-#include <ostream>
-
-namespace detail {
-
-static std::ostream& debug_stream();
-static std::ostream& error_stream();
-
-#ifdef __SIMPLE_THREADING_DEBUG_DEFAULT__
-static inline std::ostream& debug_stream() {
-    return std::cout;
-}
-
-static inline std::ostream& error_stream() {
-    return std::cerr;
-}
-#endif 
-
-inline void log(std::ostream& os) {
-    os << std::endl;
-}
-
-template <typename T, typename... As>
-void log(std::ostream& os, T&& t, As&&... as) {
-    os << t;
-    log(os, std::forward<As>(as)...);
-}
-
-struct log_mutex {
-    static std::mutex& instance() {
-        static std::mutex log_mutex;
-        return log_mutex;
-    }
-};
-
-}
-
-template <typename... As>
-void debug(const char* funcname, As&&... as) {
-    std::lock_guard<std::mutex> lk(detail::log_mutex::instance());
-    detail::debug_stream() << "[" << std::this_thread::get_id() << "]::" << funcname << "::";
-    detail::log(detail::debug_stream(), std::forward<As>(as)...);
-}
-
-template <typename... As>
-void error(const char* funcname, As&&... as) {
-    std::lock_guard<std::mutex> lk(detail::log_mutex::instance());
-    detail::error_stream() << "[" << std::this_thread::get_id() << "]!!" << funcname << "!!";
-    detail::log(detail::error_stream(), std::forward<As>(as)...);
-}
-
-}
-
-#define STDEBUG(...) st::log::debug(__VA_ARGS__)
-#define STERROR(...) st::log::error(__VA_ARGS__)
-#else 
-#define STDEBUG(...)
-#define STERROR(...)
-#endif
-/** @endcond */
-
 
 /**
  * @brief Interthread type erased message container
@@ -231,9 +163,7 @@ struct channel {
      * @return a channel shared_ptr
      */
     static inline std::shared_ptr<channel> make() {
-        STDEBUG(__FUNCTION__, "+");
         auto ch = std::shared_ptr<channel>(new channel);
-        STDEBUG(__FUNCTION__, "-");
         return ch;
     }
 
@@ -251,18 +181,24 @@ struct channel {
      * @return true on success, false if channel is closed
      */
     inline bool send(std::shared_ptr<message> m) {
-        STDEBUG(__FUNCTION__, "+");
+        bool notify = false;
+
         {
             std::lock_guard<std::mutex> lk(m_mtx);
             if(m_closed) {
-                STERROR(__FUNCTION__, "closed");
                 return false;
             }
+
             m_msg_q.push_back(std::move(m));
+
+            if(m_waiters_count) {
+                notify = true;
+            }
         }
-        m_cv.notify_one();
-        STDEBUG(__FUNCTION__, "sent");
-        STDEBUG(__FUNCTION__, "-");
+
+        if(notify) {
+            m_cv.notify_one();
+        }
         return true;
     }
 
@@ -294,22 +230,20 @@ struct channel {
      * @return true on success, false if channel is closed
      */
     bool recv(std::shared_ptr<message>& m) {
-        STDEBUG(__FUNCTION__, "+");
         std::unique_lock<std::mutex> lk(m_mtx);
+        m_waiters_count++;
+
         while(m_msg_q.empty() && !m_closed) {
-            STERROR(__FUNCTION__, "waiting");
             m_cv.wait(lk);
         }
+        
+        m_waiters_count--;
 
         if(!m_closed || (!m_msg_q.empty() && m_proc_rem_msgs)) {
             m = m_msg_q.front();
             m_msg_q.pop_front();
-            STERROR(__FUNCTION__, "received");
-            STDEBUG(__FUNCTION__, "-");
             return true;
         } else {
-            STERROR(__FUNCTION__, "closed");
-            STDEBUG(__FUNCTION__, "-");
             return false;
         } 
     }
@@ -318,9 +252,7 @@ struct channel {
      * @return true if channel is closed, else false 
      */
     inline bool closed() {
-        STDEBUG(__FUNCTION__, "+");
         std::lock_guard<std::mutex> lk(m_mtx);
-        STDEBUG(__FUNCTION__, "-");
         return m_closed;
     }
 
@@ -332,25 +264,31 @@ struct channel {
      * @param process_remaining_messages if true allow recv() to succeed until queue empty
      */
     inline void close(bool process_remaining_messages=true) {
-        STDEBUG(__FUNCTION__, "+");
+        bool notify = false;
+
         {
             std::lock_guard<std::mutex> lk(m_mtx);
-            STDEBUG(__FUNCTION__, "set to closed");
             m_closed = true;
             m_proc_rem_msgs = process_remaining_messages;
+
+            if(m_waiters_count) {
+                notify = true;
+            }
         }
 
-        m_cv.notify_one();
-        STDEBUG(__FUNCTION__, "-");
+        if(notify) {
+            m_cv.notify_one();
+        }
     }
 
 private:
-    channel() : m_closed(false), m_proc_rem_msgs(false) { }
+    channel() : m_closed(false), m_proc_rem_msgs(false), m_waiters_count(0) { }
     channel(const channel& rhs) = delete;
     channel(channel&& rhs) = delete;
 
     bool m_closed;
     bool m_proc_rem_msgs;
+    std::size_t m_waiters_count; // heuristic to limit condition_variable signals
     std::mutex m_mtx;
     std::condition_variable m_cv;
     std::deque<std::shared_ptr<message>> m_msg_q;
@@ -401,11 +339,8 @@ struct worker {
      * @return true if worker thread is running, else false
      */
     inline bool running() {
-        STDEBUG(__FUNCTION__, "+");
         std::lock_guard<std::mutex> lk(m_mtx);
         bool r = m_thd.joinable() && !m_ch->closed();
-        STDEBUG(__FUNCTION__, "running[", r, "]");
-        STDEBUG(__FUNCTION__, "+");
         return r;
     }
 
@@ -415,10 +350,8 @@ struct worker {
      * @param process_remaining_messages if true allow recv() to succeed until queue empty
      */
     inline void shutdown(bool process_remaining_messages=true) {
-        STDEBUG(__FUNCTION__, "+");
         std::lock_guard<std::mutex> lk(m_mtx);
         inner_shutdown(process_remaining_messages);
-        STDEBUG(__FUNCTION__, "-");
     }
 
     /**
@@ -429,13 +362,11 @@ struct worker {
      * @param process_remaining_messages if true allow recv() to succeed until queue empty
      */
     inline void restart(bool process_remaining_messages=true) {
-        STDEBUG(__FUNCTION__, "+");
         std::unique_lock<std::mutex> lk(m_mtx);
         inner_shutdown(process_remaining_messages);
         m_ch = channel::make();
-        STDEBUG(__FUNCTION__, "launching worker");
+        m_thread_started_flag = false;
         m_thd = std::thread([&]{
-            STDEBUG("worker_thread", "+");
             std::shared_ptr<message> m;
             tl_worker() = this; // set the thread local worker pointer
 
@@ -447,24 +378,21 @@ struct worker {
             }
             m_cv.notify_one();
 
-            STDEBUG("worker_thread", "receiving message");
             while(m_ch->recv(m)) {
-                STDEBUG("worker_thread", "handling message");
                 m_executing.store(true);
+
                 hdl(m);
-                m_executing.store(false);
                 m.reset();
+
+                m_executing.store(false);
             }
 
             tl_worker() = nullptr; // reset the thread local worker pointer
-            STDEBUG("worker_thread", "-");
         });
 
         while(!m_thread_started_flag) {
             m_cv.wait(lk);
         }
-
-        STDEBUG(__FUNCTION__, "-");
     }
 
     /**
@@ -477,12 +405,19 @@ struct worker {
 
     /**
      * @brief class describing the workload of a worker
+     *
+     * Useful for comparing relative worker thread workloads when scheduling.
      */
     struct weight {
-        weight(const weight& rhs) : queued(rhs.queued), executing(rhs.executing) { }
+        /**
+         * @brief represents count of queued messages on a worker
+         */
+        std::size_t queued;
 
-        weight() = delete;
-        weight(weight&& rhs) = delete;
+        /**
+         * @brief represents if a worker is currently processing a message
+         */
+        bool executing;
 
         /**
          * @return true if the weight is 0, else false
@@ -505,24 +440,11 @@ struct worker {
                 return false;
             }
         }
-
-        /**
-         * @brief represents count of queued messages on a worker
-         */
-        const std::size_t queued;
-
-        /**
-         * @brief represents if a worker is currently processing a message
-         */
-        const bool executing;
-
-    private:
-        weight(const std::size_t q, const bool e) : queued(q), executing(e) { }
     };
 
     inline weight get_weight() {
         std::lock_guard<std::mutex> lk(m_mtx);
-        return weight(m_ch->queued(), m_executing.load());
+        return weight{m_ch->queued(), m_executing.load()};
     }
 
     /**
@@ -577,27 +499,19 @@ private:
     template <typename FUNCTOR>
     struct type_hint { };
 
-    template <typename T>
-    static void deleter(void* p) {
-        delete (T*)p;
-    }
-
     template <typename FUNCTOR, typename... As>
     worker(type_hint<FUNCTOR> t, As&&... as) : 
         m_thread_started_flag(false) {
-        STDEBUG(__FUNCTION__, "+");
-
         m_executing.store(false);
-
-        // generate handler s called late and allocates a shared_ptr to allow 
+        // generate handler is called late and allocates a shared_ptr to allow 
         // for a single construction and destruction of type FUNCTOR in the 
         // worker thread environment. 
         m_generate_handler = [=]() mutable -> handler{ 
             auto fp = std::shared_ptr<FUNCTOR>(new FUNCTOR(std::forward<As>(as)...));
             return [=](std::shared_ptr<message> m) { (*fp)(std::move(m)); };
         };
+
         restart();
-        STDEBUG(__FUNCTION__, "-");
     }
 
     // thread local worker by-reference getter 
@@ -608,18 +522,14 @@ private:
 
     // close the worker channel and join the thread if necessary
     inline void inner_shutdown(bool proc_rem_msgs=true) {
-        STDEBUG(__FUNCTION__, "+");
         if(m_thd.joinable()) {
             if(m_ch && !m_ch->closed()) {
-                STDEBUG(__FUNCTION__, "closing worker channel");
                 m_ch->close(proc_rem_msgs);
             }
-            STDEBUG(__FUNCTION__, "joining worker");
             m_thd.join();
         }
 
         m_thread_started_flag = false;
-        STDEBUG(__FUNCTION__, "-");
     }
 
     bool m_thread_started_flag;
@@ -630,335 +540,6 @@ private:
     std::shared_ptr<channel> m_ch;
     std::thread m_thd;
 };
-
-/** @cond HIDDEN_SYMBOLS */
-namespace detail {
-struct service {
-    template <typename FUNCTOR>
-    static inline worker& instance() {
-        static service_worker<FUNCTOR> sw;
-        return *(sw.m_wkr);
-    }
-
-    static inline void shutdown_all(bool proc_rem_msgs) {
-        workers::instance().shutdown_all(proc_rem_msgs);
-    }
-
-    static inline void restart_all(bool proc_rem_msgs) {
-        workers::instance().restart_all(proc_rem_msgs);
-    }
-
-private:
-    struct workers {
-        static inline workers& instance() {
-            static workers ws;
-            return ws;
-        }
-
-        inline void register_worker(worker* w) {
-            std::lock_guard<std::mutex> lk(m_mtx);
-            m_ws.insert(w);
-        }
-
-        inline void unregister_worker(worker* w) {
-            std::lock_guard<std::mutex> lk(m_mtx);
-            auto it = m_ws.find(w);
-            if(it != m_ws.end()) {
-                m_ws.erase(it);
-            }
-        }
-
-        inline void shutdown_all(bool proc_rem_msgs) {
-            std::lock_guard<std::mutex> lk(m_mtx);
-
-            for(auto w : m_ws) {
-                w->shutdown(proc_rem_msgs);
-            }
-        }
-
-        inline void restart_all(bool proc_rem_msgs) {
-            std::lock_guard<std::mutex> lk(m_mtx);
-
-            for(auto w : m_ws) {
-                w->restart(proc_rem_msgs);
-            }
-        }
-
-        std::mutex m_mtx;
-        std::set<worker*> m_ws;
-    };
-
-    template <typename FUNCTOR>
-    struct service_worker {
-        service_worker() : m_wkr(worker::make<FUNCTOR>()) {
-            workers::instance().register_worker(m_wkr.get());
-        }
-
-        ~service_worker() {
-            workers::instance().unregister_worker(m_wkr.get());
-        }
-
-        std::shared_ptr<worker> m_wkr;
-    };
-};
-}
-/** @endcond */
-
-/** 
- * @brief Access a singleton instance of a worker thread 
- *
- * Worker thread will be running template type FUNCTOR as its handler. A 
- * limitation of service worker threads is that type FUNCTOR is always default 
- * constructed (there's no place constructor arguments can be provided).
- *
- * The worker is returned as a reference instead of a shared_ptr as a minor 
- * usage convenience because the underlying worker object is guaranteed to 
- * remain in existence for the runtime of the program. 
- *
- * @return singleton worker thread reference
- */
-template <typename FUNCTOR>
-static inline worker& service() {
-    return detail::service::instance<FUNCTOR>();
-}
-
-/**
- * @brief Shutdown all singleton worker threads
- *
- * All worker threads created by calls to service<FUNCTOR>() can be shutdown 
- * by a single call to this function.
- *
- * @param process_remaining_messages if true allow recv() to succeed until queue empty
- */
-inline void shutdown_all_services(bool process_remaining_messages=true) {
-    detail::service::shutdown_all(process_remaining_messages);
-}
-
-/**
- * @brief Restart all singleton worker threads
- *
- * All worker threads created by calls to service<FUNCTOR>() can be restarted
- * by a single call to this function.
- *
- * @param process_remaining_messages if true allow recv() to succeed until queue empty
- */
-inline void restart_all_services(bool process_remaining_messages=true) {
-    detail::service::restart_all(process_remaining_messages);
-}
-
-/**
- * @brief Container for one or more worker threads 
- *
- * Allows scheduling of Callable objects convertable to `workerpool::thunk` on 
- * worker threads. Will attempt to schedule on a relatively idle worker using a 
- * constant time algorithm.
- */
-struct workerpool {
-    /**
-     * @brief Callable arguments in `schedule()` functions must be convertable to this type
-     */
-    typedef std::function<void()> thunk;
-
-    /**
-     * @brief Construct a workerpool as a shared_ptr 
-     * @param thread_count specify the number of threads managed by the workerpool. Default value is hardware specific.
-     * @return a workerpool shared_ptr
-     */
-    static inline std::shared_ptr<workerpool> make(const std::size_t thread_count = 
-            std::thread::hardware_concurrency() ? 
-                std::thread::hardware_concurrency() : 
-                1) {
-        return std::shared_ptr<workerpool>(new workerpool(thread_count));
-    }
-
-    /**
-     * @return the count of worker threads managed by the workerpool
-     */
-    inline std::size_t worker_count() const {
-        return m_workers.size();
-    }
-
-    /**
-     * @brief schedule argument thunk for execution on a workerpool worker thread
-     *
-     * If argument function type is directly convertable to thunk this overload 
-     * will be selected.
-     *
-     * @param t thunk that will be executed on worker thread
-     */
-    inline void schedule(thunk t) {
-        m_schedule_ptr(this, std::move(t));
-    }
-
-    /**
-     * @brief schedule arguments for execution on a workerpool worker thread
-     * @param f function to be executed on worker thread 
-     * @param t first argument for function f
-     * @param as remaining arguments for function f
-     */
-    template <typename F, typename T, typename... As>
-    void schedule(F&& f, T&& t, As&&... as) {
-        schedule([=]() mutable { 
-            f(std::forward<T>(t), std::forward<As>(as)...); 
-        });
-    }
-
-    /**
-     * @brief schedule argument thunk on the parent workerpool object for the calling worker thread 
-     *
-     * Useful for breaking up long tasks into multiple scheduled calls in order
-     * to allow other tasks to be processed. 
-     *
-     * @param as arguments to be passed to schedule()
-     * @return true if executing on a workerpool worker, else false
-     */
-    template <typename... As>
-    static bool reschedule(As&&... as) {
-        workerpool* wp = workerpool::tl_workerpool();
-        if(wp) {
-            wp->schedule(std::forward<As>(as)...);
-            return true;
-        } else {
-            return false;
-        }
-    }
-
-private:
-    static inline workerpool*& tl_workerpool() {
-        thread_local workerpool* tpr(nullptr);
-        return tpr;
-    }
-
-    struct executor_thread {
-        executor_thread(workerpool* tp){ 
-            st::workerpool::tl_workerpool() = tp;
-        }
-
-        ~executor_thread() {
-            st::workerpool::tl_workerpool() = nullptr;
-        }
-
-        inline void operator()(std::shared_ptr<st::message> msg) {
-            thunk t;
-            if(msg->move_data_to(t)) {
-                t();
-            }
-        }
-    };
-
-    // For use if workerpool manages 3 or more threads. Will attempt to
-    // schedule on the least busy worker thread in the current local group of
-    // 3 threads.
-    inline void schedule_3(workerpool* wp, thunk t) {
-        worker_vec_t::iterator prev;
-        worker_vec_t::iterator cur;
-        worker_vec_t::iterator next;
-
-        {
-            std::lock_guard<std::mutex> lk(wp->m_mtx);
-            prev = m_cur_wkr;
-            wp->m_cur_wkr = wp->next_worker(wp->m_cur_wkr); // rotate worker idx 
-            cur = m_cur_wkr;
-            next = wp->next_worker(wp->m_cur_wkr);
-        }
-
-        auto cur_weight = (*cur)->get_weight();
-        if(!(cur_weight.empty())) {
-            if(cur!=prev && ((*prev)->get_weight() < cur_weight)) {
-                cur = prev;
-            } else if(cur!=next && ((*next)->get_weight() < cur_weight)) {
-                cur = next;
-            }
-        }
-
-        (*cur)->send(0,std::move(t));
-    }
-    
-    // For use if workerpool manages 2 or more threads, will attempt to schedule 
-    // on the least busy thread.
-    inline void schedule_2(workerpool* wp, thunk t) {
-        worker_vec_t::iterator prev;
-        worker_vec_t::iterator cur;
-
-        {
-            std::lock_guard<std::mutex> lk(wp->m_mtx);
-            prev = m_cur_wkr;
-            wp->m_cur_wkr = wp->next_worker(m_cur_wkr); // rotate worker idx 
-            cur = m_cur_wkr;
-        }
-
-        auto cur_weight = (*cur)->get_weight();
-        if(cur!=prev && ((*prev)->get_weight() < cur_weight)) {
-            cur = prev;
-        }
-
-        (*cur)->send(0,std::move(t));
-    }
-
-    // For use if workerpool manages a single thread
-    inline void schedule_1(workerpool* wp, thunk t) {
-        wp->m_cur_wkr->send(0,std::move(t));
-    }
-
-    inline worker_vec_t::iterator next_worker(worker_vec_t::iterator& inp) {
-        auto it = inp;
-
-        if(it != m_workers.end()) {
-            it++;
-        } else {
-            it = m_workers.begin();
-        }
-
-        return it;
-    }
-
-    workerpool(const std::size_t thread_count) : 
-        m_schedule_ptr(thread_count > 2 
-                       ? schedule_3
-                       : thread_count > 1 
-                         ? schedule_2
-                         : schedule_1),
-        m_workers(thread_count),
-        m_cur_wkr(m_workers.begin()) {
-        for(auto& w : m_workers) {
-            w = st::worker::make<executor_thread>(this);
-        }
-    }
-
-    workerpool(const workerpool&) = delete;
-    workerpool(workerpool&&) = delete;
-
-    std::mutex m_mtx;
-    const void (*m_schedule_ptr)(workerpool* wp, thunk t);
-    worker_vec_t::iterator m_cur_wkr;
-
-    // convenience typedef
-    typedef std::vector<std::shared_ptr<st::worker>> worker_vec_t;
-    worker_vec_t m_workers; // never written to after construction
-};
-
-/** @cond HIDDEN_SYMBOLS */
-namespace detail {
-
-// is template so that it is not created by compiler unless called
-template <typename FOO=int>
-struct default_workerpool {
-    static inline workerpool& instance() {
-        static std::shared_ptr<st::workerpool> tp(st::workerpool::make());
-        return *tp;
-    }
-};
-
-}
-/** @endcond */
-
-/**
- * @brief Schedule a Callable on a process wide default workerpool
- */
-template <typename... As>
-static void schedule(As&&... as) {
-    detail::default_workerpool<>::instance().schedule(std::forward<As>(as)...);
-}
 
 }
 
