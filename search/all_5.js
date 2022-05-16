@@ -1,7 +1,4 @@
 var searchData=
 [
-  ['recv_12',['recv',['../structst_1_1channel.html#a8728270df53a15139f91100ad396377f',1,'st::channel']]],
-  ['restart_13',['restart',['../structst_1_1worker.html#a2e3f89739083c6d6779712081d30d459',1,'st::worker']]],
-  ['restart_5fall_5fservices_14',['restart_all_services',['../simple__thread_8hpp.html#acbb7c31ddf25ad2cdbf47531db59d7d2',1,'st']]],
-  ['running_15',['running',['../structst_1_1worker.html#a4a3d6b7c743dd8e168d08b6b10faacff',1,'st::worker']]]
+  ['operator_3c_13',['operator&lt;',['../structst_1_1worker_1_1weight.html#a5c812fcb39dba0e15c9c93755e3e659b',1,'st::worker::weight']]]
 ];
