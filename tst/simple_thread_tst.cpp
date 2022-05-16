@@ -5,6 +5,7 @@
 #include <string>
 #include <iostream>
 #include <chrono>
+#include <tuple>
 
 TEST(simple_thread, message) {
     enum op {
@@ -577,6 +578,51 @@ TEST(simple_thread, worker_multiple_payload_types) {
     EXPECT_TRUE(wkr->send(hdl::op::discern_type, si));
     EXPECT_TRUE(ret_ch->recv(msg));
     EXPECT_EQ(msg->id(), st::message::code<hdl::stringint_t>());
+}
+
+TEST(simple_thread, this_worker) {
+    struct hdl {
+        enum op { req_self };
+
+        hdl(std::shared_ptr<st::channel> ret_ch) : m_ret_ch(ret_ch) { }
+
+        inline void operator()(std::shared_ptr<st::message> msg) {
+            switch(msg->id()) {
+                case op::req_self:
+                {
+                    std::weak_ptr<st::worker> self = st::worker::this_worker();
+                    m_ret_ch->send(0,self);
+                    break;
+                }
+            }
+        }
+
+        std::shared_ptr<st::channel> m_ret_ch;
+    };
+
+    std::shared_ptr<st::channel> ret_ch = st::channel::make();
+    std::shared_ptr<st::worker> wkr = st::worker::make<hdl>(ret_ch);
+    std::shared_ptr<st::message> msg;
+    std::weak_ptr<st::worker> wp;
+
+    EXPECT_TRUE(wkr->send(hdl::op::req_self));
+    EXPECT_TRUE(ret_ch->recv(msg));
+    EXPECT_TRUE(msg->copy_data_to(wp));
+    EXPECT_EQ(wp.use_count(), 1);
+
+    std::shared_ptr<st::worker> new_wkr = wp.lock();
+
+    EXPECT_TRUE(wkr);
+    EXPECT_TRUE(new_wkr);
+    EXPECT_EQ(wp.use_count(), 2);
+    EXPECT_EQ(new_wkr.use_count(), 2);
+
+    new_wkr.reset();
+
+    EXPECT_TRUE(wkr);
+    EXPECT_FALSE(new_wkr);
+    EXPECT_EQ(wp.use_count(), 1);
+    EXPECT_EQ(new_wkr.use_count(), 0);
 }
 
 // README EXAMPLES 

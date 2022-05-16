@@ -327,6 +327,7 @@ struct worker {
                     type_hint<FUNCTOR>(), 
                     std::forward<As>(as)...));
         wp->set_self(wp);
+        wp->restart(); // launch thread
         return wp;
     }
 
@@ -520,8 +521,6 @@ private:
             auto fp = std::shared_ptr<FUNCTOR>(new FUNCTOR(std::forward<As>(as)...));
             return [=](std::shared_ptr<message> m) { (*fp)(std::move(m)); };
         };
-
-        restart();
     }
 
     inline void set_self(std::weak_ptr<worker> self) {
