@@ -122,9 +122,9 @@ Static Public Member Functions</h2></td></tr>
 <tr class="memitem:a14b3199e47af486fe4c189846d634ee7"><td class="memTemplParams" colspan="2">template&lt;typename FUNCTOR , typename... As&gt; </td></tr>
 <tr class="memitem:a14b3199e47af486fe4c189846d634ee7"><td class="memTemplItemLeft" align="right" valign="top">static std::shared_ptr&lt; <a class="el" href="structst_1_1worker.html">worker</a> &gt;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="structst_1_1worker.html#a14b3199e47af486fe4c189846d634ee7">make</a> (As &amp;&amp;... as)</td></tr>
 <tr class="separator:a14b3199e47af486fe4c189846d634ee7"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ae20d0c38846bba48526b4751a581515f"><td class="memItemLeft" align="right" valign="top">static <a class="el" href="structst_1_1worker.html">worker</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structst_1_1worker.html#ae20d0c38846bba48526b4751a581515f">this_worker</a> ()</td></tr>
-<tr class="memdesc:ae20d0c38846bba48526b4751a581515f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Provide access to calling worker object pointer.  <a href="structst_1_1worker.html#ae20d0c38846bba48526b4751a581515f">More...</a><br /></td></tr>
-<tr class="separator:ae20d0c38846bba48526b4751a581515f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aec29be3a5f0972e678a756ff2a718a35"><td class="memItemLeft" align="right" valign="top">static std::weak_ptr&lt; <a class="el" href="structst_1_1worker.html">worker</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structst_1_1worker.html#aec29be3a5f0972e678a756ff2a718a35">this_worker</a> ()</td></tr>
+<tr class="memdesc:aec29be3a5f0972e678a756ff2a718a35"><td class="mdescLeft">&#160;</td><td class="mdescRight">Provide access to calling worker object pointer.  <a href="structst_1_1worker.html#aec29be3a5f0972e678a756ff2a718a35">More...</a><br /></td></tr>
+<tr class="separator:aec29be3a5f0972e678a756ff2a718a35"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Managed system worker thread. </p>
@@ -408,8 +408,8 @@ template&lt;typename T &gt; </div>
 
 </div>
 </div>
-<a id="ae20d0c38846bba48526b4751a581515f"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ae20d0c38846bba48526b4751a581515f">&#9670;&nbsp;</a></span>this_worker()</h2>
+<a id="aec29be3a5f0972e678a756ff2a718a35"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aec29be3a5f0972e678a756ff2a718a35">&#9670;&nbsp;</a></span>this_worker()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -418,7 +418,7 @@ template&lt;typename T &gt; </div>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">static <a class="el" href="structst_1_1worker.html">worker</a>* st::worker::this_worker </td>
+          <td class="memname">static std::weak_ptr&lt;<a class="el" href="structst_1_1worker.html">worker</a>&gt; st::worker::this_worker </td>
           <td>(</td>
           <td class="paramname"></td><td>)</td>
           <td></td>
@@ -432,8 +432,9 @@ template&lt;typename T &gt; </div>
 </div><div class="memdoc">
 
 <p>Provide access to calling worker object pointer. </p>
-<p>If not called by a running worker, returned pointer is null. Useful when the worker pointer is needed from within the FUNCTOR handler.</p>
-<dl class="section return"><dt>Returns</dt><dd>calling thread's worker pointer </dd></dl>
+<p>If not called by a running worker, returned weak_ptr is expired. Useful when the worker pointer is needed from within the FUNCTOR handler.</p>
+<p>Provided as a weak_ptr to avoid preventing the worker from going out of scope unless the user explicitly acquires a shared_ptr from it.</p>
+<dl class="section return"><dt>Returns</dt><dd>a weak_ptr to calling thread's worker </dd></dl>
 
 </div>
 </div>
