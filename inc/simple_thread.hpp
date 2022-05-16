@@ -327,7 +327,7 @@ struct worker {
                     type_hint<FUNCTOR>(), 
                     std::forward<As>(as)...));
         wp->set_self(wp);
-        return wp
+        return wp;
     }
 
     worker(const worker& rhs) = delete;
@@ -497,7 +497,7 @@ struct worker {
     static inline std::weak_ptr<worker> this_worker() {
         auto wp = tl_worker();
         if(wp) {
-            return wp->m_self();
+            return wp->m_self;
         } else {
             return std::weak_ptr<worker>();
         }
