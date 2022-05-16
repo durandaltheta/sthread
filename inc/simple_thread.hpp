@@ -323,9 +323,11 @@ struct worker {
      */
     template <typename FUNCTOR, typename... As>
     static std::shared_ptr<worker> make(As&&... as) {
-        return std::shared_ptr<worker>(new worker(
+        std::shared_ptr<worker> wp(new worker(
                     type_hint<FUNCTOR>(), 
                     std::forward<As>(as)...));
+        wp->set_self(wp);
+        return wp;
     }
 
     worker(const worker& rhs) = delete;
@@ -484,13 +486,21 @@ struct worker {
     /**
      * @brief Provide access to calling worker object pointer
      *
-     * If not called by a running worker, returned pointer is null. Useful when 
-     * the worker pointer is needed from within the FUNCTOR handler.
+     * If not called by a running worker, returned weak_ptr is expired. Useful 
+     * when the worker pointer is needed from within the FUNCTOR handler.
      *
-     * @return calling thread's worker pointer
+     * Provided as a weak_ptr to avoid preventing the worker from going out of 
+     * scope unless the user explicitly acquires a shared_ptr from it.
+     *
+     * @return a weak_ptr to calling thread's worker
      */
-    static inline worker* this_worker() {
-        return tl_worker();
+    static inline std::weak_ptr<worker> this_worker() {
+        auto wp = tl_worker();
+        if(wp) {
+            return wp->m_self;
+        } else {
+            return std::weak_ptr<worker>();
+        }
     }
 
 private:
@@ -514,6 +524,10 @@ private:
         restart();
     }
 
+    inline void set_self(std::weak_ptr<worker> self) {
+        m_self = self;
+    }
+
     // thread local worker by-reference getter 
     static inline worker*& tl_worker() {
         thread_local worker* w(nullptr);
@@ -531,9 +545,9 @@ private:
 
         m_thread_started_flag = false;
     }
-
     bool m_thread_started_flag;
     std::atomic_bool m_executing;
+    std::weak_ptr<worker> m_self;
     std::mutex m_mtx;
     std::condition_variable m_cv;
     std::function<handler()> m_generate_handler;
