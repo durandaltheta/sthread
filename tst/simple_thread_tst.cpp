@@ -579,179 +579,6 @@ TEST(simple_thread, worker_multiple_payload_types) {
     EXPECT_EQ(msg->id(), st::message::code<hdl::stringint_t>());
 }
 
-// show service lifecycle behavior generally works
-TEST(simple_thread, service_lifecycle) {
-    struct hdl {
-        static bool& thread_running() {
-            static bool running = false;
-            return running;
-        }
-
-        hdl() { hdl::thread_running() = true; }
-        ~hdl() { hdl::thread_running()  = false; }
-
-        inline void operator()(std::shared_ptr<st::message> msg) { }
-    };
-
-    // ensure service exists by calling an instance of it 
-    st::service<hdl>();
-
-    // shutdown & restart via worker API
-    EXPECT_TRUE(hdl::thread_running());
-    EXPECT_TRUE(st::service<hdl>().running());
-
-    st::service<hdl>().shutdown();
-
-    EXPECT_FALSE(hdl::thread_running());
-    EXPECT_FALSE(st::service<hdl>().running());
-
-    st::service<hdl>().restart();
-
-    EXPECT_TRUE(hdl::thread_running());
-    EXPECT_TRUE(st::service<hdl>().running());
-
-    // shutdown & restart via global service API
-    st::shutdown_all_services();
-
-    EXPECT_FALSE(hdl::thread_running());
-    EXPECT_FALSE(st::service<hdl>().running());
-    
-    st::restart_all_services();
-
-    EXPECT_TRUE(hdl::thread_running());
-    EXPECT_TRUE(st::service<hdl>().running());
-   
-    // end excess threads for test sanity reasons
-    st::shutdown_all_services();
-}
-
-// showcase simple service thread launching and message handling
-TEST(simple_thread, service_messaging) {
-    // short for "handler"
-    struct hdl {
-        enum op {
-            print_int,
-            print_string,
-            unknown
-        };
-
-        // used for worker behavior confirmation purposes
-        static st::channel& ret_ch() {
-            static auto c = st::channel::make();
-            return *c;
-        }
-
-        inline void operator()(std::shared_ptr<st::message> msg) {
-            switch(msg->id()) {
-                case op::print_int:
-                {
-                    int i;
-
-                    if(msg->copy_data_to(i)) {
-                        std::cout << "int: " << i << std::endl;
-                        hdl::ret_ch().send(op::print_int);
-                    } else {
-                        std::cout << "unknown" << std::endl;;
-                        hdl::ret_ch().send(op::unknown);
-                    }
-                    break;
-                }
-                case op::print_string:
-                {
-                    std::string s;
-
-                    if(msg->copy_data_to(s)) {
-                        std::cout << "string: " << s << std::endl;
-                        hdl::ret_ch().send(op::print_string);
-                    } else {
-                        std::cout << "unknown" << std::endl;;
-                        hdl::ret_ch().send(op::unknown);
-                    }
-                    break;
-                }
-                default:
-                    std::cout << "unknown" << std::endl;;
-                    hdl::ret_ch().send(op::unknown);
-                    break;
-            }
-        }
-    };
-
-    struct garbazoo { }; // random type unknown to worker
-        
-    st::service<hdl>();
-    std::shared_ptr<st::message> msg;
-    int i = 3;
-    std::string s = "hello";
-    garbazoo g;
-
-    // print_int
-    EXPECT_TRUE(st::service<hdl>().send(hdl::op::print_int, i));
-    EXPECT_TRUE(hdl::ret_ch().recv(msg));
-    EXPECT_EQ(msg->id(), hdl::op::print_int);
-
-    {
-        // ensure `st::worker::send(std::shared_ptr<st::message>)` works
-        msg = st::message::make(hdl::op::print_int, i);
-        EXPECT_TRUE(st::service<hdl>().send(msg));
-        EXPECT_TRUE(hdl::ret_ch().recv(msg));
-        EXPECT_EQ(msg->id(), hdl::op::print_int);
-    }
-
-    EXPECT_TRUE(st::service<hdl>().send(hdl::op::print_int, s));
-    EXPECT_TRUE(hdl::ret_ch().recv(msg));
-    EXPECT_EQ(msg->id(), hdl::op::unknown);
-
-    EXPECT_TRUE(st::service<hdl>().send(hdl::op::print_int, g));
-    EXPECT_TRUE(hdl::ret_ch().recv(msg));
-    EXPECT_EQ(msg->id(), hdl::op::unknown);
-
-    // print_string
-    EXPECT_TRUE(st::service<hdl>().send(hdl::op::print_string, s));
-    EXPECT_TRUE(hdl::ret_ch().recv(msg));
-    EXPECT_EQ(msg->id(), hdl::op::print_string);
-
-    {
-        // ensure `st::worker::send(std::shared_ptr<st::message>)` works
-        msg = st::message::make(hdl::op::print_string, s);
-        EXPECT_TRUE(st::service<hdl>().send(hdl::op::print_string, s));
-        EXPECT_TRUE(hdl::ret_ch().recv(msg));
-        EXPECT_EQ(msg->id(), hdl::op::print_string);
-    }
-
-    EXPECT_TRUE(st::service<hdl>().send(hdl::op::print_string, i));
-    EXPECT_TRUE(hdl::ret_ch().recv(msg));
-    EXPECT_EQ(msg->id(), hdl::op::unknown);
-
-    EXPECT_TRUE(st::service<hdl>().send(hdl::op::print_string, g));
-    EXPECT_TRUE(hdl::ret_ch().recv(msg));
-    EXPECT_EQ(msg->id(), hdl::op::unknown);
-
-    // print_unknown
-    EXPECT_TRUE(st::service<hdl>().send(hdl::op::unknown, i));
-    EXPECT_TRUE(hdl::ret_ch().recv(msg));
-    EXPECT_EQ(msg->id(), hdl::op::unknown);
-
-    {
-        // ensure `st::worker::send(std::size_t)` works
-        EXPECT_TRUE(st::service<hdl>().send(hdl::op::unknown));
-        EXPECT_TRUE(hdl::ret_ch().recv(msg));
-        EXPECT_EQ(msg->id(), hdl::op::unknown);
-    }
-
-    EXPECT_TRUE(st::service<hdl>().send(hdl::op::unknown, s));
-    EXPECT_TRUE(hdl::ret_ch().recv(msg));
-    EXPECT_EQ(msg->id(), hdl::op::unknown);
-
-    EXPECT_TRUE(st::service<hdl>().send(hdl::op::unknown, g));
-    EXPECT_TRUE(hdl::ret_ch().recv(msg));
-    EXPECT_EQ(msg->id(), hdl::op::unknown);
-   
-    // end excess threads for test sanity reasons
-    st::shutdown_all_services();
-}
-
-
 // README EXAMPLES 
 TEST(simple_thread, readme_example1) {
     struct MyClass {
@@ -781,24 +608,6 @@ TEST(simple_thread, readme_example1) {
 TEST(simple_thread, readme_example2) {
     struct MyClass {
         enum op {
-            say_something
-        };
-
-        inline void operator()(std::shared_ptr<st::message> msg) {
-            switch(msg->id()) {
-                case op::say_something:
-                    std::cout << "I'm a singleton worker thread!" << std::endl;
-                    break;
-            }
-        }
-    };
-
-    st::service<MyClass>().send(MyClass::op::say_something);
-}
-
-TEST(simple_thread, readme_example3) {
-    struct MyClass {
-        enum op {
             print
         };
 
@@ -822,7 +631,7 @@ TEST(simple_thread, readme_example3) {
     my_worker->send(MyClass::op::print, s);
 }
 
-TEST(simple_thread, readme_example4) {
+TEST(simple_thread, readme_example3) {
     struct MyClass {
         enum op {
             print
@@ -855,7 +664,7 @@ TEST(simple_thread, readme_example4) {
     my_worker->send(MyClass::op::print, s);
 }
 
-TEST(simple_thread, readme_example5) {
+TEST(simple_thread, readme_example4) {
     struct MyClass {
         MyClass(std::string constructor_string, std::string destructor_string) :
             m_destructor_string(destructor_string)
@@ -876,7 +685,7 @@ TEST(simple_thread, readme_example5) {
     std::shared_ptr<st::worker> wkr = st::worker::make<MyClass>("hello", "goodbye");
 }
 
-TEST(simple_thread, readme_example6) {
+TEST(simple_thread, readme_example5) {
     struct MyClass {
         enum op {
             forward
@@ -909,7 +718,7 @@ TEST(simple_thread, readme_example6) {
     }
 }
 
-TEST(simple_thread, readme_example7) {
+TEST(simple_thread, readme_example6) {
     auto looping_recv = [](std::shared_ptr<st::channel> ch) {
         std::shared_ptr<st::message> msg;
 

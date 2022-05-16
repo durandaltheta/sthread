@@ -56,43 +56,10 @@ $./a.out
 hello world
 ```
 
-### Singleton Service Threads
-Singleton worker threads can be accessed (and launched as necessary) by reference with the `st::service<FUNCTOR>()` function.
-
-#### Example 2
-```
-#include <iostream>
-#include <simple_thread.hpp>
-
-struct MyClass {
-    enum op {
-        say_something
-    };
-
-    inline void operator()(std::shared_ptr<st::message> msg) {
-        switch(msg->id()) {
-            case op::say_something:
-                std::cout << "I'm a singleton worker thread!" << std::endl;
-                break;
-        }
-    }
-};
-
-int main() {
-    st::service<MyClass>().send(MyClass::op::say_something);
-}
-```
-
-Terminal output might be:
-```
-$./a.out
-I'm a singleton worker thread!
-```
-
 ### Message Payload Data
 Message data payloads can be of any type and can be copied to argument `T t` with `st::message::copy_data_to<T>(T&& t)` or rvalue swapped with `st::message::move_data_to<T>(T&& t)`.
 
-#### Example 3:
+#### Example 2:
 ```
 #include <iostream>
 #include <string>
@@ -134,7 +101,7 @@ hello again
 ### Payload Type Checking
 `st::message::copy_data_to<T>(T&& t)` and `st::message::move_data_to<T>(T&& t)` will return `true` only if the stored payload type matches type `T`, otherwise it returns `false`. Payload types can also be easily checked with `st::message::is<T>()` (returns `true` if type match, else `false`) which is useful if a message might contain several different potential types.
 
-#### Example 4:
+#### Example 3:
 ```
 #include <iostream>
 #include <string>
@@ -187,7 +154,7 @@ hello 1 more time
 ### Worker Constructor Arguments and Lifecycle
 `st::worker`s can be passed constructor arguments in `st::worker::make<FUNCTOR>(As&&...)`. The FUNCTOR class will be created on the new thread and destroyed before said thread ends.
 
-#### Example 5
+#### Example 4
 ```
 #include <iostream>
 #include <string>
@@ -228,7 +195,7 @@ $./a.out
 ### Channels
 The object that `st::worker`s use for communication in their `send()` methods is called `st::channel`. `st::channel`s can be created and used outside of `st::worker` objects if desired. 
 
-#### Example 6:
+#### Example 5:
 ```
 #include <iostream>
 #include <thread>
@@ -281,17 +248,13 @@ This is the default behavior of several functions:
 - `st::channel::close(/* default true */)`
 - `st::worker::shutdown(/* default true */)`
 - `st::worker::restart(/* default true */)`
-- `st::shutdown_all_services(/* default true */)`
-- `st::restart_all_services(/* default true */)`
 
 Alternatively, the user can call said functions with explicit `false` to immediately end all operations on the channel:
 - `st::channel::close(false)`
 - `st::worker::shutdown(false)`
 - `st::worker::restart(false)`
-- `st::shutdown_all_services(false)`
-- `st::restart_all_services(false)`
 
-#### Example 7:
+#### Example 6:
 ```
 #include <iostream>
 #include <thread>
