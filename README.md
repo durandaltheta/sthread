@@ -81,7 +81,7 @@ hello world
 ```
 
 ### Message Payload Data
-Message data payloads can be of any type and can be copied to argument `T t` with `st::message::copy_data_to<T>(T&& t)` or rvalue swapped with `st::message::move_data_to<T>(T&& t)`.
+Message data payloads can be of any type and can be copied to argument `T t` with `st::message::copy_data_to<T>(T&& t)` or rvalue swapped with `st::message::move_data_to<T>(T&& t)`. Both functions returns `true` if the datatype stored in the message matches `T`, otherwise returns `false`.
 
 #### Example 2:
 ```
