@@ -40,7 +40,7 @@ Functors (as used by this library) have several advantages over raw functions.
 - Create a class or struct with `void operator()(std::shared_ptr<st::message>)` to 
 handle received messages (also called a 'functor')
 - Define some enum to distinguish different messages 
-- Launch your thread with `st::worker::make<YourClass>()`
+- Launch your thread with `st::worker::make<YourClassNameHere>()`
 
 ### Basic Usage
 #### Example 1:
@@ -176,12 +176,12 @@ hello 1 more time
 
 
 ### Worker Constructor Arguments and Lifecycle
-`st::worker`s can be passed constructor arguments in `st::worker::make<FUNCTOR>(As&&...)`. The FUNCTOR class will be created on the new thread and destroyed before said thread ends.
+`st::worker`s can be passed constructor arguments in `st::worker::make<FUNCTOR>(As&&...)`. The `FUNCTOR` class will be created on the new thread and destroyed before said thread ends.
 
 An `st::worker`'s `std::thread` will be shutdown and joined when any of the following happens:
 - The `st::worker`s last `std::shared_ptr` goes out of scope
 - `st::worker::shutdown()` is called on a worker
-- `st::worker::restart()` is called on a worker (and a new `std::thread` and FUNCTOR will be created before `restart()` returns)
+- `st::worker::restart()` is called on a worker (and a new `std::thread` and `FUNCTOR` will be created before `restart()` returns)
 
 #### Example 4
 ```
