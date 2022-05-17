@@ -1,3 +1,5 @@
+//SPDX-License-Identifier: LicenseRef-Apache-License-2.0
+//Author: Blayne Dennis
 /**
  * @file
  * @brief Simple interprocess threading and messaging

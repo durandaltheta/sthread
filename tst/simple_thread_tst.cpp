@@ -1,3 +1,5 @@
+//SPDX-License-Identifier: LicenseRef-Apache-License-2.0
+//Author: Blayne Dennis
 #include <gtest/gtest.h>
 #include "simple_thread.hpp"
 #include <thread>
