@@ -90,7 +90,7 @@ Purpose</h1>
 <li>Sending messages to the worker is provided by the library</li>
 <li>Functors allow for inheritance</li>
 <li>Functors allow for public enumerations to be defined as part of its namespace, which is useful for organizing what messages the thread will listen for.</li>
-<li>Functors allow for class method definitions, instead of forcing the user to rely on lambdas or global namespace functions if further function calls are required.</li>
+<li>Functors allow for class method definitions, instead of forcing the user to rely on lambdas or global namespace functions if further function calls are desired.</li>
 <li>Initialization (constructor), runtime execution (<code>void operator()(std::shared_ptr&lt;<a class="el" href="structst_1_1message.html" title="Interthread type erased message container.">st::message</a>&gt;</code>), and deinitialization (destructor) are broken in to separate functions, making each more readable. A thread running only a raw function requires everything be managed within that function.</li>
 </ul>
 <h1><a class="anchor" id="autotoc_md4"></a>
