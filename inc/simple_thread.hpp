@@ -447,6 +447,27 @@ struct worker {
         std::lock_guard<std::mutex> lk(m_mtx);
         return weight{m_ch->queued(), m_executing.load()};
     }
+       
+    /** 
+     * @brief Compare workerload of two worker threads
+     *
+     * Convenience for doing clever things like ordering worker threads in an 
+     * std::set in order to select the least busy worker:
+     * ```
+     * worker& least_busy(std::vector<std::shared_ptr<st::worker>>& wkrs) {
+     *     std::set<worker&> ordered_wkrs;
+     *     for(auto& w : wkrs) {
+     *         ordered_wkrs.insert(*w);
+     *     }
+     *     return *(ordered_wkrs.begin());
+     * }
+     * ```
+     *
+     * @return true if this worker is less busy than the other 
+     */
+    inline bool operator<(const worker& rhs) {
+        return get_weight() < rhs.get_weight();
+    }
 
     /**
      * @brief Send a message over the channel
