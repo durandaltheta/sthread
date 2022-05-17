@@ -216,6 +216,11 @@ Example 3:</h3>
 <h2><a class="anchor" id="autotoc_md11"></a>
 Worker Constructor Arguments and Lifecycle</h2>
 <p><code><a class="el" href="structst_1_1worker.html" title="Managed system worker thread.">st::worker</a></code>s can be passed constructor arguments in <code><a class="el" href="structst_1_1worker.html#a14b3199e47af486fe4c189846d634ee7">st::worker::make</a>&lt;FUNCTOR&gt;(As&amp;&amp;...)</code>. The FUNCTOR class will be created on the new thread and destroyed before said thread ends.</p>
+<p>An <code><a class="el" href="structst_1_1worker.html" title="Managed system worker thread.">st::worker</a></code>'s <code>std::thread</code> will be shutdown and joined when any of the following happens:</p><ul>
+<li>The <code><a class="el" href="structst_1_1worker.html" title="Managed system worker thread.">st::worker</a></code>s last <code>std::shared_ptr</code> goes out of scope</li>
+<li><code><a class="el" href="structst_1_1worker.html#a3f98d0479ad642ed572fd723caeb893d" title="Shutdown the worker thread.">st::worker::shutdown()</a></code> is called on a worker</li>
+<li><code><a class="el" href="structst_1_1worker.html#a2e3f89739083c6d6779712081d30d459" title="Restart the worker thread.">st::worker::restart()</a></code> is called on a worker (and a new thread and functor will be started before <code>restart()</code> returns)</li>
+</ul>
 <h3><a class="anchor" id="autotoc_md12"></a>
 Example 4</h3>
 <div class="fragment"><div class="line">#include &lt;iostream&gt;</div>
