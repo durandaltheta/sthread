@@ -1,5 +1,7 @@
 var searchData=
 [
-  ['this_5fworker_22',['this_worker',['../structst_1_1worker.html#aec29be3a5f0972e678a756ff2a718a35',1,'st::worker']]],
-  ['type_23',['type',['../structst_1_1message.html#ad5aa6102d07ce7a9db428d161cad1aa8',1,'st::message']]]
+  ['simple_20threading_20and_20communication_19',['Simple Threading and Communication',['../md__r_e_a_d_m_e.html',1,'']]],
+  ['send_20',['send',['../structst_1_1channel.html#ac8be7ee6e79c7bc931d6b621efd1ef41',1,'st::channel::send(std::shared_ptr&lt; message &gt; m)'],['../structst_1_1channel.html#af83d3bb8066c56b34da035aa5e8e5242',1,'st::channel::send(std::size_t id, T &amp;&amp;t)'],['../structst_1_1channel.html#a924fe695e59087359ed0597733d599ed',1,'st::channel::send(std::size_t id)'],['../structst_1_1worker.html#a9fdbdc777304056f87302fa60c266de0',1,'st::worker::send(std::shared_ptr&lt; message &gt; m)'],['../structst_1_1worker.html#ace93fb50233de2fc2121c4e3d9d0eccc',1,'st::worker::send(std::size_t id, T &amp;&amp;t)'],['../structst_1_1worker.html#a09ae2a19237d77e2bc5889056fbb9472',1,'st::worker::send(std::size_t id)']]],
+  ['shutdown_21',['shutdown',['../structst_1_1worker.html#a3f98d0479ad642ed572fd723caeb893d',1,'st::worker']]],
+  ['simple_5fthread_2ehpp_22',['simple_thread.hpp',['../simple__thread_8hpp.html',1,'']]]
 ];

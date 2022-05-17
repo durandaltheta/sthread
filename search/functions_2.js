@@ -1,5 +1,4 @@
 var searchData=
 [
-  ['id_36',['id',['../structst_1_1message.html#abfd004b90e13b7eb6e46ffc75f4d26b9',1,'st::message']]],
-  ['is_37',['is',['../structst_1_1message.html#a23536bf1bda738b333fc6723c8502eb0',1,'st::message']]]
+  ['get_5fweight_37',['get_weight',['../structst_1_1worker.html#a863e47912a13157526607609056761b8',1,'st::worker']]]
 ];
