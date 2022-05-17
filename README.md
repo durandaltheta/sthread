@@ -81,8 +81,9 @@ hello world
 ```
 
 ### Message Payload Data
-Message data payloads can be of any type and can be copied to argument `T t` with `st::message::copy_data_to<T>(T&& t)` or rvalue swapped with `st::message::move_data_to<T>(T&& t)`. Both functions returns `true` if the datatype stored in the message matches `T`, otherwise returns `false`.
+Message data payloads can be of any type and can be copied to argument `T t` with `st::message::copy_data_to<T>(T&& t)` or rvalue swapped with `st::message::move_data_to<T>(T&& t)`. 
 
+`st::message::copy_data_to<T>(T&& t)` and `st::message::move_data_to<T>(T&& t)` will return `true` only if the stored payload type matches type `T`, otherwise it returns `false`. 
 #### Example 2:
 ```
 #include <iostream>
@@ -123,7 +124,7 @@ hello again
 ```
 
 ### Payload Type Checking
-`st::message::copy_data_to<T>(T&& t)` and `st::message::move_data_to<T>(T&& t)` will return `true` only if the stored payload type matches type `T`, otherwise it returns `false`. Payload types can also be easily checked with `st::message::is<T>()` (returns `true` if type match, else `false`) which is useful if a message might contain several different potential types.
+Payload types can also be easily checked with `st::message::is<T>()` (returns `true` if type match, else `false`) which is useful if a message might contain several different potential types.
 
 #### Example 3:
 ```
