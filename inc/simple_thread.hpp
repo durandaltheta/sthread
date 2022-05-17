@@ -14,8 +14,14 @@
 #include <atomic>
 #include <typeinfo>
 #include <functional>
+#include <future>
 
 namespace st {
+/**
+ * @brief Typedef representing the unqualified type of T
+ */
+template <typename T>
+using base = typename std::remove_reference<typename std::remove_cv<T>::type>::type;
 
 /**
  * @brief Interthread type erased message container
@@ -26,12 +32,6 @@ private:
     typedef std::unique_ptr<void,deleter_t> data_pointer_t;
 
 public:
-    /**
-     * @brief Typedef representing the unqualified type of T
-     */
-    template <typename T>
-    using base = typename std::remove_reference<typename std::remove_cv<T>::type>::type;
-
     /**
      * @return an unsigned integer representing a data type.
      *
@@ -97,7 +97,6 @@ public:
      */
     template <typename T>
     bool copy_data_to(T& t) {
-        std::lock_guard<std::mutex> lk(m_mtx);
         if(is<T>()) {
             t = *((base<T>*)(m_data.get()));
             return true;
@@ -114,7 +113,6 @@ public:
      */
     template <typename T>
     bool move_data_to(T& t) {
-        std::lock_guard<std::mutex> lk(m_mtx);
         if(is<T>()) {
             std::swap(t, *((base<T>*)(m_data.get())));
             return true;
@@ -144,7 +142,6 @@ private:
         delete (base<T>*)p;
     }
 
-    std::mutex m_mtx;
     const std::size_t m_id;
     const std::size_t m_data_type;
     data_pointer_t m_data;
