@@ -17,11 +17,6 @@
 #include <future>
 
 namespace st {
-/**
- * @brief Typedef representing the unqualified type of T
- */
-template <typename T>
-using base = typename std::remove_reference<typename std::remove_cv<T>::type>::type;
 
 /**
  * @brief Interthread type erased message container
@@ -32,6 +27,12 @@ private:
     typedef std::unique_ptr<void,deleter_t> data_pointer_t;
 
 public:
+    /**
+     * @brief Typedef representing the unqualified type of T
+     */
+    template <typename T>
+    using base = typename std::remove_reference<typename std::remove_cv<T>::type>::type;
+
     /**
      * @return an unsigned integer representing a data type.
      *
