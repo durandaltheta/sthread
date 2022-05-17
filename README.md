@@ -178,6 +178,11 @@ hello 1 more time
 ### Worker Constructor Arguments and Lifecycle
 `st::worker`s can be passed constructor arguments in `st::worker::make<FUNCTOR>(As&&...)`. The FUNCTOR class will be created on the new thread and destroyed before said thread ends.
 
+An `st::worker`'s `std::thread` will be shutdown and joined when any of the following happens:
+- The `st::worker`s last `std::shared_ptr` goes out of scope
+- `st::worker::shutdown()` is called on a worker
+- `st::worker::restart()` is called on a worker (and a new thread and functor will be started before `restart()` returns)
+
 #### Example 4
 ```
 #include <iostream>
