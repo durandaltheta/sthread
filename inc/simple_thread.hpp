@@ -195,7 +195,7 @@ struct channel {
         }
 
         if(notify) {
-            m_cv.notify_one();
+            m_cv.notify_all();
         }
         return true;
     }
@@ -275,7 +275,7 @@ struct channel {
         }
 
         if(notify) {
-            m_cv.notify_one();
+            m_cv.notify_all();
         }
     }
 
