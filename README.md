@@ -124,7 +124,7 @@ hello again
 ```
 
 ### Payload Type Checking
-Payload types can also be easily checked with `st::message::is<T>()` (returns `true` if type match, else `false`) which is useful if a message might contain several different potential types.
+Payload types can also be easily checked with `st::message::is<T>()` (returns `true` if types match, else `false`) which is useful if a message might contain several different potential types.
 
 #### Example 3:
 ```
