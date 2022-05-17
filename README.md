@@ -181,7 +181,7 @@ hello 1 more time
 An `st::worker`'s `std::thread` will be shutdown and joined when any of the following happens:
 - The `st::worker`s last `std::shared_ptr` goes out of scope
 - `st::worker::shutdown()` is called on a worker
-- `st::worker::restart()` is called on a worker (and a new thread and functor will be started before `restart()` returns)
+- `st::worker::restart()` is called on a worker (and a new `std::thread` and FUNCTOR will be created before `restart()` returns)
 
 #### Example 4
 ```
