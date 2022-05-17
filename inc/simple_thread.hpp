@@ -423,14 +423,14 @@ struct worker {
         /**
          * @return true if the weight is 0, else false
          */
-        inline bool empty() {
+        inline bool empty() const {
             return !(queued && executing);
         }
 
         /**
          * @return true if this weight is lighter than the other, else false
          */
-        inline bool operator<(const weight& rhs) {
+        inline bool operator<(const weight& rhs) const {
             if(queued < rhs.queued) {
                 return true;
             } else if(queued > rhs.queued) {

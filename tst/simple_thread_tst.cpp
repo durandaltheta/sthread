@@ -6,7 +6,7 @@
 #include <chrono>
 #include <tuple>
 #include <vector>
-#include <set>
+#include <map>
 #include <functional>
 
 TEST(simple_thread, message) {
@@ -669,6 +669,16 @@ TEST(simple_thread, weight) {
         return lightest_index;
     };
 
+    auto get_lightest = [](std::vector<st::worker*> wkrs) -> st::worker* {
+        std::map<st::worker::weight, st::worker*> wkr_map;
+
+        for(auto& w : wkrs) {
+            wkr_map[w->get_weight()] = w;
+        }
+
+        return wkr_map.begin()->second;
+    };
+
     {
         std::vector<st::worker::weight> v{
             wkr1->get_weight(), 
@@ -694,6 +704,33 @@ TEST(simple_thread, weight) {
             wkr3->get_weight()
         };
         EXPECT_EQ(get_lightest_weight(v), 1);
+    }
+
+    {
+        std::vector<st::worker*> v{
+            wkr1.get(), 
+            wkr2.get(),
+            wkr3.get(),
+            wkr4.get()
+        };
+        EXPECT_EQ(get_lightest(v), wkr4.get());
+    }
+
+    {
+        std::vector<st::worker*> v{
+            wkr1.get(), 
+            wkr2.get(),
+            wkr3.get()
+        };
+        EXPECT_EQ(get_lightest(v), wkr1.get());
+    }
+
+    {
+        std::vector<st::worker*> v{
+            wkr2.get(),
+            wkr3.get()
+        };
+        EXPECT_EQ(get_lightest(v), wkr3.get());
     }
 
     wait_ch->close();
