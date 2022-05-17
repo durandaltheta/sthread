@@ -98,7 +98,7 @@ Usage</h1>
 <li>Install the library and include the header <code><a class="el" href="simple__thread_8hpp.html" title="Simple interprocess threading and messaging.">simple_thread.hpp</a></code></li>
 <li>Create a class or struct with <code>void operator()(std::shared_ptr&lt;<a class="el" href="structst_1_1message.html" title="Interthread type erased message container.">st::message</a>&gt;)</code> to handle received messages (also called a 'functor')</li>
 <li>Define some enum to distinguish different messages</li>
-<li>Launch your thread with <code><a class="el" href="structst_1_1worker.html#a14b3199e47af486fe4c189846d634ee7">st::worker::make</a>&lt;YourClass&gt;()</code></li>
+<li>Launch your thread with <code><a class="el" href="structst_1_1worker.html#a14b3199e47af486fe4c189846d634ee7">st::worker::make</a>&lt;YourClassNameHere&gt;()</code></li>
 </ul>
 <h2><a class="anchor" id="autotoc_md5"></a>
 Basic Usage</h2>
@@ -215,11 +215,11 @@ Example 3:</h3>
 </div><!-- fragment --><p><code><a class="el" href="structst_1_1worker.html" title="Managed system worker thread.">st::worker</a></code>s will automatically shutdown and join when they are destructed. This can be done early with <code><a class="el" href="structst_1_1worker.html#a3f98d0479ad642ed572fd723caeb893d" title="Shutdown the worker thread.">st::worker::shutdown()</a></code>. <code><a class="el" href="structst_1_1worker.html" title="Managed system worker thread.">st::worker</a></code>s can also be restarted at any time with <code><a class="el" href="structst_1_1worker.html#a2e3f89739083c6d6779712081d30d459" title="Restart the worker thread.">st::worker::restart()</a></code>. See <a href="https://durandaltheta.github.io/sthread/">documentation</a> for more info.</p>
 <h2><a class="anchor" id="autotoc_md11"></a>
 Worker Constructor Arguments and Lifecycle</h2>
-<p><code><a class="el" href="structst_1_1worker.html" title="Managed system worker thread.">st::worker</a></code>s can be passed constructor arguments in <code><a class="el" href="structst_1_1worker.html#a14b3199e47af486fe4c189846d634ee7">st::worker::make</a>&lt;FUNCTOR&gt;(As&amp;&amp;...)</code>. The FUNCTOR class will be created on the new thread and destroyed before said thread ends.</p>
+<p><code><a class="el" href="structst_1_1worker.html" title="Managed system worker thread.">st::worker</a></code>s can be passed constructor arguments in <code><a class="el" href="structst_1_1worker.html#a14b3199e47af486fe4c189846d634ee7">st::worker::make</a>&lt;FUNCTOR&gt;(As&amp;&amp;...)</code>. The <code>FUNCTOR</code> class will be created on the new thread and destroyed before said thread ends.</p>
 <p>An <code><a class="el" href="structst_1_1worker.html" title="Managed system worker thread.">st::worker</a></code>'s <code>std::thread</code> will be shutdown and joined when any of the following happens:</p><ul>
 <li>The <code><a class="el" href="structst_1_1worker.html" title="Managed system worker thread.">st::worker</a></code>s last <code>std::shared_ptr</code> goes out of scope</li>
 <li><code><a class="el" href="structst_1_1worker.html#a3f98d0479ad642ed572fd723caeb893d" title="Shutdown the worker thread.">st::worker::shutdown()</a></code> is called on a worker</li>
-<li><code><a class="el" href="structst_1_1worker.html#a2e3f89739083c6d6779712081d30d459" title="Restart the worker thread.">st::worker::restart()</a></code> is called on a worker (and a new <code>std::thread</code> and FUNCTOR will be created before <code>restart()</code> returns)</li>
+<li><code><a class="el" href="structst_1_1worker.html#a2e3f89739083c6d6779712081d30d459" title="Restart the worker thread.">st::worker::restart()</a></code> is called on a worker (and a new <code>std::thread</code> and <code>FUNCTOR</code> will be created before <code>restart()</code> returns)</li>
 </ul>
 <h3><a class="anchor" id="autotoc_md12"></a>
 Example 4</h3>
