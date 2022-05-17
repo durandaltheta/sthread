@@ -32,7 +32,7 @@ Functors (as used by this library) have several advantages over raw functions.
   namespace, which is useful for organizing what messages the thread will
   listen for.
 - Functors allow for class method definitions, instead of forcing the user to rely on lambdas or global namespace functions if further function calls are desired.
-- Initialization (constructor), runtime execution (`void operator()(std::shared_ptr<st::message>`), and deinitialization (destructor) are broken in to separate functions, making each more readable. A thread running only a raw function requires everything be managed within that function.
+- Initialization (constructor), runtime execution (`void operator()(std::shared_ptr<st::message>`), and deinitialization (destructor) are broken in to separate functions, which I think makes them more readable. A thread running only a raw function requires everything be managed within that function.
 
 ## Usage
 - Install the library and include the header `simple_thread.hpp`
