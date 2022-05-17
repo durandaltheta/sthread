@@ -1,11 +1,13 @@
 #include <gtest/gtest.h>
 #include "simple_thread.hpp"
-#include <tuple>
 #include <thread>
 #include <string>
 #include <iostream>
 #include <chrono>
 #include <tuple>
+#include <vector>
+#include <set>
+#include <functional>
 
 TEST(simple_thread, message) {
     enum op {
@@ -623,6 +625,78 @@ TEST(simple_thread, this_worker) {
     EXPECT_FALSE(new_wkr);
     EXPECT_EQ(wp.use_count(), 1);
     EXPECT_EQ(new_wkr.use_count(), 0);
+}
+
+TEST(simple_thread, weight) {
+    struct hdl {
+        hdl(std::shared_ptr<st::channel> wait_ch) : m_wait_ch(wait_ch) { }
+
+        inline void operator()(std::shared_ptr<st::message> msg) {
+            m_wait_ch->recv(msg);
+        }
+
+        std::shared_ptr<st::channel> m_wait_ch;
+    };
+
+    auto wait_ch = st::channel::make();
+    auto wkr1 = st::worker::make<hdl>(wait_ch);
+    auto wkr2 = st::worker::make<hdl>(wait_ch);
+    auto wkr3 = st::worker::make<hdl>(wait_ch);
+    auto wkr4 = st::worker::make<hdl>(wait_ch);
+
+    auto send_msgs = [](std::shared_ptr<st::worker> wkr, int max) {
+        for(int i=0; i<max; i++) {
+            wkr->send(0);
+        }
+    };
+
+    send_msgs(wkr1, 1);
+    send_msgs(wkr2, 3);
+    send_msgs(wkr3, 2);
+
+    auto get_lightest_weight = [](std::vector<st::worker::weight> weights) -> int {
+        typedef std::vector<st::worker::weight>::size_type vint;
+        vint lightest_index = 0;
+        auto lightest_weight = weights[0];
+
+        for(vint i = 1; i<weights.size(); i++) {
+            if(weights[i] < lightest_weight) {
+                lightest_index = i;
+                lightest_weight = weights[i];
+            }
+        }
+
+        return lightest_index;
+    };
+
+    {
+        std::vector<st::worker::weight> v{
+            wkr1->get_weight(), 
+            wkr2->get_weight(),
+            wkr3->get_weight(),
+            wkr4->get_weight()
+        };
+        EXPECT_EQ(get_lightest_weight(v), 3);
+    }
+
+    {
+        std::vector<st::worker::weight> v{
+            wkr1->get_weight(), 
+            wkr2->get_weight(),
+            wkr3->get_weight()
+        };
+        EXPECT_EQ(get_lightest_weight(v), 0);
+    }
+
+    {
+        std::vector<st::worker::weight>v{
+            wkr2->get_weight(),
+            wkr3->get_weight()
+        };
+        EXPECT_EQ(get_lightest_weight(v), 1);
+    }
+
+    wait_ch->close();
 }
 
 // README EXAMPLES 

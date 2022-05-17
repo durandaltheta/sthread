@@ -168,7 +168,7 @@ struct channel {
     /**
      * @return count of messages in the queue
      */
-    inline std::size_t queued() {
+    inline std::size_t queued() const {
         std::lock_guard<std::mutex> lk(m_mtx);
         return m_msg_q.size();
     }
@@ -287,7 +287,7 @@ private:
     bool m_closed;
     bool m_proc_rem_msgs;
     std::size_t m_waiters_count; // heuristic to limit condition_variable signals
-    std::mutex m_mtx;
+    mutable std::mutex m_mtx;
     std::condition_variable m_cv;
     std::deque<std::shared_ptr<message>> m_msg_q;
 };
@@ -443,30 +443,12 @@ struct worker {
         }
     };
 
-    inline weight get_weight() {
+    /**
+     * @return weight representing workload of worker
+     */
+    inline weight get_weight() const {
         std::lock_guard<std::mutex> lk(m_mtx);
         return weight{m_ch->queued(), m_executing.load()};
-    }
-       
-    /** 
-     * @brief Compare workerload of two worker threads
-     *
-     * Convenience for doing clever things like ordering worker threads in an 
-     * std::set in order to select the least busy worker:
-     * ```
-     * worker& least_busy(std::vector<std::shared_ptr<st::worker>>& wkrs) {
-     *     std::set<worker&> ordered_wkrs;
-     *     for(auto& w : wkrs) {
-     *         ordered_wkrs.insert(*w);
-     *     }
-     *     return *(ordered_wkrs.begin());
-     * }
-     * ```
-     *
-     * @return true if this worker is less busy than the other 
-     */
-    inline bool operator<(const worker& rhs) {
-        return get_weight() < rhs.get_weight();
     }
 
     /**
@@ -564,9 +546,9 @@ private:
         m_thread_started_flag = false;
     }
     bool m_thread_started_flag;
-    std::atomic_bool m_executing;
+    mutable std::atomic_bool m_executing;
     std::weak_ptr<worker> m_self;
-    std::mutex m_mtx;
+    mutable std::mutex m_mtx;
     std::condition_variable m_cv;
     std::function<handler()> m_generate_handler;
     std::shared_ptr<channel> m_ch;
