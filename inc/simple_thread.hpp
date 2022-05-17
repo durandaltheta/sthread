@@ -16,7 +16,6 @@
 #include <atomic>
 #include <typeinfo>
 #include <functional>
-#include <future>
 
 namespace st {
 
