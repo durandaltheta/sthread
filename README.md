@@ -12,7 +12,7 @@
 - sudo make install 
 
 ## Purpose 
-This library seeks to easliy setup useful worker threads using a simple API.
+This library seeks to easily setup useful worker threads using a simple API.
 
 Instead of functions worker threads execute c++ functors. A functor is a class 
 which has a function call overload allowing you to execute the functor like a 
