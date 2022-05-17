@@ -9,7 +9,31 @@
 
 ## Installation
 - cmake .
-- sudo make install
+- sudo make install 
+
+## Purpose 
+This library seeks to easliy setup useful worker threads using a simple API.
+
+Instead of functions worker threads execute c++ functors. A functor is a class 
+which has a function call overload allowing you to execute the functor like a 
+function, IE:
+```
+struct MyClass {
+    inline void operator()(std::shared_ptr<st::message> msg) { /* ... */ }
+};
+```
+
+Functors (as used by this library) have several advantages over raw functions. 
+- The worker thread message receive loop is managed by the library 
+- The worker lifecycle is managed by the library 
+- Sending messages to the worker is provided by the library 
+- Functors allow for inheritance
+- Functors allow for public enumerations to be defined as part of its
+  namespace, which is useful for organizing what messages the thread will
+  listen for.
+- Initialization, runtime execution, and deinitialization are broken in to
+  separate functions, making each more readable. A thread running only a raw 
+  function requires everything be managed within that function.
 
 ## Usage
 - Install the library and include the header `simple_thread.hpp`
