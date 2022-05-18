@@ -184,7 +184,7 @@ struct channel {
     /**
      * @return true if channel is closed, else false 
      */
-    inline bool closed() {
+    inline bool closed() const {
         std::lock_guard<std::mutex> lk(m_mtx);
         return m_closed;
     }
