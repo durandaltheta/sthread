@@ -1026,10 +1026,6 @@ TEST(simple_thread, readme_example4) {
             get_string
         };
 
-        ~MyClass() {
-            std::cout << "goodbye" << std::endl;
-        }
-
         inline void operator()(std::shared_ptr<st::message> msg) {
             switch(msg->id()) {
                 case op::set_string:
