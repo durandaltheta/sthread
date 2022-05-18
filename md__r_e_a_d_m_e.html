@@ -268,38 +268,14 @@ Example 4</h3>
 <div class="line">0x800098150:goodbye</div>
 </div><!-- fragment --><h2><a class="anchor" id="autotoc_md15"></a>
 Use Functors to Abstract Message Passing Details</h2>
-<p>One useful advanced design pattern for functors is that we can abstract all of the operation details for message passing into the functor API, freeing the user from having to interact directly with the thread details.</p>
+<p>One useful advanced design pattern is abstracting all of the operation details for message passing into some API, freeing the user from having to interact directly with the thread details.</p>
 <h3><a class="anchor" id="autotoc_md16"></a>
 Example 5:</h3>
 <div class="fragment"><div class="line">#include &lt;iostream&gt;</div>
 <div class="line">#include &lt;string&gt;</div>
 <div class="line">#include &lt;sthread&gt;</div>
 <div class="line"> </div>
-<div class="line">struct MyClass {</div>
-<div class="line">    struct Interface {</div>
-<div class="line">        Interface(std::shared_ptr&lt;st::worker&gt; wkr) : m_wkr(wkr) { }</div>
-<div class="line"> </div>
-<div class="line">        inline void set_string(std::string txt) {</div>
-<div class="line">            m_wkr-&gt;send(MyClass::op::set_string, txt);</div>
-<div class="line">        }</div>
-<div class="line"> </div>
-<div class="line">        inline std::string get_string() {</div>
-<div class="line">            auto ret_ch = st::channel::make();</div>
-<div class="line">            m_wkr-&gt;send(MyClass::op::get_string, ret_ch);</div>
-<div class="line">            std::string s;</div>
-<div class="line">            std::shared_ptr&lt;st::message&gt; msg;</div>
-<div class="line">            ret_ch-&gt;recv(msg);</div>
-<div class="line">            msg-&gt;copy_data_to(s);</div>
-<div class="line">            return s;</div>
-<div class="line">        }</div>
-<div class="line"> </div>
-<div class="line">        std::shared_ptr&lt;st::worker&gt; m_wkr;</div>
-<div class="line">    };</div>
-<div class="line">        </div>
-<div class="line">    static inline Interface make() {</div>
-<div class="line">        return Interface(st::worker::make&lt;MyClass&gt;());</div>
-<div class="line">    }</div>
-<div class="line"> </div>
+<div class="line">struct MyClassWorker { </div>
 <div class="line">    enum op {</div>
 <div class="line">        set_string,</div>
 <div class="line">        get_string</div>
@@ -324,12 +300,36 @@ Example 5:</h3>
 <div class="line">    std::string m_str;</div>
 <div class="line">};</div>
 <div class="line"> </div>
+<div class="line">struct MyClass {</div>
+<div class="line">    static inline MyClass make() {</div>
+<div class="line">        return MyClass(st::worker::make&lt;MyClassWorker&gt;());</div>
+<div class="line">    }</div>
+<div class="line"> </div>
+<div class="line">    inline void set_string(std::string txt) {</div>
+<div class="line">        m_wkr-&gt;send(MyClassWorker::op::set_string, txt);</div>
+<div class="line">    }</div>
+<div class="line"> </div>
+<div class="line">    inline std::string get_string() {</div>
+<div class="line">        auto ret_ch = st::channel::make();</div>
+<div class="line">        m_wkr-&gt;send(MyClassWorker::op::get_string, ret_ch);</div>
+<div class="line">        std::string s;</div>
+<div class="line">        std::shared_ptr&lt;st::message&gt; msg;</div>
+<div class="line">        ret_ch-&gt;recv(msg);</div>
+<div class="line">        msg-&gt;copy_data_to(s);</div>
+<div class="line">        return s;</div>
+<div class="line">    }</div>
+<div class="line"> </div>
+<div class="line">private:</div>
+<div class="line">    MyClass(std::shared_ptr&lt;st::worker&gt; wkr) : m_wkr(wkr) { }</div>
+<div class="line">    std::shared_ptr&lt;st::worker&gt; m_wkr;</div>
+<div class="line">};</div>
+<div class="line"> </div>
 <div class="line">int main() {</div>
-<div class="line">    MyClass::Interface my_class_int = MyClass::make();</div>
-<div class="line">    my_class_int.set_string(&quot;hello&quot;);</div>
-<div class="line">    std::cout &lt;&lt; my_class_int.get_string() &lt;&lt; std::endl;</div>
-<div class="line">    my_class_int.set_string(&quot;hello hello&quot;);</div>
-<div class="line">    std::cout &lt;&lt; my_class_int.get_string() &lt;&lt; std::endl;</div>
+<div class="line">    MyClass my_class = MyClass::make();</div>
+<div class="line">    my_class.set_string(&quot;hello&quot;);</div>
+<div class="line">    std::cout &lt;&lt; my_class.get_string() &lt;&lt; std::endl;</div>
+<div class="line">    my_class.set_string(&quot;hello hello&quot;);</div>
+<div class="line">    std::cout &lt;&lt; my_class.get_string() &lt;&lt; std::endl;</div>
 <div class="line">}</div>
 </div><!-- fragment --><p>Terminal output might be: </p><div class="fragment"><div class="line">$./a.out</div>
 <div class="line">hello</div>
