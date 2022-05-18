@@ -4,24 +4,6 @@
 
 [Unit Test and Example Code](tst/simple_thread_tst.cpp)
 
-## Requirements
-- C++11 
-
-## Git Submodules
-This project uses Googletest as a submodule to build unit tests. If unit tests 
-are needed try cloning this project with submodules:
-- git clone --recurse-submodules https://github.com/durandaltheta/sthread
-
-## Installation
-- cmake .
-- sudo make install  
-
-## Build Unit Tests 
-- cmake .
-- make simple_thread_tst 
-
-simple_thread_tst binary will be placed in tst/ 
-
 ## Purpose 
 This header only library seeks to easily setup useful worker threads using a 
 simple API.
@@ -46,8 +28,26 @@ Functors (as used by this library) have several advantages over raw functions.
 - Functors allow for class method definitions, instead of forcing the user to rely on lambdas or global namespace functions if further function calls are desired.
 - Initialization (constructor), runtime execution (`void operator()(std::shared_ptr<st::message>`), and deinitialization (destructor) are broken in to separate functions, which I think makes them more readable. A thread running only a raw function requires everything be managed within that function.
 
+## Requirements
+- C++11 
+
+## Git Submodules
+This project uses Googletest as a submodule to build unit tests. If unit tests 
+are needed try cloning this project with submodules:
+- git clone --recurse-submodules https://github.com/durandaltheta/sthread
+
+## Installation
+- cmake .
+- sudo make install  
+
+## Build Unit Tests 
+- cmake .
+- make simple_thread_tst 
+
+simple_thread_tst binary will be placed in tst/ 
+
 ## Usage
-- Install the library and include the header `simple_thread.hpp`
+- Install the library and include the header `sthread` or `simple_thread.hpp`
 - Create a class or struct with `void operator()(std::shared_ptr<st::message>)` to 
 handle received messages (also called a 'functor')
 - Define some enum to distinguish different messages 
@@ -57,7 +57,7 @@ handle received messages (also called a 'functor')
 #### Example 1:
 ```
 #include <iostream>
-#include <simple_thread.hpp>
+#include <sthread>
 
 struct MyClass {
     enum op {
@@ -99,7 +99,7 @@ Message data payloads can be of any type and can be copied to argument `T t` wit
 ```
 #include <iostream>
 #include <string>
-#include <simple_thread.hpp>
+#include <sthread>
 
 struct MyClass {
     enum op {
@@ -141,7 +141,7 @@ Payload types can also be easily checked with `st::message::is<T>()` (returns `t
 ```
 #include <iostream>
 #include <string>
-#include <simple_thread.hpp>
+#include <sthread>
 
 struct MyClass {
     enum op {
@@ -199,7 +199,7 @@ An `st::worker`'s `std::thread` will be shutdown and joined when any of the foll
 ```
 #include <iostream>
 #include <string>
-#include <simple_thread.hpp>
+#include <sthread>
 
 struct MyClass {
     MyClass(std::string constructor_string, std::string destructor_string) :
@@ -240,7 +240,7 @@ The object that `st::worker`s use for communication in their `send()` methods is
 ```
 #include <iostream>
 #include <thread>
-#include <simple_thread.hpp>
+#include <sthread>
 
 struct MyClass {
     enum op {
@@ -299,7 +299,7 @@ Alternatively, the user can call said functions with explicit `false` to immedia
 ```
 #include <iostream>
 #include <thread>
-#include <simple_thread.hpp>
+#include <sthread>
 
 void looping_recv(std::shared_ptr<st::channel> ch) {
     std::shared_ptr<st::message> msg;
