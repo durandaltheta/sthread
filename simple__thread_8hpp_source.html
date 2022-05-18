@@ -183,77 +183,77 @@ $(function() {
 <div class="line"><a name="l00181"></a><span class="lineno">  181</span>&#160;        <span class="keywordflow">return</span> m_waiters_count;</div>
 <div class="line"><a name="l00182"></a><span class="lineno">  182</span>&#160;    }</div>
 <div class="line"><a name="l00183"></a><span class="lineno">  183</span>&#160; </div>
-<div class="line"><a name="l00189"></a><span class="lineno"><a class="line" href="structst_1_1channel.html#ac8be7ee6e79c7bc931d6b621efd1ef41">  189</a></span>&#160;    <span class="keyword">inline</span> <span class="keywordtype">bool</span> <a class="code" href="structst_1_1channel.html#ac8be7ee6e79c7bc931d6b621efd1ef41">send</a>(std::shared_ptr&lt;message&gt; m) {</div>
-<div class="line"><a name="l00190"></a><span class="lineno">  190</span>&#160;        <span class="keywordtype">bool</span> notify = <span class="keyword">false</span>;</div>
+<div class="line"><a name="l00187"></a><span class="lineno"><a class="line" href="structst_1_1channel.html#a5055f2993a20b50d85df93d840d2bed8">  187</a></span>&#160;    <span class="keyword">inline</span> <span class="keywordtype">bool</span> <a class="code" href="structst_1_1channel.html#a5055f2993a20b50d85df93d840d2bed8">closed</a>() {</div>
+<div class="line"><a name="l00188"></a><span class="lineno">  188</span>&#160;        std::lock_guard&lt;std::mutex&gt; lk(m_mtx);</div>
+<div class="line"><a name="l00189"></a><span class="lineno">  189</span>&#160;        <span class="keywordflow">return</span> m_closed;</div>
+<div class="line"><a name="l00190"></a><span class="lineno">  190</span>&#160;    }</div>
 <div class="line"><a name="l00191"></a><span class="lineno">  191</span>&#160; </div>
-<div class="line"><a name="l00192"></a><span class="lineno">  192</span>&#160;        {</div>
-<div class="line"><a name="l00193"></a><span class="lineno">  193</span>&#160;            std::lock_guard&lt;std::mutex&gt; lk(m_mtx);</div>
-<div class="line"><a name="l00194"></a><span class="lineno">  194</span>&#160;            <span class="keywordflow">if</span>(m_closed) {</div>
-<div class="line"><a name="l00195"></a><span class="lineno">  195</span>&#160;                <span class="keywordflow">return</span> <span class="keyword">false</span>;</div>
-<div class="line"><a name="l00196"></a><span class="lineno">  196</span>&#160;            }</div>
-<div class="line"><a name="l00197"></a><span class="lineno">  197</span>&#160; </div>
-<div class="line"><a name="l00198"></a><span class="lineno">  198</span>&#160;            m_msg_q.push_back(std::move(m));</div>
-<div class="line"><a name="l00199"></a><span class="lineno">  199</span>&#160; </div>
-<div class="line"><a name="l00200"></a><span class="lineno">  200</span>&#160;            <span class="keywordflow">if</span>(m_waiters_count) {</div>
-<div class="line"><a name="l00201"></a><span class="lineno">  201</span>&#160;                notify = <span class="keyword">true</span>;</div>
-<div class="line"><a name="l00202"></a><span class="lineno">  202</span>&#160;            }</div>
-<div class="line"><a name="l00203"></a><span class="lineno">  203</span>&#160;        }</div>
-<div class="line"><a name="l00204"></a><span class="lineno">  204</span>&#160; </div>
-<div class="line"><a name="l00205"></a><span class="lineno">  205</span>&#160;        <span class="keywordflow">if</span>(notify) {</div>
-<div class="line"><a name="l00206"></a><span class="lineno">  206</span>&#160;            m_cv.notify_all();</div>
-<div class="line"><a name="l00207"></a><span class="lineno">  207</span>&#160;        }</div>
-<div class="line"><a name="l00208"></a><span class="lineno">  208</span>&#160;        <span class="keywordflow">return</span> <span class="keyword">true</span>;</div>
-<div class="line"><a name="l00209"></a><span class="lineno">  209</span>&#160;    }</div>
-<div class="line"><a name="l00210"></a><span class="lineno">  210</span>&#160; </div>
-<div class="line"><a name="l00218"></a><span class="lineno">  218</span>&#160;    <span class="keyword">template</span> &lt;<span class="keyword">typename</span> T&gt;</div>
-<div class="line"><a name="l00219"></a><span class="lineno"><a class="line" href="structst_1_1channel.html#af83d3bb8066c56b34da035aa5e8e5242">  219</a></span>&#160;    <span class="keywordtype">bool</span> <a class="code" href="structst_1_1channel.html#af83d3bb8066c56b34da035aa5e8e5242">send</a>(std::size_t <span class="keywordtype">id</span>, T&amp;&amp; t) {</div>
-<div class="line"><a name="l00220"></a><span class="lineno">  220</span>&#160;        <span class="keywordflow">return</span> <a class="code" href="structst_1_1channel.html#ac8be7ee6e79c7bc931d6b621efd1ef41">send</a>(<a class="code" href="structst_1_1message.html#ab91fc0cf15e73952cda267badf6de1a5">message::make</a>(<span class="keywordtype">id</span>, std::forward&lt;T&gt;(t)));</div>
-<div class="line"><a name="l00221"></a><span class="lineno">  221</span>&#160;    }</div>
-<div class="line"><a name="l00222"></a><span class="lineno">  222</span>&#160;    </div>
-<div class="line"><a name="l00229"></a><span class="lineno"><a class="line" href="structst_1_1channel.html#a924fe695e59087359ed0597733d599ed">  229</a></span>&#160;    <span class="keywordtype">bool</span> <a class="code" href="structst_1_1channel.html#a924fe695e59087359ed0597733d599ed">send</a>(std::size_t <span class="keywordtype">id</span>) {</div>
-<div class="line"><a name="l00230"></a><span class="lineno">  230</span>&#160;        <span class="keywordflow">return</span> <a class="code" href="structst_1_1channel.html#ac8be7ee6e79c7bc931d6b621efd1ef41">send</a>(<a class="code" href="structst_1_1message.html#ab91fc0cf15e73952cda267badf6de1a5">message::make</a>(<span class="keywordtype">id</span>, 0));</div>
-<div class="line"><a name="l00231"></a><span class="lineno">  231</span>&#160;    }</div>
+<div class="line"><a name="l00199"></a><span class="lineno"><a class="line" href="structst_1_1channel.html#ae2a319160262483ed2e290d81390c456">  199</a></span>&#160;    <span class="keyword">inline</span> <span class="keywordtype">void</span> <a class="code" href="structst_1_1channel.html#ae2a319160262483ed2e290d81390c456">close</a>(<span class="keywordtype">bool</span> process_remaining_messages=<span class="keyword">true</span>) {</div>
+<div class="line"><a name="l00200"></a><span class="lineno">  200</span>&#160;        <span class="keywordtype">bool</span> notify = <span class="keyword">false</span>;</div>
+<div class="line"><a name="l00201"></a><span class="lineno">  201</span>&#160; </div>
+<div class="line"><a name="l00202"></a><span class="lineno">  202</span>&#160;        {</div>
+<div class="line"><a name="l00203"></a><span class="lineno">  203</span>&#160;            std::lock_guard&lt;std::mutex&gt; lk(m_mtx);</div>
+<div class="line"><a name="l00204"></a><span class="lineno">  204</span>&#160;            m_closed = <span class="keyword">true</span>;</div>
+<div class="line"><a name="l00205"></a><span class="lineno">  205</span>&#160;            m_proc_rem_msgs = process_remaining_messages;</div>
+<div class="line"><a name="l00206"></a><span class="lineno">  206</span>&#160; </div>
+<div class="line"><a name="l00207"></a><span class="lineno">  207</span>&#160;            <span class="keywordflow">if</span>(m_waiters_count) {</div>
+<div class="line"><a name="l00208"></a><span class="lineno">  208</span>&#160;                notify = <span class="keyword">true</span>;</div>
+<div class="line"><a name="l00209"></a><span class="lineno">  209</span>&#160;            }</div>
+<div class="line"><a name="l00210"></a><span class="lineno">  210</span>&#160;        }</div>
+<div class="line"><a name="l00211"></a><span class="lineno">  211</span>&#160; </div>
+<div class="line"><a name="l00212"></a><span class="lineno">  212</span>&#160;        <span class="keywordflow">if</span>(notify) {</div>
+<div class="line"><a name="l00213"></a><span class="lineno">  213</span>&#160;            m_cv.notify_all();</div>
+<div class="line"><a name="l00214"></a><span class="lineno">  214</span>&#160;        }</div>
+<div class="line"><a name="l00215"></a><span class="lineno">  215</span>&#160;    }</div>
+<div class="line"><a name="l00216"></a><span class="lineno">  216</span>&#160; </div>
+<div class="line"><a name="l00222"></a><span class="lineno"><a class="line" href="structst_1_1channel.html#ac8be7ee6e79c7bc931d6b621efd1ef41">  222</a></span>&#160;    <span class="keyword">inline</span> <span class="keywordtype">bool</span> <a class="code" href="structst_1_1channel.html#ac8be7ee6e79c7bc931d6b621efd1ef41">send</a>(std::shared_ptr&lt;message&gt; m) {</div>
+<div class="line"><a name="l00223"></a><span class="lineno">  223</span>&#160;        <span class="keywordtype">bool</span> notify = <span class="keyword">false</span>;</div>
+<div class="line"><a name="l00224"></a><span class="lineno">  224</span>&#160; </div>
+<div class="line"><a name="l00225"></a><span class="lineno">  225</span>&#160;        {</div>
+<div class="line"><a name="l00226"></a><span class="lineno">  226</span>&#160;            std::lock_guard&lt;std::mutex&gt; lk(m_mtx);</div>
+<div class="line"><a name="l00227"></a><span class="lineno">  227</span>&#160;            <span class="keywordflow">if</span>(m_closed) {</div>
+<div class="line"><a name="l00228"></a><span class="lineno">  228</span>&#160;                <span class="keywordflow">return</span> <span class="keyword">false</span>;</div>
+<div class="line"><a name="l00229"></a><span class="lineno">  229</span>&#160;            }</div>
+<div class="line"><a name="l00230"></a><span class="lineno">  230</span>&#160; </div>
+<div class="line"><a name="l00231"></a><span class="lineno">  231</span>&#160;            m_msg_q.push_back(std::move(m));</div>
 <div class="line"><a name="l00232"></a><span class="lineno">  232</span>&#160; </div>
-<div class="line"><a name="l00238"></a><span class="lineno"><a class="line" href="structst_1_1channel.html#a8728270df53a15139f91100ad396377f">  238</a></span>&#160;    <span class="keywordtype">bool</span> <a class="code" href="structst_1_1channel.html#a8728270df53a15139f91100ad396377f">recv</a>(std::shared_ptr&lt;message&gt;&amp; m) {</div>
-<div class="line"><a name="l00239"></a><span class="lineno">  239</span>&#160;        std::unique_lock&lt;std::mutex&gt; lk(m_mtx);</div>
-<div class="line"><a name="l00240"></a><span class="lineno">  240</span>&#160;        m_waiters_count++;</div>
-<div class="line"><a name="l00241"></a><span class="lineno">  241</span>&#160; </div>
-<div class="line"><a name="l00242"></a><span class="lineno">  242</span>&#160;        <span class="keywordflow">while</span>(m_msg_q.empty() &amp;&amp; !m_closed) {</div>
-<div class="line"><a name="l00243"></a><span class="lineno">  243</span>&#160;            m_cv.wait(lk);</div>
-<div class="line"><a name="l00244"></a><span class="lineno">  244</span>&#160;        }</div>
-<div class="line"><a name="l00245"></a><span class="lineno">  245</span>&#160;        </div>
-<div class="line"><a name="l00246"></a><span class="lineno">  246</span>&#160;        m_waiters_count--;</div>
-<div class="line"><a name="l00247"></a><span class="lineno">  247</span>&#160; </div>
-<div class="line"><a name="l00248"></a><span class="lineno">  248</span>&#160;        <span class="keywordflow">if</span>(!m_closed || (!m_msg_q.empty() &amp;&amp; m_proc_rem_msgs)) {</div>
-<div class="line"><a name="l00249"></a><span class="lineno">  249</span>&#160;            m = m_msg_q.front();</div>
-<div class="line"><a name="l00250"></a><span class="lineno">  250</span>&#160;            m_msg_q.pop_front();</div>
-<div class="line"><a name="l00251"></a><span class="lineno">  251</span>&#160;            <span class="keywordflow">return</span> <span class="keyword">true</span>;</div>
-<div class="line"><a name="l00252"></a><span class="lineno">  252</span>&#160;        } <span class="keywordflow">else</span> {</div>
-<div class="line"><a name="l00253"></a><span class="lineno">  253</span>&#160;            <span class="keywordflow">return</span> <span class="keyword">false</span>;</div>
-<div class="line"><a name="l00254"></a><span class="lineno">  254</span>&#160;        } </div>
-<div class="line"><a name="l00255"></a><span class="lineno">  255</span>&#160;    }</div>
-<div class="line"><a name="l00256"></a><span class="lineno">  256</span>&#160; </div>
-<div class="line"><a name="l00260"></a><span class="lineno"><a class="line" href="structst_1_1channel.html#a5055f2993a20b50d85df93d840d2bed8">  260</a></span>&#160;    <span class="keyword">inline</span> <span class="keywordtype">bool</span> <a class="code" href="structst_1_1channel.html#a5055f2993a20b50d85df93d840d2bed8">closed</a>() {</div>
-<div class="line"><a name="l00261"></a><span class="lineno">  261</span>&#160;        std::lock_guard&lt;std::mutex&gt; lk(m_mtx);</div>
-<div class="line"><a name="l00262"></a><span class="lineno">  262</span>&#160;        <span class="keywordflow">return</span> m_closed;</div>
-<div class="line"><a name="l00263"></a><span class="lineno">  263</span>&#160;    }</div>
-<div class="line"><a name="l00264"></a><span class="lineno">  264</span>&#160; </div>
-<div class="line"><a name="l00272"></a><span class="lineno"><a class="line" href="structst_1_1channel.html#ae2a319160262483ed2e290d81390c456">  272</a></span>&#160;    <span class="keyword">inline</span> <span class="keywordtype">void</span> <a class="code" href="structst_1_1channel.html#ae2a319160262483ed2e290d81390c456">close</a>(<span class="keywordtype">bool</span> process_remaining_messages=<span class="keyword">true</span>) {</div>
-<div class="line"><a name="l00273"></a><span class="lineno">  273</span>&#160;        <span class="keywordtype">bool</span> notify = <span class="keyword">false</span>;</div>
+<div class="line"><a name="l00233"></a><span class="lineno">  233</span>&#160;            <span class="keywordflow">if</span>(m_waiters_count) {</div>
+<div class="line"><a name="l00234"></a><span class="lineno">  234</span>&#160;                notify = <span class="keyword">true</span>;</div>
+<div class="line"><a name="l00235"></a><span class="lineno">  235</span>&#160;            }</div>
+<div class="line"><a name="l00236"></a><span class="lineno">  236</span>&#160;        }</div>
+<div class="line"><a name="l00237"></a><span class="lineno">  237</span>&#160; </div>
+<div class="line"><a name="l00238"></a><span class="lineno">  238</span>&#160;        <span class="keywordflow">if</span>(notify) {</div>
+<div class="line"><a name="l00239"></a><span class="lineno">  239</span>&#160;            m_cv.notify_all();</div>
+<div class="line"><a name="l00240"></a><span class="lineno">  240</span>&#160;        }</div>
+<div class="line"><a name="l00241"></a><span class="lineno">  241</span>&#160;        <span class="keywordflow">return</span> <span class="keyword">true</span>;</div>
+<div class="line"><a name="l00242"></a><span class="lineno">  242</span>&#160;    }</div>
+<div class="line"><a name="l00243"></a><span class="lineno">  243</span>&#160; </div>
+<div class="line"><a name="l00251"></a><span class="lineno">  251</span>&#160;    <span class="keyword">template</span> &lt;<span class="keyword">typename</span> T&gt;</div>
+<div class="line"><a name="l00252"></a><span class="lineno"><a class="line" href="structst_1_1channel.html#af83d3bb8066c56b34da035aa5e8e5242">  252</a></span>&#160;    <span class="keywordtype">bool</span> <a class="code" href="structst_1_1channel.html#af83d3bb8066c56b34da035aa5e8e5242">send</a>(std::size_t <span class="keywordtype">id</span>, T&amp;&amp; t) {</div>
+<div class="line"><a name="l00253"></a><span class="lineno">  253</span>&#160;        <span class="keywordflow">return</span> <a class="code" href="structst_1_1channel.html#ac8be7ee6e79c7bc931d6b621efd1ef41">send</a>(<a class="code" href="structst_1_1message.html#ab91fc0cf15e73952cda267badf6de1a5">message::make</a>(<span class="keywordtype">id</span>, std::forward&lt;T&gt;(t)));</div>
+<div class="line"><a name="l00254"></a><span class="lineno">  254</span>&#160;    }</div>
+<div class="line"><a name="l00255"></a><span class="lineno">  255</span>&#160;    </div>
+<div class="line"><a name="l00262"></a><span class="lineno"><a class="line" href="structst_1_1channel.html#a924fe695e59087359ed0597733d599ed">  262</a></span>&#160;    <span class="keywordtype">bool</span> <a class="code" href="structst_1_1channel.html#a924fe695e59087359ed0597733d599ed">send</a>(std::size_t <span class="keywordtype">id</span>) {</div>
+<div class="line"><a name="l00263"></a><span class="lineno">  263</span>&#160;        <span class="keywordflow">return</span> <a class="code" href="structst_1_1channel.html#ac8be7ee6e79c7bc931d6b621efd1ef41">send</a>(<a class="code" href="structst_1_1message.html#ab91fc0cf15e73952cda267badf6de1a5">message::make</a>(<span class="keywordtype">id</span>, 0));</div>
+<div class="line"><a name="l00264"></a><span class="lineno">  264</span>&#160;    }</div>
+<div class="line"><a name="l00265"></a><span class="lineno">  265</span>&#160; </div>
+<div class="line"><a name="l00271"></a><span class="lineno"><a class="line" href="structst_1_1channel.html#a8728270df53a15139f91100ad396377f">  271</a></span>&#160;    <span class="keywordtype">bool</span> <a class="code" href="structst_1_1channel.html#a8728270df53a15139f91100ad396377f">recv</a>(std::shared_ptr&lt;message&gt;&amp; m) {</div>
+<div class="line"><a name="l00272"></a><span class="lineno">  272</span>&#160;        std::unique_lock&lt;std::mutex&gt; lk(m_mtx);</div>
+<div class="line"><a name="l00273"></a><span class="lineno">  273</span>&#160;        m_waiters_count++;</div>
 <div class="line"><a name="l00274"></a><span class="lineno">  274</span>&#160; </div>
-<div class="line"><a name="l00275"></a><span class="lineno">  275</span>&#160;        {</div>
-<div class="line"><a name="l00276"></a><span class="lineno">  276</span>&#160;            std::lock_guard&lt;std::mutex&gt; lk(m_mtx);</div>
-<div class="line"><a name="l00277"></a><span class="lineno">  277</span>&#160;            m_closed = <span class="keyword">true</span>;</div>
-<div class="line"><a name="l00278"></a><span class="lineno">  278</span>&#160;            m_proc_rem_msgs = process_remaining_messages;</div>
-<div class="line"><a name="l00279"></a><span class="lineno">  279</span>&#160; </div>
-<div class="line"><a name="l00280"></a><span class="lineno">  280</span>&#160;            <span class="keywordflow">if</span>(m_waiters_count) {</div>
-<div class="line"><a name="l00281"></a><span class="lineno">  281</span>&#160;                notify = <span class="keyword">true</span>;</div>
-<div class="line"><a name="l00282"></a><span class="lineno">  282</span>&#160;            }</div>
-<div class="line"><a name="l00283"></a><span class="lineno">  283</span>&#160;        }</div>
-<div class="line"><a name="l00284"></a><span class="lineno">  284</span>&#160; </div>
-<div class="line"><a name="l00285"></a><span class="lineno">  285</span>&#160;        <span class="keywordflow">if</span>(notify) {</div>
-<div class="line"><a name="l00286"></a><span class="lineno">  286</span>&#160;            m_cv.notify_all();</div>
-<div class="line"><a name="l00287"></a><span class="lineno">  287</span>&#160;        }</div>
+<div class="line"><a name="l00275"></a><span class="lineno">  275</span>&#160;        <span class="keywordflow">while</span>(m_msg_q.empty() &amp;&amp; !m_closed) {</div>
+<div class="line"><a name="l00276"></a><span class="lineno">  276</span>&#160;            m_cv.wait(lk);</div>
+<div class="line"><a name="l00277"></a><span class="lineno">  277</span>&#160;        }</div>
+<div class="line"><a name="l00278"></a><span class="lineno">  278</span>&#160;        </div>
+<div class="line"><a name="l00279"></a><span class="lineno">  279</span>&#160;        m_waiters_count--;</div>
+<div class="line"><a name="l00280"></a><span class="lineno">  280</span>&#160; </div>
+<div class="line"><a name="l00281"></a><span class="lineno">  281</span>&#160;        <span class="keywordflow">if</span>(!m_closed || (!m_msg_q.empty() &amp;&amp; m_proc_rem_msgs)) {</div>
+<div class="line"><a name="l00282"></a><span class="lineno">  282</span>&#160;            m = m_msg_q.front();</div>
+<div class="line"><a name="l00283"></a><span class="lineno">  283</span>&#160;            m_msg_q.pop_front();</div>
+<div class="line"><a name="l00284"></a><span class="lineno">  284</span>&#160;            <span class="keywordflow">return</span> <span class="keyword">true</span>;</div>
+<div class="line"><a name="l00285"></a><span class="lineno">  285</span>&#160;        } <span class="keywordflow">else</span> {</div>
+<div class="line"><a name="l00286"></a><span class="lineno">  286</span>&#160;            <span class="keywordflow">return</span> <span class="keyword">false</span>;</div>
+<div class="line"><a name="l00287"></a><span class="lineno">  287</span>&#160;        } </div>
 <div class="line"><a name="l00288"></a><span class="lineno">  288</span>&#160;    }</div>
 <div class="line"><a name="l00289"></a><span class="lineno">  289</span>&#160; </div>
 <div class="line"><a name="l00290"></a><span class="lineno">  290</span>&#160;<span class="keyword">private</span>:</div>
@@ -444,15 +444,15 @@ $(function() {
 <div class="ttc" id="astructst_1_1worker_1_1weight_html_a9e4654f9c34c01857aec9de8c8b8178d"><div class="ttname"><a href="structst_1_1worker_1_1weight.html#a9e4654f9c34c01857aec9de8c8b8178d">st::worker::weight::empty</a></div><div class="ttdeci">bool empty() const</div><div class="ttdef"><b>Definition:</b> simple_thread.hpp:430</div></div>
 <div class="ttc" id="astructst_1_1worker_1_1weight_html_a49abef17f2e69695cd3b9ee61e278a09"><div class="ttname"><a href="structst_1_1worker_1_1weight.html#a49abef17f2e69695cd3b9ee61e278a09">st::worker::weight::executing</a></div><div class="ttdeci">bool executing</div><div class="ttdoc">represents if a worker is currently processing a message</div><div class="ttdef"><b>Definition:</b> simple_thread.hpp:425</div></div>
 <div class="ttc" id="astructst_1_1worker_html_a2e3f89739083c6d6779712081d30d459"><div class="ttname"><a href="structst_1_1worker.html#a2e3f89739083c6d6779712081d30d459">st::worker::restart</a></div><div class="ttdeci">void restart(bool process_remaining_messages=true)</div><div class="ttdoc">Restart the worker thread.</div><div class="ttdef"><b>Definition:</b> simple_thread.hpp:373</div></div>
-<div class="ttc" id="astructst_1_1channel_html_a5055f2993a20b50d85df93d840d2bed8"><div class="ttname"><a href="structst_1_1channel.html#a5055f2993a20b50d85df93d840d2bed8">st::channel::closed</a></div><div class="ttdeci">bool closed()</div><div class="ttdef"><b>Definition:</b> simple_thread.hpp:260</div></div>
+<div class="ttc" id="astructst_1_1channel_html_a5055f2993a20b50d85df93d840d2bed8"><div class="ttname"><a href="structst_1_1channel.html#a5055f2993a20b50d85df93d840d2bed8">st::channel::closed</a></div><div class="ttdeci">bool closed()</div><div class="ttdef"><b>Definition:</b> simple_thread.hpp:187</div></div>
 <div class="ttc" id="astructst_1_1channel_html_a0b6823d683246af3216f9e2e111f721d"><div class="ttname"><a href="structst_1_1channel.html#a0b6823d683246af3216f9e2e111f721d">st::channel::blocked</a></div><div class="ttdeci">std::size_t blocked() const</div><div class="ttdef"><b>Definition:</b> simple_thread.hpp:179</div></div>
-<div class="ttc" id="astructst_1_1channel_html_a924fe695e59087359ed0597733d599ed"><div class="ttname"><a href="structst_1_1channel.html#a924fe695e59087359ed0597733d599ed">st::channel::send</a></div><div class="ttdeci">bool send(std::size_t id)</div><div class="ttdef"><b>Definition:</b> simple_thread.hpp:229</div></div>
+<div class="ttc" id="astructst_1_1channel_html_a924fe695e59087359ed0597733d599ed"><div class="ttname"><a href="structst_1_1channel.html#a924fe695e59087359ed0597733d599ed">st::channel::send</a></div><div class="ttdeci">bool send(std::size_t id)</div><div class="ttdef"><b>Definition:</b> simple_thread.hpp:262</div></div>
 <div class="ttc" id="astructst_1_1worker_1_1weight_html_aeac5e0eace91027d966d6e4bf8edfe3f"><div class="ttname"><a href="structst_1_1worker_1_1weight.html#aeac5e0eace91027d966d6e4bf8edfe3f">st::worker::weight::queued</a></div><div class="ttdeci">std::size_t queued</div><div class="ttdoc">represents count of queued messages on a worker</div><div class="ttdef"><b>Definition:</b> simple_thread.hpp:420</div></div>
 <div class="ttc" id="astructst_1_1message_html_a8cfc67f035589432aefcb8d5a8da7b83"><div class="ttname"><a href="structst_1_1message.html#a8cfc67f035589432aefcb8d5a8da7b83">st::message::move_data_to</a></div><div class="ttdeci">bool move_data_to(T &amp;t)</div><div class="ttdef"><b>Definition:</b> simple_thread.hpp:116</div></div>
 <div class="ttc" id="astructst_1_1channel_html"><div class="ttname"><a href="structst_1_1channel.html">st::channel</a></div><div class="ttdoc">Interthread message passing queue.</div><div class="ttdef"><b>Definition:</b> simple_thread.hpp:158</div></div>
 <div class="ttc" id="astructst_1_1message_html_a23536bf1bda738b333fc6723c8502eb0"><div class="ttname"><a href="structst_1_1message.html#a23536bf1bda738b333fc6723c8502eb0">st::message::is</a></div><div class="ttdeci">bool is() const</div><div class="ttdef"><b>Definition:</b> simple_thread.hpp:89</div></div>
 <div class="ttc" id="astructst_1_1message_html_a1637dc0a9ce2d5375b201131707bf281"><div class="ttname"><a href="structst_1_1message.html#a1637dc0a9ce2d5375b201131707bf281">st::message::base</a></div><div class="ttdeci">typename std::remove_reference&lt; typename std::remove_cv&lt; T &gt;::type &gt;::type base</div><div class="ttdoc">Typedef representing the unqualified type of T.</div><div class="ttdef"><b>Definition:</b> simple_thread.hpp:34</div></div>
-<div class="ttc" id="astructst_1_1channel_html_ac8be7ee6e79c7bc931d6b621efd1ef41"><div class="ttname"><a href="structst_1_1channel.html#ac8be7ee6e79c7bc931d6b621efd1ef41">st::channel::send</a></div><div class="ttdeci">bool send(std::shared_ptr&lt; message &gt; m)</div><div class="ttdoc">Send a message over the channel.</div><div class="ttdef"><b>Definition:</b> simple_thread.hpp:189</div></div>
+<div class="ttc" id="astructst_1_1channel_html_ac8be7ee6e79c7bc931d6b621efd1ef41"><div class="ttname"><a href="structst_1_1channel.html#ac8be7ee6e79c7bc931d6b621efd1ef41">st::channel::send</a></div><div class="ttdeci">bool send(std::shared_ptr&lt; message &gt; m)</div><div class="ttdoc">Send a message over the channel.</div><div class="ttdef"><b>Definition:</b> simple_thread.hpp:222</div></div>
 <div class="ttc" id="astructst_1_1message_html_ad5aa6102d07ce7a9db428d161cad1aa8"><div class="ttname"><a href="structst_1_1message.html#ad5aa6102d07ce7a9db428d161cad1aa8">st::message::type</a></div><div class="ttdeci">std::size_t type() const</div><div class="ttdef"><b>Definition:</b> simple_thread.hpp:79</div></div>
 <div class="ttc" id="astructst_1_1worker_html_ace93fb50233de2fc2121c4e3d9d0eccc"><div class="ttname"><a href="structst_1_1worker.html#ace93fb50233de2fc2121c4e3d9d0eccc">st::worker::send</a></div><div class="ttdeci">bool send(std::size_t id, T &amp;&amp;t)</div><div class="ttdoc">Send a message over the channel with given parameters.</div><div class="ttdef"><b>Definition:</b> simple_thread.hpp:476</div></div>
 <div class="ttc" id="astructst_1_1worker_html_aec29be3a5f0972e678a756ff2a718a35"><div class="ttname"><a href="structst_1_1worker.html#aec29be3a5f0972e678a756ff2a718a35">st::worker::this_worker</a></div><div class="ttdeci">static std::weak_ptr&lt; worker &gt; this_worker()</div><div class="ttdoc">Provide access to calling worker object pointer.</div><div class="ttdef"><b>Definition:</b> simple_thread.hpp:503</div></div>
@@ -465,13 +465,13 @@ $(function() {
 <div class="ttc" id="astructst_1_1message_html"><div class="ttname"><a href="structst_1_1message.html">st::message</a></div><div class="ttdoc">Interthread type erased message container.</div><div class="ttdef"><b>Definition:</b> simple_thread.hpp:24</div></div>
 <div class="ttc" id="astructst_1_1worker_html"><div class="ttname"><a href="structst_1_1worker.html">st::worker</a></div><div class="ttdoc">Managed system worker thread.</div><div class="ttdef"><b>Definition:</b> simple_thread.hpp:306</div></div>
 <div class="ttc" id="astructst_1_1worker_1_1weight_html_af4420017c2a78e925f13717d9c650e3b"><div class="ttname"><a href="structst_1_1worker_1_1weight.html#af4420017c2a78e925f13717d9c650e3b">st::worker::weight::operator&lt;</a></div><div class="ttdeci">bool operator&lt;(const weight &amp;rhs) const</div><div class="ttdef"><b>Definition:</b> simple_thread.hpp:437</div></div>
-<div class="ttc" id="astructst_1_1channel_html_af83d3bb8066c56b34da035aa5e8e5242"><div class="ttname"><a href="structst_1_1channel.html#af83d3bb8066c56b34da035aa5e8e5242">st::channel::send</a></div><div class="ttdeci">bool send(std::size_t id, T &amp;&amp;t)</div><div class="ttdef"><b>Definition:</b> simple_thread.hpp:219</div></div>
-<div class="ttc" id="astructst_1_1channel_html_a8728270df53a15139f91100ad396377f"><div class="ttname"><a href="structst_1_1channel.html#a8728270df53a15139f91100ad396377f">st::channel::recv</a></div><div class="ttdeci">bool recv(std::shared_ptr&lt; message &gt; &amp;m)</div><div class="ttdoc">Receive a message over the channel.</div><div class="ttdef"><b>Definition:</b> simple_thread.hpp:238</div></div>
+<div class="ttc" id="astructst_1_1channel_html_af83d3bb8066c56b34da035aa5e8e5242"><div class="ttname"><a href="structst_1_1channel.html#af83d3bb8066c56b34da035aa5e8e5242">st::channel::send</a></div><div class="ttdeci">bool send(std::size_t id, T &amp;&amp;t)</div><div class="ttdef"><b>Definition:</b> simple_thread.hpp:252</div></div>
+<div class="ttc" id="astructst_1_1channel_html_a8728270df53a15139f91100ad396377f"><div class="ttname"><a href="structst_1_1channel.html#a8728270df53a15139f91100ad396377f">st::channel::recv</a></div><div class="ttdeci">bool recv(std::shared_ptr&lt; message &gt; &amp;m)</div><div class="ttdoc">Receive a message over the channel.</div><div class="ttdef"><b>Definition:</b> simple_thread.hpp:271</div></div>
 <div class="ttc" id="astructst_1_1worker_html_a9fdbdc777304056f87302fa60c266de0"><div class="ttname"><a href="structst_1_1worker.html#a9fdbdc777304056f87302fa60c266de0">st::worker::send</a></div><div class="ttdeci">bool send(std::shared_ptr&lt; message &gt; m)</div><div class="ttdoc">Send a message over the channel.</div><div class="ttdef"><b>Definition:</b> simple_thread.hpp:463</div></div>
 <div class="ttc" id="astructst_1_1message_html_abfd004b90e13b7eb6e46ffc75f4d26b9"><div class="ttname"><a href="structst_1_1message.html#abfd004b90e13b7eb6e46ffc75f4d26b9">st::message::id</a></div><div class="ttdeci">std::size_t id() const</div><div class="ttdef"><b>Definition:</b> simple_thread.hpp:70</div></div>
 <div class="ttc" id="astructst_1_1message_html_a712cfd7aa3954f29645561f4e29a4af3"><div class="ttname"><a href="structst_1_1message.html#a712cfd7aa3954f29645561f4e29a4af3">st::message::copy_data_to</a></div><div class="ttdeci">bool copy_data_to(T &amp;t)</div><div class="ttdef"><b>Definition:</b> simple_thread.hpp:100</div></div>
 <div class="ttc" id="astructst_1_1channel_html_ac184706f69b0d021e04606c0ad050652"><div class="ttname"><a href="structst_1_1channel.html#ac184706f69b0d021e04606c0ad050652">st::channel::make</a></div><div class="ttdeci">static std::shared_ptr&lt; channel &gt; make()</div><div class="ttdoc">Construct a channel as a shared_ptr.</div><div class="ttdef"><b>Definition:</b> simple_thread.hpp:163</div></div>
-<div class="ttc" id="astructst_1_1channel_html_ae2a319160262483ed2e290d81390c456"><div class="ttname"><a href="structst_1_1channel.html#ae2a319160262483ed2e290d81390c456">st::channel::close</a></div><div class="ttdeci">void close(bool process_remaining_messages=true)</div><div class="ttdoc">Close the channel.</div><div class="ttdef"><b>Definition:</b> simple_thread.hpp:272</div></div>
+<div class="ttc" id="astructst_1_1channel_html_ae2a319160262483ed2e290d81390c456"><div class="ttname"><a href="structst_1_1channel.html#ae2a319160262483ed2e290d81390c456">st::channel::close</a></div><div class="ttdeci">void close(bool process_remaining_messages=true)</div><div class="ttdoc">Close the channel.</div><div class="ttdef"><b>Definition:</b> simple_thread.hpp:199</div></div>
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
 Generated by &#160;<a href="http://www.doxygen.org/index.html">
