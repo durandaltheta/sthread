@@ -182,6 +182,39 @@ struct channel {
     }
 
     /**
+     * @return true if channel is closed, else false 
+     */
+    inline bool closed() {
+        std::lock_guard<std::mutex> lk(m_mtx);
+        return m_closed;
+    }
+
+    /**
+     * @brief Close the channel 
+     *
+     * Ends all current and future operations on the channel 
+     *
+     * @param process_remaining_messages if true allow current and future recv() to succeed until queue empty
+     */
+    inline void close(bool process_remaining_messages=true) {
+        bool notify = false;
+
+        {
+            std::lock_guard<std::mutex> lk(m_mtx);
+            m_closed = true;
+            m_proc_rem_msgs = process_remaining_messages;
+
+            if(m_waiters_count) {
+                notify = true;
+            }
+        }
+
+        if(notify) {
+            m_cv.notify_all();
+        }
+    }
+
+    /**
      * @brief Send a message over the channel
      * @param m interprocess message object
      * @return true on success, false if channel is closed
@@ -252,39 +285,6 @@ struct channel {
         } else {
             return false;
         } 
-    }
-
-    /**
-     * @return true if channel is closed, else false 
-     */
-    inline bool closed() {
-        std::lock_guard<std::mutex> lk(m_mtx);
-        return m_closed;
-    }
-
-    /**
-     * @brief Close the channel 
-     *
-     * Ends all current and future operations on the channel 
-     *
-     * @param process_remaining_messages if true allow recv() to succeed until queue empty
-     */
-    inline void close(bool process_remaining_messages=true) {
-        bool notify = false;
-
-        {
-            std::lock_guard<std::mutex> lk(m_mtx);
-            m_closed = true;
-            m_proc_rem_msgs = process_remaining_messages;
-
-            if(m_waiters_count) {
-                notify = true;
-            }
-        }
-
-        if(notify) {
-            m_cv.notify_all();
-        }
     }
 
 private:
