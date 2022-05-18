@@ -68,30 +68,6 @@ $(function() {
 <div class="textblock"><p><a href="https://durandaltheta.github.io/sthread/">Documentation</a></p>
 <p><a href="tst/simple_thread_tst.cpp">Unit Test and Example Code</a></p>
 <h1><a class="anchor" id="autotoc_md1"></a>
-Requirements</h1>
-<ul>
-<li>C++11</li>
-</ul>
-<h1><a class="anchor" id="autotoc_md2"></a>
-Git Submodules</h1>
-<p>This project uses Googletest as a submodule to build unit tests. If unit tests are needed try cloning this project with submodules:</p><ul>
-<li>git clone &ndash;recurse-submodules <a href="https://github.com/durandaltheta/sthread">https://github.com/durandaltheta/sthread</a></li>
-</ul>
-<h1><a class="anchor" id="autotoc_md3"></a>
-Installation</h1>
-<ul>
-<li>cmake .</li>
-<li>sudo make install <br  />
-</li>
-</ul>
-<h1><a class="anchor" id="autotoc_md4"></a>
-Build Unit Tests</h1>
-<ul>
-<li>cmake .</li>
-<li>make simple_thread_tst</li>
-</ul>
-<p>simple_thread_tst binary will be placed in tst/</p>
-<h1><a class="anchor" id="autotoc_md5"></a>
 Purpose</h1>
 <p>This header only library seeks to easily setup useful worker threads using a simple API.</p>
 <p>Instead of functions worker threads execute c++ functors. A functor is a class which has a function call overload allowing you to execute the functor like a function, IE: </p><div class="fragment"><div class="line">struct MyClass {</div>
@@ -106,10 +82,34 @@ Purpose</h1>
 <li>Functors allow for class method definitions, instead of forcing the user to rely on lambdas or global namespace functions if further function calls are desired.</li>
 <li>Initialization (constructor), runtime execution (<code>void operator()(std::shared_ptr&lt;<a class="el" href="structst_1_1message.html" title="Interthread type erased message container.">st::message</a>&gt;</code>), and deinitialization (destructor) are broken in to separate functions, which I think makes them more readable. A thread running only a raw function requires everything be managed within that function.</li>
 </ul>
+<h1><a class="anchor" id="autotoc_md2"></a>
+Requirements</h1>
+<ul>
+<li>C++11</li>
+</ul>
+<h1><a class="anchor" id="autotoc_md3"></a>
+Git Submodules</h1>
+<p>This project uses Googletest as a submodule to build unit tests. If unit tests are needed try cloning this project with submodules:</p><ul>
+<li>git clone &ndash;recurse-submodules <a href="https://github.com/durandaltheta/sthread">https://github.com/durandaltheta/sthread</a></li>
+</ul>
+<h1><a class="anchor" id="autotoc_md4"></a>
+Installation</h1>
+<ul>
+<li>cmake .</li>
+<li>sudo make install <br  />
+</li>
+</ul>
+<h1><a class="anchor" id="autotoc_md5"></a>
+Build Unit Tests</h1>
+<ul>
+<li>cmake .</li>
+<li>make simple_thread_tst</li>
+</ul>
+<p>simple_thread_tst binary will be placed in tst/</p>
 <h1><a class="anchor" id="autotoc_md6"></a>
 Usage</h1>
 <ul>
-<li>Install the library and include the header <code><a class="el" href="simple__thread_8hpp.html" title="Simple interprocess threading and messaging.">simple_thread.hpp</a></code></li>
+<li>Install the library and include the header <code>sthread</code> or <code><a class="el" href="simple__thread_8hpp.html" title="Simple interprocess threading and messaging.">simple_thread.hpp</a></code></li>
 <li>Create a class or struct with <code>void operator()(std::shared_ptr&lt;<a class="el" href="structst_1_1message.html" title="Interthread type erased message container.">st::message</a>&gt;)</code> to handle received messages (also called a 'functor')</li>
 <li>Define some enum to distinguish different messages</li>
 <li>Launch your thread with <code><a class="el" href="structst_1_1worker.html#a14b3199e47af486fe4c189846d634ee7">st::worker::make</a>&lt;YourClassNameHere&gt;()</code></li>
@@ -119,7 +119,7 @@ Basic Usage</h2>
 <h3><a class="anchor" id="autotoc_md8"></a>
 Example 1:</h3>
 <div class="fragment"><div class="line">#include &lt;iostream&gt;</div>
-<div class="line">#include &lt;simple_thread.hpp&gt;</div>
+<div class="line">#include &lt;sthread&gt;</div>
 <div class="line"> </div>
 <div class="line">struct MyClass {</div>
 <div class="line">    enum op {</div>
@@ -155,7 +155,7 @@ Message Payload Data</h2>
 Example 2:</h3>
 <div class="fragment"><div class="line">#include &lt;iostream&gt;</div>
 <div class="line">#include &lt;string&gt;</div>
-<div class="line">#include &lt;simple_thread.hpp&gt;</div>
+<div class="line">#include &lt;sthread&gt;</div>
 <div class="line"> </div>
 <div class="line">struct MyClass {</div>
 <div class="line">    enum op {</div>
@@ -191,7 +191,7 @@ Payload Type Checking</h2>
 Example 3:</h3>
 <div class="fragment"><div class="line">#include &lt;iostream&gt;</div>
 <div class="line">#include &lt;string&gt;</div>
-<div class="line">#include &lt;simple_thread.hpp&gt;</div>
+<div class="line">#include &lt;sthread&gt;</div>
 <div class="line"> </div>
 <div class="line">struct MyClass {</div>
 <div class="line">    enum op {</div>
@@ -240,7 +240,7 @@ Worker Constructor Arguments and Lifecycle</h2>
 Example 4</h3>
 <div class="fragment"><div class="line">#include &lt;iostream&gt;</div>
 <div class="line">#include &lt;string&gt;</div>
-<div class="line">#include &lt;simple_thread.hpp&gt;</div>
+<div class="line">#include &lt;sthread&gt;</div>
 <div class="line"> </div>
 <div class="line">struct MyClass {</div>
 <div class="line">    MyClass(std::string constructor_string, std::string destructor_string) :</div>
@@ -273,7 +273,7 @@ Channels</h2>
 Example 5:</h3>
 <div class="fragment"><div class="line">#include &lt;iostream&gt;</div>
 <div class="line">#include &lt;thread&gt;</div>
-<div class="line">#include &lt;simple_thread.hpp&gt;</div>
+<div class="line">#include &lt;sthread&gt;</div>
 <div class="line"> </div>
 <div class="line">struct MyClass {</div>
 <div class="line">    enum op {</div>
@@ -326,7 +326,7 @@ Close, Shutdown, and Restart</h2>
 Example 6:</h3>
 <div class="fragment"><div class="line">#include &lt;iostream&gt;</div>
 <div class="line">#include &lt;thread&gt;</div>
-<div class="line">#include &lt;simple_thread.hpp&gt;</div>
+<div class="line">#include &lt;sthread&gt;</div>
 <div class="line"> </div>
 <div class="line">void looping_recv(std::shared_ptr&lt;st::channel&gt; ch) {</div>
 <div class="line">    std::shared_ptr&lt;st::message&gt; msg;</div>
