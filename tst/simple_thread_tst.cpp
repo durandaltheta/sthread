@@ -1018,31 +1018,7 @@ TEST(simple_thread, readme_example4) {
 
 
 TEST(simple_thread, readme_example5) {
-    struct MyClass {
-        struct Interface {
-            Interface(std::shared_ptr<st::worker> wkr) : m_wkr(wkr) { }
-
-            inline void set_string(std::string txt) {
-                m_wkr->send(MyClass::op::set_string, txt);
-            }
-
-            inline std::string get_string() {
-                auto ret_ch = st::channel::make();
-                m_wkr->send(MyClass::op::get_string, ret_ch);
-                std::string s;
-                std::shared_ptr<st::message> msg;
-                ret_ch->recv(msg);
-                msg->copy_data_to(s);
-                return s;
-            }
-
-            std::shared_ptr<st::worker> m_wkr;
-        };
-            
-        static inline Interface make() {
-            return Interface(st::worker::make<MyClass>());
-        }
-
+    struct MyClassWorker { 
         enum op {
             set_string,
             get_string
@@ -1067,11 +1043,35 @@ TEST(simple_thread, readme_example5) {
         std::string m_str;
     };
 
-    MyClass::Interface my_class_int = MyClass::make();
-    my_class_int.set_string("hello");
-    std::cout << my_class_int.get_string() << std::endl;
-    my_class_int.set_string("hello hello");
-    std::cout << my_class_int.get_string() << std::endl;
+    struct MyClass {
+        static inline MyClass make() {
+            return MyClass(st::worker::make<MyClassWorker>());
+        }
+
+        inline void set_string(std::string txt) {
+            m_wkr->send(MyClassWorker::op::set_string, txt);
+        }
+
+        inline std::string get_string() {
+            auto ret_ch = st::channel::make();
+            m_wkr->send(MyClassWorker::op::get_string, ret_ch);
+            std::string s;
+            std::shared_ptr<st::message> msg;
+            ret_ch->recv(msg);
+            msg->copy_data_to(s);
+            return s;
+        }
+
+    private:
+        MyClass(std::shared_ptr<st::worker> wkr) : m_wkr(wkr) { }
+        std::shared_ptr<st::worker> m_wkr;
+    };
+
+    MyClass my_class = MyClass::make();
+    my_class.set_string("hello");
+    std::cout << my_class.get_string() << std::endl;
+    my_class.set_string("hello hello");
+    std::cout << my_class.get_string() << std::endl;
 }
 
 TEST(simple_thread, readme_example6) {
