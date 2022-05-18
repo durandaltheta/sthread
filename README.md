@@ -242,43 +242,18 @@ directly with the thread details.
 #include <string>
 #include <sthread>
 
-struct MyClassWorker { 
-    enum op {
-        set_string,
-        get_string
-    };
-
-    inline void operator()(std::shared_ptr<st::message> msg) {
-        switch(msg->id()) {
-            case op::set_string:
-                msg->copy_data_to(m_str);
-                break;
-            case op::get_string:
-            {
-                std::shared_ptr<st::channel> ret_ch;
-                if(msg->copy_data_to(ret_ch)) {
-                    ret_ch->send(0,m_str);
-                }
-                break;
-            }
-        }
-    }
-
-    std::string m_str;
-};
-
 struct MyClass {
     static inline MyClass make() {
-        return MyClass(st::worker::make<MyClassWorker>());
+        return MyClass(st::worker::make<Worker>());
     }
 
     inline void set_string(std::string txt) {
-        m_wkr->send(MyClassWorker::op::set_string, txt);
+        m_wkr->send(op::eset_string, txt);
     }
 
     inline std::string get_string() {
         auto ret_ch = st::channel::make();
-        m_wkr->send(MyClassWorker::op::get_string, ret_ch);
+        m_wkr->send(op::eget_string, ret_ch);
         std::string s;
         std::shared_ptr<st::message> msg;
         ret_ch->recv(msg);
@@ -287,7 +262,34 @@ struct MyClass {
     }
 
 private:
+    enum op {
+        eset_string,
+        eget_string
+    };
+
+    struct Worker { 
+        inline void operator()(std::shared_ptr<st::message> msg) {
+            switch(msg->id()) {
+                case op::eset_string:
+                    msg->copy_data_to(m_str);
+                    break;
+                case op::eget_string:
+                {
+                    std::shared_ptr<st::channel> ret_ch;
+                    if(msg->copy_data_to(ret_ch)) {
+                        ret_ch->send(0,m_str);
+                    }
+                    break;
+                }
+            }
+        }
+
+        std::string m_str;
+    };
+
     MyClass(std::shared_ptr<st::worker> wkr) : m_wkr(wkr) { }
+
+
     std::shared_ptr<st::worker> m_wkr;
 };
 
