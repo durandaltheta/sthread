@@ -267,10 +267,6 @@ Example 4:</h3>
 <div class="line">        get_string</div>
 <div class="line">    };</div>
 <div class="line"> </div>
-<div class="line">    ~MyClass() {</div>
-<div class="line">        std::cout &lt;&lt; &quot;goodbye&quot; &lt;&lt; std::endl;</div>
-<div class="line">    }</div>
-<div class="line"> </div>
 <div class="line">    inline void operator()(std::shared_ptr&lt;st::message&gt; msg) {</div>
 <div class="line">        switch(msg-&gt;id()) {</div>
 <div class="line">            case op::set_string:</div>
@@ -300,7 +296,6 @@ Example 4:</h3>
 </div><!-- fragment --><p>Terminal output might be: </p><div class="fragment"><div class="line">$./a.out</div>
 <div class="line">hello</div>
 <div class="line">hello hello</div>
-<div class="line">goodbye</div>
 </div><!-- fragment --><h2><a class="anchor" id="autotoc_md15"></a>
 Worker Constructor Arguments and Lifecycle</h2>
 <p><code><a class="el" href="structst_1_1worker.html" title="Managed system worker thread.">st::worker</a></code>s can be passed constructor arguments in <code><a class="el" href="structst_1_1worker.html#a14b3199e47af486fe4c189846d634ee7">st::worker::make</a>&lt;FUNCTOR&gt;(As&amp;&amp;...)</code>. The <code>FUNCTOR</code> class will be created on the new thread and destroyed before said thread ends.</p>
