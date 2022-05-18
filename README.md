@@ -22,9 +22,7 @@ Functors (as used by this library) have several advantages over raw functions.
 - The worker lifecycle is managed by the library 
 - Sending messages to the worker is provided by the library 
 - Functors allow for inheritance
-- Functors allow for public enumerations to be defined as part of its
-  namespace, which is useful for organizing what messages the thread will
-  listen for.
+- Functors allow for public enumerations and child classes to be defined as part of its namespace, which is useful for organizing what messages and message payload data types the thread will listen for.
 - Functors allow for class method definitions, instead of forcing the user to rely on lambdas, local objects or global namespace functions if further function calls are desired.
 - Initialization (constructor), runtime execution (`void operator()(std::shared_ptr<st::message>`), and deinitialization (destructor) are broken in to separate functions, which I think makes them more readable. A thread running only a raw function requires everything be managed within that function.
 
