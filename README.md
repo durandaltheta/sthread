@@ -185,12 +185,58 @@ hello 1 more time
 [documentation](https://durandaltheta.github.io/sthread/) for more info.
 
 
+### Worker Constructor Arguments and Lifecycle
+`st::worker`s can be passed constructor arguments in `st::worker::make<FUNCTOR>(As&&...)`. The `FUNCTOR` class will be created on the new thread and destroyed before said thread ends.
+
+An `st::worker`'s `std::thread` will be shutdown and joined when any of the following happens:
+- The `st::worker`s last `std::shared_ptr` goes out of scope
+- `st::worker::shutdown()` is called on a worker
+- `st::worker::restart()` is called on a worker (and a new `std::thread` and `FUNCTOR` will be created before `restart()` returns)
+
+#### Example 4
+```
+#include <iostream>
+#include <string>
+#include <sthread>
+
+struct MyClass {
+    MyClass(std::string constructor_string, std::string destructor_string) :
+        m_destructor_string(destructor_string)
+    {
+        std::cout << std::this_thread::get_id() << ":" << constructor_string << std::endl;
+    }
+
+    ~MyClass() {
+        std::cout << std::this_thread::get_id() << ":" <<  m_destructor_string << std::endl;
+    }
+
+    inline void operator()(std::shared_ptr<st::message> msg) { }
+
+    std::string m_destructor_string;
+};
+
+int main() {
+    std::cout << std::this_thread::get_id() << ":" <<  "parent thread started" << std::endl;
+    std::shared_ptr<st::worker> wkr = st::worker::make<MyClass>("hello", "goodbye");
+}
+
+```
+
+Terminal output might be:
+```
+$./a.out 
+0x800018040:parent thread started
+0x800098150:hello
+0x800098150:goodbye
+```
+
+
 ### Use Functors to Abstract Message Passing Details
 One useful advanced design pattern for functors is that we can abstract all of 
 the operation details for message passing into the functor API, freeing the user 
 from having to interact directly with the thread details.
 
-#### Example 4:
+#### Example 5:
 ```
 #include <iostream>
 #include <string>
@@ -259,52 +305,6 @@ Terminal output might be:
 $./a.out
 hello
 hello hello
-```
-
-
-### Worker Constructor Arguments and Lifecycle
-`st::worker`s can be passed constructor arguments in `st::worker::make<FUNCTOR>(As&&...)`. The `FUNCTOR` class will be created on the new thread and destroyed before said thread ends.
-
-An `st::worker`'s `std::thread` will be shutdown and joined when any of the following happens:
-- The `st::worker`s last `std::shared_ptr` goes out of scope
-- `st::worker::shutdown()` is called on a worker
-- `st::worker::restart()` is called on a worker (and a new `std::thread` and `FUNCTOR` will be created before `restart()` returns)
-
-#### Example 5
-```
-#include <iostream>
-#include <string>
-#include <sthread>
-
-struct MyClass {
-    MyClass(std::string constructor_string, std::string destructor_string) :
-        m_destructor_string(destructor_string)
-    {
-        std::cout << std::this_thread::get_id() << ":" << constructor_string << std::endl;
-    }
-
-    ~MyClass() {
-        std::cout << std::this_thread::get_id() << ":" <<  m_destructor_string << std::endl;
-    }
-
-    inline void operator()(std::shared_ptr<st::message> msg) { }
-
-    std::string m_destructor_string;
-};
-
-int main() {
-    std::cout << std::this_thread::get_id() << ":" <<  "parent thread started" << std::endl;
-    std::shared_ptr<st::worker> wkr = st::worker::make<MyClass>("hello", "goodbye");
-}
-
-```
-
-Terminal output might be:
-```
-$./a.out 
-0x800018040:parent thread started
-0x800098150:hello
-0x800098150:goodbye
 ```
 
 

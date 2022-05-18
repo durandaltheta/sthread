@@ -997,6 +997,28 @@ TEST(simple_thread, readme_example3) {
 
 TEST(simple_thread, readme_example4) {
     struct MyClass {
+        MyClass(std::string constructor_string, std::string destructor_string) :
+            m_destructor_string(destructor_string)
+        {
+            std::cout << std::this_thread::get_id() << ":" << constructor_string << std::endl;
+        }
+
+        ~MyClass() {
+            std::cout << std::this_thread::get_id() << ":" <<  m_destructor_string << std::endl;
+        }
+
+        inline void operator()(std::shared_ptr<st::message> msg) { }
+
+        std::string m_destructor_string;
+    };
+
+    std::cout << std::this_thread::get_id() << ":" <<  "parent thread started" << std::endl;
+    std::shared_ptr<st::worker> wkr = st::worker::make<MyClass>("hello", "goodbye");
+}
+
+
+TEST(simple_thread, readme_example5) {
+    struct MyClass {
         struct Interface {
             Interface(std::shared_ptr<st::worker> wkr) : m_wkr(wkr) { }
 
@@ -1050,27 +1072,6 @@ TEST(simple_thread, readme_example4) {
     std::cout << my_class_int.get_string() << std::endl;
     my_class_int.set_string("hello hello");
     std::cout << my_class_int.get_string() << std::endl;
-}
-
-TEST(simple_thread, readme_example5) {
-    struct MyClass {
-        MyClass(std::string constructor_string, std::string destructor_string) :
-            m_destructor_string(destructor_string)
-        {
-            std::cout << std::this_thread::get_id() << ":" << constructor_string << std::endl;
-        }
-
-        ~MyClass() {
-            std::cout << std::this_thread::get_id() << ":" <<  m_destructor_string << std::endl;
-        }
-
-        inline void operator()(std::shared_ptr<st::message> msg) { }
-
-        std::string m_destructor_string;
-    };
-
-    std::cout << std::this_thread::get_id() << ":" <<  "parent thread started" << std::endl;
-    std::shared_ptr<st::worker> wkr = st::worker::make<MyClass>("hello", "goodbye");
 }
 
 TEST(simple_thread, readme_example6) {
