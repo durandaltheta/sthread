@@ -226,6 +226,7 @@ TEST(simple_thread, channel) {
     EXPECT_EQ(msg->id(), op::unknown);
 
     ch->close();
+    EXPECT_TRUE(ch->closed());
     thd.join();
 }
 
@@ -736,6 +737,7 @@ TEST(simple_thread, weight) {
     }
 
     wait_ch->close();
+    EXPECT_TRUE(wait_ch->closed());
 }
 
 // README EXAMPLES 
@@ -899,5 +901,6 @@ TEST(simple_thread, readme_example6) {
     my_channel->send(0, std::string("And I say hello"));
 
     my_channel->close(); // end thread looping 
+    EXPECT_TRUE(my_channel->closed());
     my_thread.join(); // join thread
 }
