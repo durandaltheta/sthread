@@ -13,7 +13,6 @@
 #include <mutex>
 #include <condition_variable>
 #include <deque>
-#include <atomic>
 #include <typeinfo>
 #include <functional>
 
@@ -172,6 +171,14 @@ struct channel {
     inline std::size_t queued() const {
         std::lock_guard<std::mutex> lk(m_mtx);
         return m_msg_q.size();
+    }
+
+    /**
+     * @return count of threads blocked on recv()
+     */
+    inline std::size_t blocked() const {
+        std::lock_guard<std::mutex> lk(m_mtx);
+        return m_waiters_count;
     }
 
     /**
@@ -381,12 +388,8 @@ struct worker {
             m_cv.notify_one();
 
             while(m_ch->recv(m)) {
-                m_executing.store(true);
-
                 hdl(m);
                 m.reset();
-
-                m_executing.store(false);
             }
 
             tl_worker() = nullptr; // reset the thread local worker pointer
@@ -449,7 +452,7 @@ struct worker {
      */
     inline weight get_weight() const {
         std::lock_guard<std::mutex> lk(m_mtx);
-        return weight{m_ch->queued(), m_executing.load()};
+        return weight{m_ch->queued(), m_ch->blocked() ? false : true};
     }
 
     /**
@@ -515,7 +518,6 @@ private:
     template <typename FUNCTOR, typename... As>
     worker(type_hint<FUNCTOR> t, As&&... as) : 
         m_thread_started_flag(false) {
-        m_executing.store(false);
         // generate handler is called late and allocates a shared_ptr to allow 
         // for a single construction and destruction of type FUNCTOR in the 
         // worker thread environment. 
@@ -547,7 +549,6 @@ private:
         m_thread_started_flag = false;
     }
     bool m_thread_started_flag;
-    mutable std::atomic_bool m_executing;
     std::weak_ptr<worker> m_self;
     mutable std::mutex m_mtx;
     std::condition_variable m_cv;
