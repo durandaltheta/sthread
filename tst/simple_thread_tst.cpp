@@ -261,7 +261,11 @@ TEST(simple_thread, worker_lifecycle) {
 
         EXPECT_FALSE(thread_running);
         EXPECT_FALSE(wkr->running());
-        EXPECT_EQ(wkr->queued(),0);
+
+        auto wt = wkr->get_weight();
+        EXPECT_TRUE(wt.empty());
+        EXPECT_EQ(wt.queued, 0);
+        EXPECT_FALSE(wt.executing);
     }
 
     // hard shutdown via `st::worker::shutdown(false)`
@@ -282,7 +286,15 @@ TEST(simple_thread, worker_lifecycle) {
 
         EXPECT_FALSE(thread_running);
         EXPECT_FALSE(wkr->running());
-        EXPECT_NE(wkr->queued(),0);
+
+        auto wt = wkr->get_weight();
+        EXPECT_TRUE(wt.empty());
+        EXPECT_EQ(wt.queued, 0);
+        EXPECT_FALSE(wt.executing);
+    }
+
+    // double hard shutdown 
+    {
     }
 
     // shutdown via `st::~worker()`
@@ -323,7 +335,11 @@ TEST(simple_thread, worker_lifecycle) {
 
         EXPECT_TRUE(thread_running);
         EXPECT_TRUE(wkr->running());
-        EXPECT_EQ(wkr->queued(),0);
+
+        auto wt = wkr->get_weight();
+        EXPECT_TRUE(wt.empty());
+        EXPECT_EQ(wt.queued, 0);
+        EXPECT_FALSE(wt.executing);
     }
 
     // restart & shutdown via `st::worker::restart()`
@@ -344,13 +360,25 @@ TEST(simple_thread, worker_lifecycle) {
 
         EXPECT_FALSE(thread_running);
         EXPECT_FALSE(wkr->running());
-        EXPECT_EQ(wkr->queued(),0);
+
+        {
+            auto wt = wkr->get_weight();
+            EXPECT_TRUE(wt.empty());
+            EXPECT_EQ(wt.queued, 0);
+            EXPECT_FALSE(wt.executing);
+        }
 
         wkr->restart();
 
         EXPECT_TRUE(thread_running);
         EXPECT_TRUE(wkr->running());
-        EXPECT_EQ(wkr->queued(),0);
+
+        {
+            auto wt = wkr->get_weight();
+            EXPECT_TRUE(wt.empty());
+            EXPECT_EQ(wt.queued, 0);
+            EXPECT_FALSE(wt.executing);
+        }
     }
 
     // hard restart & shutdown via `st::worker::restart(false)`
@@ -371,13 +399,25 @@ TEST(simple_thread, worker_lifecycle) {
 
         EXPECT_FALSE(thread_running);
         EXPECT_FALSE(wkr->running());
-        EXPECT_NE(wkr->queued(),0);
+
+        {
+            auto wt = wkr->get_weight();
+            EXPECT_TRUE(wt.empty());
+            EXPECT_EQ(wt.queued, 0);
+            EXPECT_FALSE(wt.executing);
+        }
 
         wkr->restart(false);
 
         EXPECT_TRUE(thread_running);
         EXPECT_TRUE(wkr->running());
-        EXPECT_EQ(wkr->queued(),0);
+
+        {
+            auto wt = wkr->get_weight();
+            EXPECT_TRUE(wt.empty());
+            EXPECT_EQ(wt.queued, 0);
+            EXPECT_FALSE(wt.executing);
+        }
     }
 }
 

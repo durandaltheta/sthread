@@ -202,7 +202,10 @@ struct channel {
         {
             std::lock_guard<std::mutex> lk(m_mtx);
             m_closed = true;
-            m_proc_rem_msgs = process_remaining_messages;
+
+            if(!process_remaining_messages) {
+                m_msg_q.clear();
+            }
 
             if(m_waiters_count) {
                 notify = true;
@@ -236,7 +239,7 @@ struct channel {
         }
 
         if(notify) {
-            m_cv.notify_all();
+            m_cv.notify_one();
         }
         return true;
     }
@@ -278,22 +281,21 @@ struct channel {
         
         m_waiters_count--;
 
-        if(!m_closed || (!m_msg_q.empty() && m_proc_rem_msgs)) {
+        if(m_msg_q.empty()) {
+            return false;
+        } else {
             m = m_msg_q.front();
             m_msg_q.pop_front();
             return true;
-        } else {
-            return false;
         } 
     }
 
 private:
-    channel() : m_closed(false), m_proc_rem_msgs(false), m_waiters_count(0) { }
+    channel() : m_closed(false), m_waiters_count(0) { }
     channel(const channel& rhs) = delete;
     channel(channel&& rhs) = delete;
 
     bool m_closed;
-    bool m_proc_rem_msgs;
     std::size_t m_waiters_count; // heuristic to limit condition_variable signals
     mutable std::mutex m_mtx;
     std::condition_variable m_cv;
@@ -401,14 +403,6 @@ struct worker {
     }
 
     /**
-     * @return count of messages in the queue
-     */
-    inline std::size_t queued() {
-        std::lock_guard<std::mutex> lk(m_mtx);
-        return m_ch->queued();
-    }
-
-    /**
      * @brief class describing the workload of a worker
      *
      * Useful for comparing relative worker thread workloads when scheduling.
@@ -452,7 +446,10 @@ struct worker {
      */
     inline weight get_weight() const {
         std::lock_guard<std::mutex> lk(m_mtx);
-        return weight{m_ch->queued(), m_ch->blocked() ? false : true};
+        return weight{m_ch->queued(), 
+                      m_ch->blocked() ? false 
+                                      : m_thd.joinable() ? true 
+                                                         : false};
     }
 
     /**
