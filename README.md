@@ -289,7 +289,6 @@ private:
 
     MyClass(std::shared_ptr<st::worker> wkr) : m_wkr(wkr) { }
 
-
     std::shared_ptr<st::worker> m_wkr;
 };
 

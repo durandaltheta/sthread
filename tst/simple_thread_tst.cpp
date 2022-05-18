@@ -1065,7 +1065,6 @@ TEST(simple_thread, readme_example5) {
 
         MyClass(std::shared_ptr<st::worker> wkr) : m_wkr(wkr) { }
 
-
         std::shared_ptr<st::worker> m_wkr;
     };
 
