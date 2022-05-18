@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['get_5fweight_37',['get_weight',['../structst_1_1worker.html#a863e47912a13157526607609056761b8',1,'st::worker']]]
+  ['empty_38',['empty',['../structst_1_1worker_1_1weight.html#a9e4654f9c34c01857aec9de8c8b8178d',1,'st::worker::weight']]]
 ];

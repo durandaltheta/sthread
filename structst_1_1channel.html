@@ -83,6 +83,8 @@ $(function() {
 Public Member Functions</h2></td></tr>
 <tr class="memitem:ae8aadf196a461711905255b1d129026e"><td class="memItemLeft" align="right" valign="top">std::size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structst_1_1channel.html#ae8aadf196a461711905255b1d129026e">queued</a> () const</td></tr>
 <tr class="separator:ae8aadf196a461711905255b1d129026e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0b6823d683246af3216f9e2e111f721d"><td class="memItemLeft" align="right" valign="top">std::size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structst_1_1channel.html#a0b6823d683246af3216f9e2e111f721d">blocked</a> () const</td></tr>
+<tr class="separator:a0b6823d683246af3216f9e2e111f721d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ac8be7ee6e79c7bc931d6b621efd1ef41"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structst_1_1channel.html#ac8be7ee6e79c7bc931d6b621efd1ef41">send</a> (std::shared_ptr&lt; <a class="el" href="structst_1_1message.html">message</a> &gt; m)</td></tr>
 <tr class="memdesc:ac8be7ee6e79c7bc931d6b621efd1ef41"><td class="mdescLeft">&#160;</td><td class="mdescRight">Send a message over the channel.  <a href="structst_1_1channel.html#ac8be7ee6e79c7bc931d6b621efd1ef41">More...</a><br /></td></tr>
 <tr class="separator:ac8be7ee6e79c7bc931d6b621efd1ef41"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -110,6 +112,32 @@ Static Public Member Functions</h2></td></tr>
 <div class="textblock"><p>Interthread message passing queue. </p>
 <p>The internal mechanism used by this library to communicate between managed system threads. Provided here as a convenience for communicating from managed system threads to other user threads. </p>
 </div><h2 class="groupheader">Member Function Documentation</h2>
+<a id="a0b6823d683246af3216f9e2e111f721d"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a0b6823d683246af3216f9e2e111f721d">&#9670;&nbsp;</a></span>blocked()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::size_t st::channel::blocked </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<dl class="section return"><dt>Returns</dt><dd>count of threads blocked on <a class="el" href="structst_1_1channel.html#a8728270df53a15139f91100ad396377f" title="Receive a message over the channel.">recv()</a> </dd></dl>
+
+</div>
+</div>
 <a id="ae2a319160262483ed2e290d81390c456"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#ae2a319160262483ed2e290d81390c456">&#9670;&nbsp;</a></span>close()</h2>
 
