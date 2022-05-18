@@ -229,6 +229,79 @@ Example 3:</h3>
 <div class="line">hello 1 more time</div>
 </div><!-- fragment --><p><code><a class="el" href="structst_1_1worker.html" title="Managed system worker thread.">st::worker</a></code>s will automatically shutdown and join when they are destructed. This can be done early with <code><a class="el" href="structst_1_1worker.html#a3f98d0479ad642ed572fd723caeb893d" title="Shutdown the worker thread.">st::worker::shutdown()</a></code>. <code><a class="el" href="structst_1_1worker.html" title="Managed system worker thread.">st::worker</a></code>s can also be restarted at any time with <code><a class="el" href="structst_1_1worker.html#a2e3f89739083c6d6779712081d30d459" title="Restart the worker thread.">st::worker::restart()</a></code>. See <a href="https://durandaltheta.github.io/sthread/">documentation</a> for more info.</p>
 <h2><a class="anchor" id="autotoc_md13"></a>
+Use Functors to Abstract Message Passing Details</h2>
+<p>One useful advanced design pattern for functors is that we can abstract all of the operation details for message passing into the functor API, freeing the user from having to interact directly with the thread details.</p>
+<h3><a class="anchor" id="autotoc_md14"></a>
+Example 4:</h3>
+<div class="fragment"><div class="line">#include &lt;iostream&gt;</div>
+<div class="line">#include &lt;string&gt;</div>
+<div class="line">#include &lt;sthread&gt;</div>
+<div class="line"> </div>
+<div class="line">struct MyClass {</div>
+<div class="line">    struct Interface {</div>
+<div class="line">        Interface(std::shared_ptr&lt;st::worker&gt; wkr) : m_wkr(wkr) { }</div>
+<div class="line"> </div>
+<div class="line">        inline void set_string(std::string txt) {</div>
+<div class="line">            m_wkr-&gt;send(MyClass::op::set_string, txt);</div>
+<div class="line">        }</div>
+<div class="line"> </div>
+<div class="line">        inline std::string get_string() {</div>
+<div class="line">            auto ret_ch = st::channel::make();</div>
+<div class="line">            m_wkr-&gt;send(MyClass::op::get_string, ret_ch);</div>
+<div class="line">            std::string s;</div>
+<div class="line">            std::shared_ptr&lt;st::message&gt; msg;</div>
+<div class="line">            ret_ch-&gt;recv(msg);</div>
+<div class="line">            msg-&gt;copy_data_to(s);</div>
+<div class="line">            return s;</div>
+<div class="line">        }</div>
+<div class="line"> </div>
+<div class="line">        std::shared_ptr&lt;st::worker&gt; m_wkr;</div>
+<div class="line">    };</div>
+<div class="line">        </div>
+<div class="line">    static inline Interface make() {</div>
+<div class="line">        return Interface(st::worker::make&lt;MyClass&gt;());</div>
+<div class="line">    }</div>
+<div class="line"> </div>
+<div class="line">    enum op {</div>
+<div class="line">        set_string,</div>
+<div class="line">        get_string</div>
+<div class="line">    };</div>
+<div class="line"> </div>
+<div class="line">    ~MyClass() {</div>
+<div class="line">        std::cout &lt;&lt; &quot;goodbye&quot; &lt;&lt; std::endl;</div>
+<div class="line">    }</div>
+<div class="line"> </div>
+<div class="line">    inline void operator()(std::shared_ptr&lt;st::message&gt; msg) {</div>
+<div class="line">        switch(msg-&gt;id()) {</div>
+<div class="line">            case op::set_string:</div>
+<div class="line">                msg-&gt;copy_data_to(m_str);</div>
+<div class="line">                break;</div>
+<div class="line">            case op::get_string:</div>
+<div class="line">            {</div>
+<div class="line">                std::shared_ptr&lt;st::channel&gt; ret_ch;</div>
+<div class="line">                if(msg-&gt;copy_data_to(ret_ch)) {</div>
+<div class="line">                    ret_ch-&gt;send(0,m_str);</div>
+<div class="line">                }</div>
+<div class="line">                break;</div>
+<div class="line">            }</div>
+<div class="line">        }</div>
+<div class="line">    }</div>
+<div class="line"> </div>
+<div class="line">    std::string m_str;</div>
+<div class="line">};</div>
+<div class="line"> </div>
+<div class="line">int main() {</div>
+<div class="line">    MyClass::Interface my_class_int = MyClass::make();</div>
+<div class="line">    my_class_int.set_string(&quot;hello&quot;);</div>
+<div class="line">    std::cout &lt;&lt; my_class_int.get_string() &lt;&lt; std::endl;</div>
+<div class="line">    my_class_int.set_string(&quot;hello hello&quot;);</div>
+<div class="line">    std::cout &lt;&lt; my_class_int.get_string() &lt;&lt; std::endl;</div>
+<div class="line">}</div>
+</div><!-- fragment --><p>Terminal output might be: </p><div class="fragment"><div class="line">$./a.out</div>
+<div class="line">hello</div>
+<div class="line">hello hello</div>
+<div class="line">goodbye</div>
+</div><!-- fragment --><h2><a class="anchor" id="autotoc_md15"></a>
 Worker Constructor Arguments and Lifecycle</h2>
 <p><code><a class="el" href="structst_1_1worker.html" title="Managed system worker thread.">st::worker</a></code>s can be passed constructor arguments in <code><a class="el" href="structst_1_1worker.html#a14b3199e47af486fe4c189846d634ee7">st::worker::make</a>&lt;FUNCTOR&gt;(As&amp;&amp;...)</code>. The <code>FUNCTOR</code> class will be created on the new thread and destroyed before said thread ends.</p>
 <p>An <code><a class="el" href="structst_1_1worker.html" title="Managed system worker thread.">st::worker</a></code>'s <code>std::thread</code> will be shutdown and joined when any of the following happens:</p><ul>
@@ -236,8 +309,8 @@ Worker Constructor Arguments and Lifecycle</h2>
 <li><code><a class="el" href="structst_1_1worker.html#a3f98d0479ad642ed572fd723caeb893d" title="Shutdown the worker thread.">st::worker::shutdown()</a></code> is called on a worker</li>
 <li><code><a class="el" href="structst_1_1worker.html#a2e3f89739083c6d6779712081d30d459" title="Restart the worker thread.">st::worker::restart()</a></code> is called on a worker (and a new <code>std::thread</code> and <code>FUNCTOR</code> will be created before <code>restart()</code> returns)</li>
 </ul>
-<h3><a class="anchor" id="autotoc_md14"></a>
-Example 4</h3>
+<h3><a class="anchor" id="autotoc_md16"></a>
+Example 5</h3>
 <div class="fragment"><div class="line">#include &lt;iostream&gt;</div>
 <div class="line">#include &lt;string&gt;</div>
 <div class="line">#include &lt;sthread&gt;</div>
@@ -266,11 +339,11 @@ Example 4</h3>
 <div class="line">0x800018040:parent thread started</div>
 <div class="line">0x800098150:hello</div>
 <div class="line">0x800098150:goodbye</div>
-</div><!-- fragment --><h2><a class="anchor" id="autotoc_md15"></a>
+</div><!-- fragment --><h2><a class="anchor" id="autotoc_md17"></a>
 Channels</h2>
 <p>The object that <code><a class="el" href="structst_1_1worker.html" title="Managed system worker thread.">st::worker</a></code>s use for communication in their <code>send()</code> methods is called <code><a class="el" href="structst_1_1channel.html" title="Interthread message passing queue.">st::channel</a></code>. <code><a class="el" href="structst_1_1channel.html" title="Interthread message passing queue.">st::channel</a></code>s can be created and used outside of <code><a class="el" href="structst_1_1worker.html" title="Managed system worker thread.">st::worker</a></code> objects if desired.</p>
-<h3><a class="anchor" id="autotoc_md16"></a>
-Example 5:</h3>
+<h3><a class="anchor" id="autotoc_md18"></a>
+Example 6:</h3>
 <div class="fragment"><div class="line">#include &lt;iostream&gt;</div>
 <div class="line">#include &lt;thread&gt;</div>
 <div class="line">#include &lt;sthread&gt;</div>
@@ -309,7 +382,7 @@ Example 5:</h3>
 <div class="line">}</div>
 </div><!-- fragment --><p>Terminal output might be: </p><div class="fragment"><div class="line">$./a.out </div>
 <div class="line">forward this string</div>
-</div><!-- fragment --><h2><a class="anchor" id="autotoc_md17"></a>
+</div><!-- fragment --><h2><a class="anchor" id="autotoc_md19"></a>
 Close, Shutdown, and Restart</h2>
 <p>In looping <code><a class="el" href="structst_1_1channel.html#a8728270df53a15139f91100ad396377f" title="Receive a message over the channel.">st::channel::recv()</a></code> operations <code><a class="el" href="structst_1_1channel.html#ae2a319160262483ed2e290d81390c456" title="Close the channel.">st::channel::close()</a></code> can be manually called to force all operations to cease on the <code><a class="el" href="structst_1_1channel.html" title="Interthread message passing queue.">st::channel</a></code> (operations will return <code>false</code>). The default behavior for <code><a class="el" href="structst_1_1channel.html#ae2a319160262483ed2e290d81390c456" title="Close the channel.">st::channel::close()</a></code> is to cause all current and future all <code><a class="el" href="structst_1_1channel.html#ac8be7ee6e79c7bc931d6b621efd1ef41" title="Send a message over the channel.">st::channel::send()</a></code> operations to fail early but to allow <code><a class="el" href="structst_1_1channel.html#a8728270df53a15139f91100ad396377f" title="Receive a message over the channel.">st::channel::recv()</a></code> to continue succeeding until the internal message queue is empty.</p>
 <p>This is the default behavior of several functions:</p><ul>
@@ -322,8 +395,8 @@ Close, Shutdown, and Restart</h2>
 <li><code>st::worker::shutdown(false)</code></li>
 <li><code>st::worker::restart(false)</code></li>
 </ul>
-<h3><a class="anchor" id="autotoc_md18"></a>
-Example 6:</h3>
+<h3><a class="anchor" id="autotoc_md20"></a>
+Example 7:</h3>
 <div class="fragment"><div class="line">#include &lt;iostream&gt;</div>
 <div class="line">#include &lt;thread&gt;</div>
 <div class="line">#include &lt;sthread&gt;</div>
