@@ -185,6 +185,88 @@ hello 1 more time
 [documentation](https://durandaltheta.github.io/sthread/) for more info.
 
 
+### Use Functors to Abstract Message Passing Details
+One useful advanced design pattern for functors is that we can abstract all of 
+the operation details for message passing into the functor API, freeing the user 
+from having to interact directly with the thread details.
+
+#### Example 4:
+```
+#include <iostream>
+#include <string>
+#include <sthread>
+
+struct MyClass {
+    struct Interface {
+        Interface(std::shared_ptr<st::worker> wkr) : m_wkr(wkr) { }
+
+        inline void set_string(std::string txt) {
+            m_wkr->send(MyClass::op::set_string, txt);
+        }
+
+        inline std::string get_string() {
+            auto ret_ch = st::channel::make();
+            m_wkr->send(MyClass::op::get_string, ret_ch);
+            std::string s;
+            std::shared_ptr<st::message> msg;
+            ret_ch->recv(msg);
+            msg->copy_data_to(s);
+            return s;
+        }
+
+        std::shared_ptr<st::worker> m_wkr;
+    };
+        
+    static inline Interface make() {
+        return Interface(st::worker::make<MyClass>());
+    }
+
+    enum op {
+        set_string,
+        get_string
+    };
+
+    ~MyClass() {
+        std::cout << "goodbye" << std::endl;
+    }
+
+    inline void operator()(std::shared_ptr<st::message> msg) {
+        switch(msg->id()) {
+            case op::set_string:
+                msg->copy_data_to(m_str);
+                break;
+            case op::get_string:
+            {
+                std::shared_ptr<st::channel> ret_ch;
+                if(msg->copy_data_to(ret_ch)) {
+                    ret_ch->send(0,m_str);
+                }
+                break;
+            }
+        }
+    }
+
+    std::string m_str;
+};
+
+int main() {
+    MyClass::Interface my_class_int = MyClass::make();
+    my_class_int.set_string("hello");
+    std::cout << my_class_int.get_string() << std::endl;
+    my_class_int.set_string("hello hello");
+    std::cout << my_class_int.get_string() << std::endl;
+}
+```
+
+Terminal output might be:
+```
+$./a.out
+hello
+hello hello
+goodbye
+```
+
+
 ### Worker Constructor Arguments and Lifecycle
 `st::worker`s can be passed constructor arguments in `st::worker::make<FUNCTOR>(As&&...)`. The `FUNCTOR` class will be created on the new thread and destroyed before said thread ends.
 
@@ -193,7 +275,7 @@ An `st::worker`'s `std::thread` will be shutdown and joined when any of the foll
 - `st::worker::shutdown()` is called on a worker
 - `st::worker::restart()` is called on a worker (and a new `std::thread` and `FUNCTOR` will be created before `restart()` returns)
 
-#### Example 4
+#### Example 5
 ```
 #include <iostream>
 #include <string>
@@ -234,7 +316,7 @@ $./a.out
 ### Channels
 The object that `st::worker`s use for communication in their `send()` methods is called `st::channel`. `st::channel`s can be created and used outside of `st::worker` objects if desired. 
 
-#### Example 5:
+#### Example 6:
 ```
 #include <iostream>
 #include <thread>
@@ -293,7 +375,7 @@ Alternatively, the user can call said functions with explicit `false` to immedia
 - `st::worker::shutdown(false)`
 - `st::worker::restart(false)`
 
-#### Example 6:
+#### Example 7:
 ```
 #include <iostream>
 #include <thread>

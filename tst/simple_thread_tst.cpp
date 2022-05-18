@@ -997,6 +997,67 @@ TEST(simple_thread, readme_example3) {
 
 TEST(simple_thread, readme_example4) {
     struct MyClass {
+        struct Interface {
+            Interface(std::shared_ptr<st::worker> wkr) : m_wkr(wkr) { }
+
+            inline void set_string(std::string txt) {
+                m_wkr->send(MyClass::op::set_string, txt);
+            }
+
+            inline std::string get_string() {
+                auto ret_ch = st::channel::make();
+                m_wkr->send(MyClass::op::get_string, ret_ch);
+                std::string s;
+                std::shared_ptr<st::message> msg;
+                ret_ch->recv(msg);
+                msg->copy_data_to(s);
+                return s;
+            }
+
+            std::shared_ptr<st::worker> m_wkr;
+        };
+            
+        static inline Interface make() {
+            return Interface(st::worker::make<MyClass>());
+        }
+
+        enum op {
+            set_string,
+            get_string
+        };
+
+        ~MyClass() {
+            std::cout << "goodbye" << std::endl;
+        }
+
+        inline void operator()(std::shared_ptr<st::message> msg) {
+            switch(msg->id()) {
+                case op::set_string:
+                    msg->copy_data_to(m_str);
+                    break;
+                case op::get_string:
+                {
+                    std::shared_ptr<st::channel> ret_ch;
+                    if(msg->copy_data_to(ret_ch)) {
+                        ret_ch->send(0,m_str);
+                    }
+                    break;
+                }
+            }
+        }
+
+        std::string m_str;
+    };
+
+    MyClass::Interface my_class_int = MyClass::make();
+    my_class_int.set_string("hello");
+    std::cout << my_class_int.get_string() << std::endl;
+    my_class_int.set_string("hello hello");
+    std::cout << my_class_int.get_string() << std::endl;
+}
+
+TEST(simple_thread, readme_example5) {
+    struct MyClass {
         MyClass(std::string constructor_string, std::string destructor_string) :
             m_destructor_string(destructor_string)
         {
@@ -1016,7 +1077,7 @@ TEST(simple_thread, readme_example4) {
     std::shared_ptr<st::worker> wkr = st::worker::make<MyClass>("hello", "goodbye");
 }
 
-TEST(simple_thread, readme_example5) {
+TEST(simple_thread, readme_example6) {
     struct MyClass {
         enum op {
             forward
@@ -1049,7 +1110,7 @@ TEST(simple_thread, readme_example5) {
     }
 }
 
-TEST(simple_thread, readme_example6) {
+TEST(simple_thread, readme_example7) {
     auto looping_recv = [](std::shared_ptr<st::channel> ch) {
         std::shared_ptr<st::message> msg;
 
