@@ -272,14 +272,18 @@ struct channel {
      * @return true on success, false if channel is closed
      */
     bool recv(std::shared_ptr<message>& m) {
-        std::unique_lock<std::mutex> lk(m_mtx);
-        m_waiters_count++;
+        auto no_messages = [&]{ return m_msg_q.empty() && !m_closed; };
 
-        while(m_msg_q.empty() && !m_closed) {
-            m_cv.wait(lk);
+        std::unique_lock<std::mutex> lk(m_mtx);
+        if(no_messages()) {
+            m_waiters_count++;
+
+            do {
+                m_cv.wait(lk);
+            } while(no_messages());
+            
+            m_waiters_count--;
         }
-        
-        m_waiters_count--;
 
         if(m_msg_q.empty()) {
             return false;
