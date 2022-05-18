@@ -268,6 +268,32 @@ TEST(simple_thread, worker_lifecycle) {
         EXPECT_FALSE(wt.executing);
     }
 
+    // double shutdown (check for breakages due to incorrect state transition)
+    {
+        // prove hdl destructor was called
+        bool thread_running = true;
+        std::shared_ptr<st::worker> wkr = st::worker::make<hdl>(&thread_running);
+
+        // fill message q
+        for(int i=0; i<10; i++) {
+            wkr->send(0,0);
+        }
+
+        EXPECT_TRUE(thread_running);
+        EXPECT_TRUE(wkr->running());
+
+        wkr->shutdown();
+        wkr->shutdown();
+
+        EXPECT_FALSE(thread_running);
+        EXPECT_FALSE(wkr->running());
+
+        auto wt = wkr->get_weight();
+        EXPECT_TRUE(wt.empty());
+        EXPECT_EQ(wt.queued, 0);
+        EXPECT_FALSE(wt.executing);
+    }
+
     // hard shutdown via `st::worker::shutdown(false)`
     {
         // prove hdl destructor was called
@@ -293,8 +319,30 @@ TEST(simple_thread, worker_lifecycle) {
         EXPECT_FALSE(wt.executing);
     }
 
-    // double hard shutdown 
+    // double hard shutdown (check for breakages due to incorrect state transition)
     {
+        // prove hdl destructor was called
+        bool thread_running = true;
+        std::shared_ptr<st::worker> wkr = st::worker::make<hdl>(&thread_running);
+
+        // fill message q
+        for(int i=0; i<10; i++) {
+            wkr->send(0,0);
+        }
+
+        EXPECT_TRUE(thread_running);
+        EXPECT_TRUE(wkr->running());
+
+        wkr->shutdown(false);
+        wkr->shutdown(false);
+
+        EXPECT_FALSE(thread_running);
+        EXPECT_FALSE(wkr->running());
+
+        auto wt = wkr->get_weight();
+        EXPECT_TRUE(wt.empty());
+        EXPECT_EQ(wt.queued, 0);
+        EXPECT_FALSE(wt.executing);
     }
 
     // shutdown via `st::~worker()`
@@ -381,6 +429,47 @@ TEST(simple_thread, worker_lifecycle) {
         }
     }
 
+    // double shutdown (check for breakages due to incorrect state transition) 
+    // followed by a restart
+    {
+        // prove hdl destructor was called
+        bool thread_running = true;
+        std::shared_ptr<st::worker> wkr = st::worker::make<hdl>(&thread_running);
+
+        // fill message q
+        for(int i=0; i<10; i++) {
+            wkr->send(0,0);
+        }
+
+        EXPECT_TRUE(thread_running);
+        EXPECT_TRUE(wkr->running());
+
+        wkr->shutdown();
+        wkr->shutdown();
+
+        EXPECT_FALSE(thread_running);
+        EXPECT_FALSE(wkr->running());
+
+        {
+            auto wt = wkr->get_weight();
+            EXPECT_TRUE(wt.empty());
+            EXPECT_EQ(wt.queued, 0);
+            EXPECT_FALSE(wt.executing);
+        }
+
+        wkr->restart();
+
+        EXPECT_TRUE(thread_running);
+        EXPECT_TRUE(wkr->running());
+
+        {
+            auto wt = wkr->get_weight();
+            EXPECT_TRUE(wt.empty());
+            EXPECT_EQ(wt.queued, 0);
+            EXPECT_FALSE(wt.executing);
+        }
+    }
+
     // hard restart & shutdown via `st::worker::restart(false)`
     {
         // prove hdl destructor was called
@@ -395,6 +484,47 @@ TEST(simple_thread, worker_lifecycle) {
         EXPECT_TRUE(thread_running);
         EXPECT_TRUE(wkr->running());
 
+        wkr->shutdown(false);
+
+        EXPECT_FALSE(thread_running);
+        EXPECT_FALSE(wkr->running());
+
+        {
+            auto wt = wkr->get_weight();
+            EXPECT_TRUE(wt.empty());
+            EXPECT_EQ(wt.queued, 0);
+            EXPECT_FALSE(wt.executing);
+        }
+
+        wkr->restart(false);
+
+        EXPECT_TRUE(thread_running);
+        EXPECT_TRUE(wkr->running());
+
+        {
+            auto wt = wkr->get_weight();
+            EXPECT_TRUE(wt.empty());
+            EXPECT_EQ(wt.queued, 0);
+            EXPECT_FALSE(wt.executing);
+        }
+    }
+
+    // double hard shutdown (check for breakages due to incorrect state 
+    // transition) followed by a restart
+    {
+        // prove hdl destructor was called
+        bool thread_running = true;
+        std::shared_ptr<st::worker> wkr = st::worker::make<hdl>(&thread_running);
+
+        // fill message q
+        for(int i=0; i<10; i++) {
+            wkr->send(0,0);
+        }
+
+        EXPECT_TRUE(thread_running);
+        EXPECT_TRUE(wkr->running());
+
+        wkr->shutdown(false);
         wkr->shutdown(false);
 
         EXPECT_FALSE(thread_running);
