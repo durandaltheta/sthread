@@ -5,14 +5,26 @@
 [Unit Test and Example Code](tst/simple_thread_tst.cpp)
 
 ## Requirements
-- C++11
+- C++11 
+
+## Git Submodules
+This project uses Googletest as a submodule to build unit tests. If unit tests 
+are needed try cloning this project with submodules:
+- git clone --recurse-submodules https://github.com/durandaltheta/sthread
 
 ## Installation
 - cmake .
-- sudo make install 
+- sudo make install  
+
+## Build Unit Tests 
+- cmake .
+- make simple_thread_tst 
+
+simple_thread_tst binary will be placed in tst/ 
 
 ## Purpose 
-This library seeks to easily setup useful worker threads using a simple API.
+This header only library seeks to easily setup useful worker threads using a 
+simple API.
 
 Instead of functions worker threads execute c++ functors. A functor is a class 
 which has a function call overload allowing you to execute the functor like a 

@@ -14,7 +14,6 @@ set(HEADER_FILES
 add_library(${LIBRARY} INTERFACE)
 target_include_directories(${LIBRARY} INTERFACE inc) 
 
-install(TARGETS ${LIBRARY} DESTINATION lib)
 install(FILES ${HEADER_FILES} DESTINATION include/${LIBRARY})
 
-add_subdirectory(tst)
+add_subdirectory(tst EXCLUDE_FROM_ALL)
