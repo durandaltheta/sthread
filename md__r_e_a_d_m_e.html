@@ -73,14 +73,27 @@ Requirements</h1>
 <li>C++11</li>
 </ul>
 <h1><a class="anchor" id="autotoc_md2"></a>
+Git Submodules</h1>
+<p>This project uses Googletest as a submodule to build unit tests. If unit tests are needed try cloning this project with submodules:</p><ul>
+<li>git clone &ndash;recurse-submodules <a href="https://github.com/durandaltheta/sthread">https://github.com/durandaltheta/sthread</a></li>
+</ul>
+<h1><a class="anchor" id="autotoc_md3"></a>
 Installation</h1>
 <ul>
 <li>cmake .</li>
-<li>sudo make install</li>
+<li>sudo make install <br  />
+</li>
 </ul>
-<h1><a class="anchor" id="autotoc_md3"></a>
+<h1><a class="anchor" id="autotoc_md4"></a>
+Build Unit Tests</h1>
+<ul>
+<li>cmake .</li>
+<li>make simple_thread_tst</li>
+</ul>
+<p>simple_thread_tst binary will be placed in tst/</p>
+<h1><a class="anchor" id="autotoc_md5"></a>
 Purpose</h1>
-<p>This library seeks to easily setup useful worker threads using a simple API.</p>
+<p>This header only library seeks to easily setup useful worker threads using a simple API.</p>
 <p>Instead of functions worker threads execute c++ functors. A functor is a class which has a function call overload allowing you to execute the functor like a function, IE: </p><div class="fragment"><div class="line">struct MyClass {</div>
 <div class="line">    inline void operator()(std::shared_ptr&lt;st::message&gt; msg) { /* ... */ }</div>
 <div class="line">};</div>
@@ -93,7 +106,7 @@ Purpose</h1>
 <li>Functors allow for class method definitions, instead of forcing the user to rely on lambdas or global namespace functions if further function calls are desired.</li>
 <li>Initialization (constructor), runtime execution (<code>void operator()(std::shared_ptr&lt;<a class="el" href="structst_1_1message.html" title="Interthread type erased message container.">st::message</a>&gt;</code>), and deinitialization (destructor) are broken in to separate functions, which I think makes them more readable. A thread running only a raw function requires everything be managed within that function.</li>
 </ul>
-<h1><a class="anchor" id="autotoc_md4"></a>
+<h1><a class="anchor" id="autotoc_md6"></a>
 Usage</h1>
 <ul>
 <li>Install the library and include the header <code><a class="el" href="simple__thread_8hpp.html" title="Simple interprocess threading and messaging.">simple_thread.hpp</a></code></li>
@@ -101,9 +114,9 @@ Usage</h1>
 <li>Define some enum to distinguish different messages</li>
 <li>Launch your thread with <code><a class="el" href="structst_1_1worker.html#a14b3199e47af486fe4c189846d634ee7">st::worker::make</a>&lt;YourClassNameHere&gt;()</code></li>
 </ul>
-<h2><a class="anchor" id="autotoc_md5"></a>
+<h2><a class="anchor" id="autotoc_md7"></a>
 Basic Usage</h2>
-<h3><a class="anchor" id="autotoc_md6"></a>
+<h3><a class="anchor" id="autotoc_md8"></a>
 Example 1:</h3>
 <div class="fragment"><div class="line">#include &lt;iostream&gt;</div>
 <div class="line">#include &lt;simple_thread.hpp&gt;</div>
@@ -134,11 +147,11 @@ Example 1:</h3>
 <div class="line">}</div>
 </div><!-- fragment --><p>Terminal output might be: </p><div class="fragment"><div class="line">$./a.out</div>
 <div class="line">hello world</div>
-</div><!-- fragment --><h2><a class="anchor" id="autotoc_md7"></a>
+</div><!-- fragment --><h2><a class="anchor" id="autotoc_md9"></a>
 Message Payload Data</h2>
 <p>Message data payloads can be of any type and can be copied to argument <code>T t</code> with <code><a class="el" href="structst_1_1message.html#a712cfd7aa3954f29645561f4e29a4af3">st::message::copy_data_to</a>&lt;T&gt;(T&amp;&amp; t)</code> or rvalue swapped with <code><a class="el" href="structst_1_1message.html#a8cfc67f035589432aefcb8d5a8da7b83">st::message::move_data_to</a>&lt;T&gt;(T&amp;&amp; t)</code>.</p>
 <p><code><a class="el" href="structst_1_1message.html#a712cfd7aa3954f29645561f4e29a4af3">st::message::copy_data_to</a>&lt;T&gt;(T&amp;&amp; t)</code> and <code><a class="el" href="structst_1_1message.html#a8cfc67f035589432aefcb8d5a8da7b83">st::message::move_data_to</a>&lt;T&gt;(T&amp;&amp; t)</code> will return <code>true</code> only if the stored payload type matches type <code>T</code>, otherwise it returns <code>false</code>. </p>
-<h3><a class="anchor" id="autotoc_md8"></a>
+<h3><a class="anchor" id="autotoc_md10"></a>
 Example 2:</h3>
 <div class="fragment"><div class="line">#include &lt;iostream&gt;</div>
 <div class="line">#include &lt;string&gt;</div>
@@ -171,10 +184,10 @@ Example 2:</h3>
 <div class="line">}</div>
 </div><!-- fragment --><p>Terminal output might be: </p><div class="fragment"><div class="line">$./a.out</div>
 <div class="line">hello again</div>
-</div><!-- fragment --><h2><a class="anchor" id="autotoc_md9"></a>
+</div><!-- fragment --><h2><a class="anchor" id="autotoc_md11"></a>
 Payload Type Checking</h2>
 <p>Payload types can also be easily checked with <code><a class="el" href="structst_1_1message.html#a23536bf1bda738b333fc6723c8502eb0">st::message::is</a>&lt;T&gt;()</code> (returns <code>true</code> if types match, else <code>false</code>) which is useful if a message might contain several different potential types.</p>
-<h3><a class="anchor" id="autotoc_md10"></a>
+<h3><a class="anchor" id="autotoc_md12"></a>
 Example 3:</h3>
 <div class="fragment"><div class="line">#include &lt;iostream&gt;</div>
 <div class="line">#include &lt;string&gt;</div>
@@ -215,7 +228,7 @@ Example 3:</h3>
 </div><!-- fragment --><p>Terminal output might be: </p><div class="fragment"><div class="line">$./a.out</div>
 <div class="line">hello 1 more time</div>
 </div><!-- fragment --><p><code><a class="el" href="structst_1_1worker.html" title="Managed system worker thread.">st::worker</a></code>s will automatically shutdown and join when they are destructed. This can be done early with <code><a class="el" href="structst_1_1worker.html#a3f98d0479ad642ed572fd723caeb893d" title="Shutdown the worker thread.">st::worker::shutdown()</a></code>. <code><a class="el" href="structst_1_1worker.html" title="Managed system worker thread.">st::worker</a></code>s can also be restarted at any time with <code><a class="el" href="structst_1_1worker.html#a2e3f89739083c6d6779712081d30d459" title="Restart the worker thread.">st::worker::restart()</a></code>. See <a href="https://durandaltheta.github.io/sthread/">documentation</a> for more info.</p>
-<h2><a class="anchor" id="autotoc_md11"></a>
+<h2><a class="anchor" id="autotoc_md13"></a>
 Worker Constructor Arguments and Lifecycle</h2>
 <p><code><a class="el" href="structst_1_1worker.html" title="Managed system worker thread.">st::worker</a></code>s can be passed constructor arguments in <code><a class="el" href="structst_1_1worker.html#a14b3199e47af486fe4c189846d634ee7">st::worker::make</a>&lt;FUNCTOR&gt;(As&amp;&amp;...)</code>. The <code>FUNCTOR</code> class will be created on the new thread and destroyed before said thread ends.</p>
 <p>An <code><a class="el" href="structst_1_1worker.html" title="Managed system worker thread.">st::worker</a></code>'s <code>std::thread</code> will be shutdown and joined when any of the following happens:</p><ul>
@@ -223,7 +236,7 @@ Worker Constructor Arguments and Lifecycle</h2>
 <li><code><a class="el" href="structst_1_1worker.html#a3f98d0479ad642ed572fd723caeb893d" title="Shutdown the worker thread.">st::worker::shutdown()</a></code> is called on a worker</li>
 <li><code><a class="el" href="structst_1_1worker.html#a2e3f89739083c6d6779712081d30d459" title="Restart the worker thread.">st::worker::restart()</a></code> is called on a worker (and a new <code>std::thread</code> and <code>FUNCTOR</code> will be created before <code>restart()</code> returns)</li>
 </ul>
-<h3><a class="anchor" id="autotoc_md12"></a>
+<h3><a class="anchor" id="autotoc_md14"></a>
 Example 4</h3>
 <div class="fragment"><div class="line">#include &lt;iostream&gt;</div>
 <div class="line">#include &lt;string&gt;</div>
@@ -253,10 +266,10 @@ Example 4</h3>
 <div class="line">0x800018040:parent thread started</div>
 <div class="line">0x800098150:hello</div>
 <div class="line">0x800098150:goodbye</div>
-</div><!-- fragment --><h2><a class="anchor" id="autotoc_md13"></a>
+</div><!-- fragment --><h2><a class="anchor" id="autotoc_md15"></a>
 Channels</h2>
 <p>The object that <code><a class="el" href="structst_1_1worker.html" title="Managed system worker thread.">st::worker</a></code>s use for communication in their <code>send()</code> methods is called <code><a class="el" href="structst_1_1channel.html" title="Interthread message passing queue.">st::channel</a></code>. <code><a class="el" href="structst_1_1channel.html" title="Interthread message passing queue.">st::channel</a></code>s can be created and used outside of <code><a class="el" href="structst_1_1worker.html" title="Managed system worker thread.">st::worker</a></code> objects if desired.</p>
-<h3><a class="anchor" id="autotoc_md14"></a>
+<h3><a class="anchor" id="autotoc_md16"></a>
 Example 5:</h3>
 <div class="fragment"><div class="line">#include &lt;iostream&gt;</div>
 <div class="line">#include &lt;thread&gt;</div>
@@ -296,7 +309,7 @@ Example 5:</h3>
 <div class="line">}</div>
 </div><!-- fragment --><p>Terminal output might be: </p><div class="fragment"><div class="line">$./a.out </div>
 <div class="line">forward this string</div>
-</div><!-- fragment --><h2><a class="anchor" id="autotoc_md15"></a>
+</div><!-- fragment --><h2><a class="anchor" id="autotoc_md17"></a>
 Close, Shutdown, and Restart</h2>
 <p>In looping <code><a class="el" href="structst_1_1channel.html#a8728270df53a15139f91100ad396377f" title="Receive a message over the channel.">st::channel::recv()</a></code> operations <code><a class="el" href="structst_1_1channel.html#ae2a319160262483ed2e290d81390c456" title="Close the channel.">st::channel::close()</a></code> can be manually called to force all operations to cease on the <code><a class="el" href="structst_1_1channel.html" title="Interthread message passing queue.">st::channel</a></code> (operations will return <code>false</code>). The default behavior for <code><a class="el" href="structst_1_1channel.html#ae2a319160262483ed2e290d81390c456" title="Close the channel.">st::channel::close()</a></code> is to cause all current and future all <code><a class="el" href="structst_1_1channel.html#ac8be7ee6e79c7bc931d6b621efd1ef41" title="Send a message over the channel.">st::channel::send()</a></code> operations to fail early but to allow <code><a class="el" href="structst_1_1channel.html#a8728270df53a15139f91100ad396377f" title="Receive a message over the channel.">st::channel::recv()</a></code> to continue succeeding until the internal message queue is empty.</p>
 <p>This is the default behavior of several functions:</p><ul>
@@ -309,7 +322,7 @@ Close, Shutdown, and Restart</h2>
 <li><code>st::worker::shutdown(false)</code></li>
 <li><code>st::worker::restart(false)</code></li>
 </ul>
-<h3><a class="anchor" id="autotoc_md16"></a>
+<h3><a class="anchor" id="autotoc_md18"></a>
 Example 6:</h3>
 <div class="fragment"><div class="line">#include &lt;iostream&gt;</div>
 <div class="line">#include &lt;thread&gt;</div>
