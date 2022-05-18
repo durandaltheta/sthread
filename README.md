@@ -231,7 +231,7 @@ $./a.out
 ```
 
 
-### Use Functors to Abstract Message Passing Details
+### Abstracting Message Passing Details
 One useful advanced design pattern is abstracting all of the operation details 
 for message passing into some API, freeing the user from having to interact 
 directly with the thread details.
