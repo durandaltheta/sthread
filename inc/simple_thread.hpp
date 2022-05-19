@@ -164,6 +164,34 @@ private:
 };
 
 /**
+ * @brief Object representing the result of an operation 
+ *
+ * Can be used directly in if/else statements dues to `operator bool`
+ */
+struct result {
+    /**
+     * Enumeration representing the status of the associated operation
+     */
+    enum eStatus {
+        success,
+        full,
+        closed
+    };
+
+    /**
+     * @return true if the result of the operation succeeded, else false
+     */
+    inline operator bool() const {
+        return status == eStatus::success;
+    }
+
+    /**
+     * Status of the operation
+     */
+    const eStatus status;
+};
+
+/**
  * @brief Interthread message passing queue
  *
  * The internal mechanism used by this library to communicate between managed 
@@ -172,27 +200,8 @@ private:
  */
 struct channel { 
     /**
-     * @brief Object representing the result of an operation 
-     *
-     * Can be used directly in if/else statements dues to `operator bool`
+     * @brief expression representing "no maximum size" for the channel's message queue
      */
-    struct result {
-        enum eStatus {
-            success,
-            full,
-            closed
-        };
-
-        /**
-         * @return true if the result of the operation succeeded, else false
-         */
-        inline operator bool() const {
-            return status == eStatus::success;
-        }
-
-        const eStatus status;
-    };
-
     static constexpr std::size_t queue_no_limit = 0;
 
 /**
@@ -211,7 +220,7 @@ struct channel {
 
     /**
      * @brief Construct a channel as a shared_ptr 
-     * @param max_size maximum concurrent count of messages this channel will store before send() calls fail. Default value is no limit
+     * @param max_queue_size maximum concurrent count of messages this channel will store before send() calls fail. Default value is no limit
      * @return a channel shared_ptr
      */
     static inline std::shared_ptr<channel> make(std::size_t max_queue_size=
@@ -367,7 +376,7 @@ struct channel {
      * @param id an unsigned integer representing which type of message 
      * @return result.status==result::eStatus::success on success, result.status==result::eStatus::closed if closed
      */
-    result send(std::size_t id) {
+    inline result send(std::size_t id) {
         return send(message::make(id));
     }
 
@@ -426,7 +435,7 @@ struct channel {
      * @param id an unsigned integer representing which type of message 
      * @return result.status==result::eStatus::success on success, result.status==result::eStatus::closed if closed, result.status==result::eStatus::full if full
      */
-    result try_send(std::size_t id) {
+    inline result try_send(std::size_t id) {
         return try_send(message::make(id));
     }
 
@@ -645,33 +654,69 @@ struct worker {
      * @param m interprocess message object
      * @return true on success, false if channel is closed
      */
-    inline bool send(std::shared_ptr<message> m) {
-        std::lock_guard<std::mutex> lk(m_mtx);
+    inline result send(std::shared_ptr<message> m) {
         return m_ch->send(std::move(m));
     }
 
     /**
-     * @brief Send a message over the channel with given parameters 
+     * Send a message over the channel with given parameters 
+     *
+     * This is a blocking operation.
      *
      * @param id an unsigned integer representing which type of message 
      * @param t template variable to package as the message payload
-     * @return true on success, false if channel is closed
+     * @return result.status==result::eStatus::success on success, result.status==result::eStatus::closed if closed
      */
     template <typename T>
-    bool send(std::size_t id, T&& t) {
-        return m_ch->send(message::make(id, std::forward<T>(t)));
-;
+    result send(std::size_t id, T&& t) {
+        return m_ch->send(id, std::forward<T>(t));
     }
-
+    
     /**
      * Send a message over the channel with given parameter
      *
+     * This is a non-blocking operation.
+     *
      * @param id an unsigned integer representing which type of message 
+     * @return result.status==result::eStatus::success on success, result.status==result::eStatus::closed if closed
+     */
+    inline result send(std::size_t id) {
+        return m_ch->send(id);
+    }
+
+    /**
+     * @brief Send a message over the channel
+     * @param m interprocess message object
      * @return true on success, false if channel is closed
      */
-    bool send(std::size_t id) {
-        return send(id, 0);
-;
+    inline result try_send(std::shared_ptr<message> m) {
+        return m_ch->try_send(std::move(m));
+    }
+
+    /**
+     * Send a message over the channel with given parameters 
+     *
+     * This is a non-blocking operation. If queue is full, operation will fail early.
+     *
+     * @param id an unsigned integer representing which type of message 
+     * @param t template variable to package as the message payload
+     * @return result.status==result::eStatus::success on success, result.status==result::eStatus::closed if closed, result.status==result::eStatus::full if full
+     */
+    template <typename T>
+    result try_send(std::size_t id, T&& t) {
+        return m_ch->try_send(id, std::forward<T>(t));
+    }
+    
+    /**
+     * Send a message over the channel with given parameter
+     *
+     * This is a non-blocking operation. If queue is full, operation will fail early.
+     *
+     * @param id an unsigned integer representing which type of message 
+     * @return result.status==result::eStatus::success on success, result.status==result::eStatus::closed if closed, result.status==result::eStatus::full if full
+     */
+    inline result try_send(std::size_t id) {
+        return m_ch->try_send(id);
     }
 
     /**
