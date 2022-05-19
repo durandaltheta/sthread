@@ -62,6 +62,19 @@ public:
     }
 
     /**
+     * Construct a message
+     *
+     * @param id an unsigned integer representing which type of message
+     * @return an allocated message
+     */
+    static inline std::shared_ptr<message> make(std::size_t id) {
+        return std::shared_ptr<message>(new message(
+                    id, 
+                    0, 
+                    data_pointer_t(nullptr, message::no_delete)));
+    }
+
+    /**
      * @return an unsigned integer representing message's intended operation
      *
      * An `id` can trivially represent an enumeration, which can represent a 
@@ -87,7 +100,7 @@ public:
      */
     template <typename T>
     bool is() const {
-        return m_data_type == code<T>();
+        return m_data && m_data_type == code<T>();
     }
 
     /**
@@ -143,6 +156,8 @@ private:
         delete (base<T>*)p;
     }
 
+    static inline void no_delete(void* p) { }
+
     const std::size_t m_id;
     const std::size_t m_data_type;
     data_pointer_t m_data;
@@ -157,12 +172,42 @@ private:
  */
 struct channel { 
     /**
+     * @brief Object representing the result of an operation 
+     *
+     * Can be used directly in if/else statements dues to `operator bool`
+     */
+    struct result {
+        enum eStatus {
+            success,
+            full,
+            closed
+        };
+
+        /**
+         * @return true if the result of the operation succeeded, else false
+         */
+        inline operator bool() const {
+            return status == eStatus::success;
+        }
+
+        const eStatus status;
+    };
+
+    /**
      * @brief Construct a channel as a shared_ptr 
+     * @param max_size maximum concurrent count of messages this channel will store before send() calls fail. Default value is no limit
      * @return a channel shared_ptr
      */
-    static inline std::shared_ptr<channel> make() {
-        auto ch = std::shared_ptr<channel>(new channel);
+    static inline std::shared_ptr<channel> make(std::size_t max_queue_size=0) {
+        auto ch = std::shared_ptr<channel>(new channel(max_queue_size));
         return ch;
+    }
+
+    /**
+     * @return max_size maximum concurrent count of messages this channel will store before send() calls fail.
+     */
+    inline std::size_t max_queue_size() const {
+        return m_max_q_size;
     }
 
     /**
@@ -174,11 +219,35 @@ struct channel {
     }
 
     /**
+     * @return true if queue is empty, else false 
+     */
+    inline bool empty() const { 
+        std::lock_guard<std::mutex> lk(m_mtx);
+        return m_msg_q.size() == 0;
+    }
+
+    /**
+     * @return true if queue is full, else false 
+     */
+    inline bool full() const { 
+        std::lock_guard<std::mutex> lk(m_mtx);
+        return m_max_q_size && m_msg_q.size() >= m_max_q_size;
+    }
+
+    /**
      * @return count of threads blocked on recv()
      */
-    inline std::size_t blocked() const {
+    inline std::size_t blocked_receivers() const {
         std::lock_guard<std::mutex> lk(m_mtx);
-        return m_waiters_count;
+        return m_receivers_count;
+    }
+
+    /**
+     * @return count of threads blocked on send()
+     */
+    inline std::size_t blocked_senders() const {
+        std::lock_guard<std::mutex> lk(m_mtx);
+        return m_senders_count;
     }
 
     /**
@@ -207,102 +276,200 @@ struct channel {
                 m_msg_q.clear();
             }
 
-            if(m_waiters_count) {
+            if(m_receivers_count) {
                 notify = true;
             }
         }
 
         if(notify) {
-            m_cv.notify_all();
+            m_receiver_cv.notify_all();
+            m_sender_cv.notify_all();
         }
     }
 
     /**
-     * @brief Send a message over the channel
+     * @brief Attempt to send a message over the channel
+     *
+     * This is a blocking operation. 
+     *
      * @param m interprocess message object
-     * @return true on success, false if channel is closed
+     * @return result.status==result::eStatus::success on success, result.status==result::eStatus::closed if closed
      */
-    inline bool send(std::shared_ptr<message> m) {
+    inline result send(std::shared_ptr<message> m) {
         bool notify = false;
 
         {
-            std::lock_guard<std::mutex> lk(m_mtx);
+            std::unique_lock<std::mutex> lk(m_mtx);
+            if(internal_full()) {
+                m_senders_count++;
+
+                do {
+                    m_sender_cv.wait(lk);
+                } while(internal_full());
+
+                m_senders_count--;
+            }
+
             if(m_closed) {
-                return false;
+                return result{ result::eStatus::closed };
             }
 
             m_msg_q.push_back(std::move(m));
 
-            if(m_waiters_count) {
+            if(m_receivers_count) {
                 notify = true;
             }
         }
 
         if(notify) {
-            m_cv.notify_one();
+            m_receiver_cv.notify_one();
         }
-        return true;
+
+        return result{ result::eStatus::success };
     }
 
     /**
      * Send a message over the channel with given parameters 
      *
+     * This is a blocking operation.
+     *
      * @param id an unsigned integer representing which type of message 
      * @param t template variable to package as the message payload
-     * @return true on success, false if channel is closed
+     * @return result.status==result::eStatus::success on success, result.status==result::eStatus::closed if closed
      */
     template <typename T>
-    bool send(std::size_t id, T&& t) {
+    result send(std::size_t id, T&& t) {
         return send(message::make(id, std::forward<T>(t)));
     }
     
     /**
      * Send a message over the channel with given parameter
      *
+     * This is a non-blocking operation.
+     *
      * @param id an unsigned integer representing which type of message 
-     * @return true on success, false if channel is closed
+     * @return result.status==result::eStatus::success on success, result.status==result::eStatus::closed if closed
      */
-    bool send(std::size_t id) {
-        return send(message::make(id, 0));
+    result send(std::size_t id) {
+        return send(message::make(id));
+    }
+
+    /**
+     * @brief Attempt to send a message over the channel
+     *
+     * This is a non-blocking operation. If queue is empty, operation will fail early.
+     *
+     * @param m interprocess message object
+     * @return result.status==result::eStatus::success on success, result.status==result::eStatus::closed if closed, result.status==result::eStatus::full if full
+     */
+    inline result try_send(std::shared_ptr<message> m) {
+        bool notify = false;
+
+        {
+            std::lock_guard<std::mutex> lk(m_mtx);
+            if(m_closed) {
+                return result{ result::eStatus::closed };
+            } else if(internal_full()) {
+                return result{ result::eStatus::full };
+            }
+
+            m_msg_q.push_back(std::move(m));
+
+            if(m_receivers_count) {
+                notify = true;
+            }
+        }
+
+        if(notify) {
+            m_receiver_cv.notify_one();
+        }
+
+        return result{ result::eStatus::success };
+    }
+
+    /**
+     * Send a message over the channel with given parameters 
+     *
+     * This is a non-blocking operation. If queue is empty, operation will fail early.
+     *
+     * @param id an unsigned integer representing which type of message 
+     * @param t template variable to package as the message payload
+     * @return result.status==result::eStatus::success on success, result.status==result::eStatus::closed if closed, result.status==result::eStatus::full if full
+     */
+    template <typename T>
+    result try_send(std::size_t id, T&& t) {
+        return try_send(message::make(id, std::forward<T>(t)));
+    }
+    
+    /**
+     * Send a message over the channel with given parameter
+     *
+     * This is a non-blocking operation. If queue is empty, operation will fail early.
+     *
+     * @param id an unsigned integer representing which type of message 
+     * @return result.status==result::eStatus::success on success, result.status==result::eStatus::closed if closed, result.status==result::eStatus::full if full
+     */
+    result try_send(std::size_t id) {
+        return try_send(message::make(id));
     }
 
     /**
      * @brief Receive a message over the channel 
+     *
+     * This is a blocking operation.
+     *
      * @param m interprocess message object reference to contain the received message 
      * @return true on success, false if channel is closed
      */
-    bool recv(std::shared_ptr<message>& m) {
+    result recv(std::shared_ptr<message>& m) {
         auto no_messages = [&]{ return m_msg_q.empty() && !m_closed; };
 
         std::unique_lock<std::mutex> lk(m_mtx);
         if(no_messages()) {
-            m_waiters_count++;
+            m_receivers_count++;
 
             do {
-                m_cv.wait(lk);
+                m_receiver_cv.wait(lk);
             } while(no_messages());
             
-            m_waiters_count--;
+            m_receivers_count--;
         }
 
         if(m_msg_q.empty()) {
-            return false;
+            return result{ result::eStatus::closed };
         } else {
             m = m_msg_q.front();
             m_msg_q.pop_front();
-            return true;
+
+            if(m_senders_count) {
+                m_sender_cv.notify_one();
+            }
+
+            return result{ result::eStatus::success };
         } 
     }
 
 private:
-    channel() : m_closed(false), m_waiters_count(0) { }
+    channel(std::size_t max_queue_size) : 
+        m_closed(false), 
+        m_max_q_size(max_queue_size), 
+        m_receivers_count(0) 
+    { }
+
     channel(const channel& rhs) = delete;
     channel(channel&& rhs) = delete;
 
+    inline bool internal_full() {
+        return !m_closed && m_max_q_size && m_msg_q.size() >= m_max_q_size;
+    }
+
     bool m_closed;
-    std::size_t m_waiters_count; // heuristic to limit condition_variable signals
+    const std::size_t m_max_q_size;
+    std::size_t m_receivers_count; // heuristic to limit condition_variable signals
+    std::size_t m_senders_count; // heuristic to limit condition_variable signals
     mutable std::mutex m_mtx;
-    std::condition_variable m_cv;
+    std::condition_variable m_receiver_cv;
+    std::condition_variable m_sender_cv;
     std::deque<std::shared_ptr<message>> m_msg_q;
 };
 
@@ -391,7 +558,7 @@ struct worker {
                 std::lock_guard<std::mutex> lk(m_mtx);
                 m_thread_started_flag = true;
             }
-            m_cv.notify_one();
+            m_thread_start_cv.notify_one();
 
             while(m_ch->recv(m)) {
                 hdl(m);
@@ -402,7 +569,7 @@ struct worker {
         });
 
         while(!m_thread_started_flag) {
-            m_cv.wait(lk);
+            m_thread_start_cv.wait(lk);
         }
     }
 
@@ -451,9 +618,9 @@ struct worker {
     inline weight get_weight() const {
         std::lock_guard<std::mutex> lk(m_mtx);
         return weight{m_ch->queued(), 
-                      m_ch->blocked() ? false 
-                                      : m_thd.joinable() ? true 
-                                                         : false};
+                      m_ch->blocked_receivers() ? false 
+                                                : m_thd.joinable() ? true 
+                                                                   : false};
     }
 
     /**
@@ -549,10 +716,11 @@ private:
 
         m_thread_started_flag = false;
     }
+
     bool m_thread_started_flag;
     std::weak_ptr<worker> m_self;
     mutable std::mutex m_mtx;
-    std::condition_variable m_cv;
+    std::condition_variable m_thread_start_cv;
     std::function<handler()> m_generate_handler;
     std::shared_ptr<channel> m_ch;
     std::thread m_thd;
