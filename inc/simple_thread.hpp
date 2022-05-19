@@ -537,7 +537,9 @@ struct worker {
      * @param as constructor arguments for type FUNCTOR
      * @return allocated running worker thread shared_ptr
      */
-    template <typename FUNCTOR, int QUEUE_MAX_SIZE=0, typename... As>
+    template <typename FUNCTOR, 
+              int QUEUE_MAX_SIZE=SIMPLE_THREAD_CHANNEL_DEFAULT_MAX_QUEUE_SIZE, 
+              typename... As>
     static std::shared_ptr<worker> make(As&&... as) {
         std::shared_ptr<worker> wp(new worker(
                     type_hint<FUNCTOR, QUEUE_MAX_SIZE>(), 
