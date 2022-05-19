@@ -188,7 +188,7 @@ struct result {
     /**
      * Status of the operation
      */
-    const eStatus status;
+    eStatus status;
 };
 
 /**
@@ -448,31 +448,42 @@ struct channel {
      * @return true on success, false if channel is closed
      */
     result recv(std::shared_ptr<message>& m) {
+        result r;
+        bool notify = false;
+
         auto no_messages = [&]{ return m_msg_q.empty() && !m_closed; };
 
-        std::unique_lock<std::mutex> lk(m_mtx);
-        if(no_messages()) {
-            m_receivers_count++;
+        {
+            std::unique_lock<std::mutex> lk(m_mtx);
+            if(no_messages()) {
+                m_receivers_count++;
 
-            do {
-                m_receiver_cv.wait(lk);
-            } while(no_messages());
-            
-            m_receivers_count--;
-        }
-
-        if(m_msg_q.empty()) {
-            return result{ result::eStatus::closed };
-        } else {
-            m = m_msg_q.front();
-            m_msg_q.pop_front();
-
-            if(m_senders_count) {
-                m_sender_cv.notify_one();
+                do {
+                    m_receiver_cv.wait(lk);
+                } while(no_messages());
+                
+                m_receivers_count--;
             }
 
-            return result{ result::eStatus::success };
-        } 
+            if(m_msg_q.empty()) {
+                r = result{ result::eStatus::closed };
+            } else {
+                m = m_msg_q.front();
+                m_msg_q.pop_front();
+
+                if(m_senders_count) {
+                    notify = true;
+                }
+
+                r = result{ result::eStatus::success };
+            } 
+        }
+
+        if(notify) {
+            m_sender_cv.notify_one();
+        }
+
+        return r;
     }
 
 private:
