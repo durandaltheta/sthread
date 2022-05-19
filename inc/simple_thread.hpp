@@ -206,7 +206,7 @@ struct channel {
  * channel queue size.
  */
 #ifndef SIMPLE_THREAD_CHANNEL_DEFAULT_MAX_QUEUE_SIZE
-#define SIMPLE_THREAD_CHANNEL_DEFAULT_MAX_QUEUE_SIZE st::channel::queue_no_limit 
+#define SIMPLE_THREAD_CHANNEL_DEFAULT_MAX_QUEUE_SIZE channel::queue_no_limit 
 #endif
 
     /**
