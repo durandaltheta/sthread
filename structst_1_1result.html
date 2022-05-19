@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=9"/>
 <meta name="generator" content="Doxygen 1.8.17"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>simple thread: st::channel::result Struct Reference</title>
+<title>simple thread: st::result Struct Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -61,7 +61,7 @@ $(function() {
 
 <div id="nav-path" class="navpath">
   <ul>
-<li class="navelem"><b>st</b></li><li class="navelem"><a class="el" href="structst_1_1channel.html">channel</a></li><li class="navelem"><a class="el" href="structst_1_1channel_1_1result.html">result</a></li>  </ul>
+<li class="navelem"><b>st</b></li><li class="navelem"><a class="el" href="structst_1_1result.html">result</a></li>  </ul>
 </div>
 </div><!-- top -->
 <div class="header">
@@ -69,42 +69,57 @@ $(function() {
 <a href="#pub-types">Public Types</a> &#124;
 <a href="#pub-methods">Public Member Functions</a> &#124;
 <a href="#pub-attribs">Public Attributes</a> &#124;
-<a href="structst_1_1channel_1_1result-members.html">List of all members</a>  </div>
+<a href="structst_1_1result-members.html">List of all members</a>  </div>
   <div class="headertitle">
-<div class="title">st::channel::result Struct Reference</div>  </div>
+<div class="title">st::result Struct Reference</div>  </div>
 </div><!--header-->
 <div class="contents">
 
 <p>Object representing the result of an operation.  
- <a href="structst_1_1channel_1_1result.html#details">More...</a></p>
+ <a href="structst_1_1result.html#details">More...</a></p>
 
 <p><code>#include &lt;<a class="el" href="simple__thread_8hpp_source.html">simple_thread.hpp</a>&gt;</code></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-types"></a>
 Public Types</h2></td></tr>
-<tr class="memitem:aeb36ac0a8aff13db2d0f21db8e7a7641"><td class="memItemLeft" align="right" valign="top"><a id="aeb36ac0a8aff13db2d0f21db8e7a7641"></a>enum &#160;</td><td class="memItemRight" valign="bottom"><b>eStatus</b> { <b>success</b>, 
+<tr class="memitem:ad03e6cce1b301db4ff97841535487951"><td class="memItemLeft" align="right" valign="top">enum &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structst_1_1result.html#ad03e6cce1b301db4ff97841535487951">eStatus</a> { <b>success</b>, 
 <b>full</b>, 
 <b>closed</b>
  }</td></tr>
-<tr class="separator:aeb36ac0a8aff13db2d0f21db8e7a7641"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="separator:ad03e6cce1b301db4ff97841535487951"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:a3d7d112160162d4ce7a384365432223b"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structst_1_1channel_1_1result.html#a3d7d112160162d4ce7a384365432223b">operator bool</a> () const</td></tr>
-<tr class="separator:a3d7d112160162d4ce7a384365432223b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a4cb861d4420a826a0f012c3be249ca4c"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structst_1_1result.html#a4cb861d4420a826a0f012c3be249ca4c">operator bool</a> () const</td></tr>
+<tr class="separator:a4cb861d4420a826a0f012c3be249ca4c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
-<tr class="memitem:a7ce2937fd32ec002017fd247707a939e"><td class="memItemLeft" align="right" valign="top"><a id="a7ce2937fd32ec002017fd247707a939e"></a>
-const eStatus&#160;</td><td class="memItemRight" valign="bottom"><b>status</b></td></tr>
-<tr class="separator:a7ce2937fd32ec002017fd247707a939e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aaa79908171030778e6bbce9b233bd05a"><td class="memItemLeft" align="right" valign="top">const <a class="el" href="structst_1_1result.html#ad03e6cce1b301db4ff97841535487951">eStatus</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structst_1_1result.html#aaa79908171030778e6bbce9b233bd05a">status</a></td></tr>
+<tr class="separator:aaa79908171030778e6bbce9b233bd05a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Object representing the result of an operation. </p>
 <p>Can be used directly in if/else statements dues to <code>operator bool</code> </p>
-</div><h2 class="groupheader">Member Function Documentation</h2>
-<a id="a3d7d112160162d4ce7a384365432223b"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a3d7d112160162d4ce7a384365432223b">&#9670;&nbsp;</a></span>operator bool()</h2>
+</div><h2 class="groupheader">Member Enumeration Documentation</h2>
+<a id="ad03e6cce1b301db4ff97841535487951"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad03e6cce1b301db4ff97841535487951">&#9670;&nbsp;</a></span>eStatus</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">enum <a class="el" href="structst_1_1result.html#ad03e6cce1b301db4ff97841535487951">st::result::eStatus</a></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>Enumeration representing the status of the associated operation </p>
+
+</div>
+</div>
+<h2 class="groupheader">Member Function Documentation</h2>
+<a id="a4cb861d4420a826a0f012c3be249ca4c"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a4cb861d4420a826a0f012c3be249ca4c">&#9670;&nbsp;</a></span>operator bool()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -113,7 +128,7 @@ const eStatus&#160;</td><td class="memItemRight" valign="bottom"><b>status</b></
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">st::channel::result::operator bool </td>
+          <td class="memname">st::result::operator bool </td>
           <td>(</td>
           <td class="paramname"></td><td>)</td>
           <td> const</td>
@@ -126,6 +141,22 @@ const eStatus&#160;</td><td class="memItemRight" valign="bottom"><b>status</b></
 </table>
 </div><div class="memdoc">
 <dl class="section return"><dt>Returns</dt><dd>true if the result of the operation succeeded, else false </dd></dl>
+
+</div>
+</div>
+<h2 class="groupheader">Member Data Documentation</h2>
+<a id="aaa79908171030778e6bbce9b233bd05a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aaa79908171030778e6bbce9b233bd05a">&#9670;&nbsp;</a></span>status</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">const <a class="el" href="structst_1_1result.html#ad03e6cce1b301db4ff97841535487951">eStatus</a> st::result::status</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>Status of the operation </p>
 
 </div>
 </div>

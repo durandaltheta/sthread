@@ -4,10 +4,11 @@ var indexSectionsWithContent =
   1: "cmrw",
   2: "s",
   3: "bcefgimoqrst",
-  4: "eq",
+  4: "eqs",
   5: "b",
-  6: "s",
-  7: "s"
+  6: "e",
+  7: "s",
+  8: "s"
 };
 
 var indexSectionNames =
@@ -18,8 +19,9 @@ var indexSectionNames =
   3: "functions",
   4: "variables",
   5: "typedefs",
-  6: "defines",
-  7: "pages"
+  6: "enums",
+  7: "defines",
+  8: "pages"
 };
 
 var indexSectionLabels =
@@ -30,7 +32,8 @@ var indexSectionLabels =
   3: "Functions",
   4: "Variables",
   5: "Typedefs",
-  6: "Macros",
-  7: "Pages"
+  6: "Enumerations",
+  7: "Macros",
+  8: "Pages"
 };
 
