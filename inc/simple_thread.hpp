@@ -357,7 +357,7 @@ struct channel {
     /**
      * @brief Attempt to send a message over the channel
      *
-     * This is a non-blocking operation. If queue is empty, operation will fail early.
+     * This is a non-blocking operation. If queue is full, operation will fail early.
      *
      * @param m interprocess message object
      * @return result.status==result::eStatus::success on success, result.status==result::eStatus::closed if closed, result.status==result::eStatus::full if full
@@ -390,7 +390,7 @@ struct channel {
     /**
      * Send a message over the channel with given parameters 
      *
-     * This is a non-blocking operation. If queue is empty, operation will fail early.
+     * This is a non-blocking operation. If queue is full, operation will fail early.
      *
      * @param id an unsigned integer representing which type of message 
      * @param t template variable to package as the message payload
@@ -404,7 +404,7 @@ struct channel {
     /**
      * Send a message over the channel with given parameter
      *
-     * This is a non-blocking operation. If queue is empty, operation will fail early.
+     * This is a non-blocking operation. If queue is full, operation will fail early.
      *
      * @param id an unsigned integer representing which type of message 
      * @return result.status==result::eStatus::success on success, result.status==result::eStatus::closed if closed, result.status==result::eStatus::full if full
@@ -500,10 +500,10 @@ struct worker {
      * @param as constructor arguments for type FUNCTOR
      * @return allocated running worker thread shared_ptr
      */
-    template <typename FUNCTOR, typename... As>
+    template <typename FUNCTOR, int QUEUE_MAX_SIZE=0, typename... As>
     static std::shared_ptr<worker> make(As&&... as) {
         std::shared_ptr<worker> wp(new worker(
-                    type_hint<FUNCTOR>(), 
+                    type_hint<FUNCTOR, QUEUE_MAX_SIZE>(), 
                     std::forward<As>(as)...));
         wp->set_self(wp);
         wp->restart(); // launch thread
@@ -546,7 +546,7 @@ struct worker {
     inline void restart(bool process_remaining_messages=true) {
         std::unique_lock<std::mutex> lk(m_mtx);
         inner_shutdown(process_remaining_messages);
-        m_ch = channel::make();
+        m_ch = channel::make(m_ch_queue_max_size);
         m_thread_started_flag = false;
         m_thd = std::thread([&]{
             std::shared_ptr<message> m;
@@ -680,11 +680,12 @@ struct worker {
 private:
     typedef std::function<void(std::shared_ptr<message>)> handler;
 
-    template <typename FUNCTOR>
+    template <typename FUNCTOR, int QUEUE_MAX_SIZE>
     struct type_hint { };
 
-    template <typename FUNCTOR, typename... As>
-    worker(type_hint<FUNCTOR> t, As&&... as) : 
+    template <typename FUNCTOR, int QUEUE_MAX_SIZE, typename... As>
+    worker(type_hint<FUNCTOR, QUEUE_MAX_SIZE> t, As&&... as) : 
+        m_ch_queue_max_size(QUEUE_MAX_SIZE),
         m_thread_started_flag(false) {
         // generate handler is called late and allocates a shared_ptr to allow 
         // for a single construction and destruction of type FUNCTOR in the 
@@ -717,6 +718,7 @@ private:
         m_thread_started_flag = false;
     }
 
+    std::size_t m_ch_queue_max_size;
     bool m_thread_started_flag;
     std::weak_ptr<worker> m_self;
     mutable std::mutex m_mtx;
