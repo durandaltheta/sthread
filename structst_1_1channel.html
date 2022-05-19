@@ -567,7 +567,7 @@ template&lt;typename T &gt; </div>
 </div><div class="memdoc">
 
 <p>Attempt to send a message over the channel. </p>
-<p>This is a non-blocking operation. If queue is empty, operation will fail early.</p>
+<p>This is a non-blocking operation. If queue is full, operation will fail early.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">m</td><td>interprocess message object </td></tr>
@@ -602,7 +602,7 @@ template&lt;typename T &gt; </div>
 </table>
 </div><div class="memdoc">
 <p>Send a message over the channel with given parameter</p>
-<p>This is a non-blocking operation. If queue is empty, operation will fail early.</p>
+<p>This is a non-blocking operation. If queue is full, operation will fail early.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">id</td><td>an unsigned integer representing which type of message </td></tr>
@@ -649,7 +649,7 @@ template&lt;typename T &gt; </div>
 </table>
 </div><div class="memdoc">
 <p>Send a message over the channel with given parameters</p>
-<p>This is a non-blocking operation. If queue is empty, operation will fail early.</p>
+<p>This is a non-blocking operation. If queue is full, operation will fail early.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">id</td><td>an unsigned integer representing which type of message </td></tr>
