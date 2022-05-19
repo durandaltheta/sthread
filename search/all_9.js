@@ -1,7 +1,7 @@
 var searchData=
 [
-  ['simple_20threading_20and_20communication_20',['Simple Threading and Communication',['../md__r_e_a_d_m_e.html',1,'']]],
-  ['send_21',['send',['../structst_1_1channel.html#ac8be7ee6e79c7bc931d6b621efd1ef41',1,'st::channel::send(std::shared_ptr&lt; message &gt; m)'],['../structst_1_1channel.html#af83d3bb8066c56b34da035aa5e8e5242',1,'st::channel::send(std::size_t id, T &amp;&amp;t)'],['../structst_1_1channel.html#a924fe695e59087359ed0597733d599ed',1,'st::channel::send(std::size_t id)'],['../structst_1_1worker.html#a9fdbdc777304056f87302fa60c266de0',1,'st::worker::send(std::shared_ptr&lt; message &gt; m)'],['../structst_1_1worker.html#ace93fb50233de2fc2121c4e3d9d0eccc',1,'st::worker::send(std::size_t id, T &amp;&amp;t)'],['../structst_1_1worker.html#a09ae2a19237d77e2bc5889056fbb9472',1,'st::worker::send(std::size_t id)']]],
-  ['shutdown_22',['shutdown',['../structst_1_1worker.html#a3f98d0479ad642ed572fd723caeb893d',1,'st::worker']]],
-  ['simple_5fthread_2ehpp_23',['simple_thread.hpp',['../simple__thread_8hpp.html',1,'']]]
+  ['recv_21',['recv',['../structst_1_1channel.html#a789de5ce12c798c90d6773085e275f35',1,'st::channel']]],
+  ['restart_22',['restart',['../structst_1_1worker.html#a2e3f89739083c6d6779712081d30d459',1,'st::worker']]],
+  ['result_23',['result',['../structst_1_1channel_1_1result.html',1,'st::channel']]],
+  ['running_24',['running',['../structst_1_1worker.html#a4a3d6b7c743dd8e168d08b6b10faacff',1,'st::worker']]]
 ];

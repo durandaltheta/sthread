@@ -1,4 +1,5 @@
 var searchData=
 [
-  ['queued_16',['queued',['../structst_1_1worker_1_1weight.html#aeac5e0eace91027d966d6e4bf8edfe3f',1,'st::worker::weight::queued()'],['../structst_1_1channel.html#ae8aadf196a461711905255b1d129026e',1,'st::channel::queued()']]]
+  ['operator_20bool_18',['operator bool',['../structst_1_1channel_1_1result.html#a3d7d112160162d4ce7a384365432223b',1,'st::channel::result']]],
+  ['operator_3c_19',['operator&lt;',['../structst_1_1worker_1_1weight.html#af4420017c2a78e925f13717d9c650e3b',1,'st::worker::weight']]]
 ];
