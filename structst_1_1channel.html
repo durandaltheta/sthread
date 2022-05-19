@@ -69,6 +69,7 @@ $(function() {
 <a href="#nested-classes">Classes</a> &#124;
 <a href="#pub-methods">Public Member Functions</a> &#124;
 <a href="#pub-static-methods">Static Public Member Functions</a> &#124;
+<a href="#pub-static-attribs">Static Public Attributes</a> &#124;
 <a href="structst_1_1channel-members.html">List of all members</a>  </div>
   <div class="headertitle">
 <div class="title">st::channel Struct Reference</div>  </div>
@@ -127,9 +128,15 @@ Public Member Functions</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-static-methods"></a>
 Static Public Member Functions</h2></td></tr>
-<tr class="memitem:aff2119514b28045d8ca812fc6e6970dd"><td class="memItemLeft" align="right" valign="top">static std::shared_ptr&lt; <a class="el" href="structst_1_1channel.html">channel</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structst_1_1channel.html#aff2119514b28045d8ca812fc6e6970dd">make</a> (std::size_t <a class="el" href="structst_1_1channel.html#a627f1a43f695fcbb039904ef642842e0">max_queue_size</a>=0)</td></tr>
-<tr class="memdesc:aff2119514b28045d8ca812fc6e6970dd"><td class="mdescLeft">&#160;</td><td class="mdescRight">Construct a channel as a shared_ptr.  <a href="structst_1_1channel.html#aff2119514b28045d8ca812fc6e6970dd">More...</a><br /></td></tr>
-<tr class="separator:aff2119514b28045d8ca812fc6e6970dd"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a214ecec9501a9a59ea7abc838ccb1375"><td class="memItemLeft" align="right" valign="top">static std::shared_ptr&lt; <a class="el" href="structst_1_1channel.html">channel</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structst_1_1channel.html#a214ecec9501a9a59ea7abc838ccb1375">make</a> (std::size_t <a class="el" href="structst_1_1channel.html#a627f1a43f695fcbb039904ef642842e0">max_queue_size</a>=<a class="el" href="simple__thread_8hpp.html#aad78e102993029782413cdad8cf36fe1">SIMPLE_THREAD_CHANNEL_DEFAULT_MAX_QUEUE_SIZE</a>)</td></tr>
+<tr class="memdesc:a214ecec9501a9a59ea7abc838ccb1375"><td class="mdescLeft">&#160;</td><td class="mdescRight">Construct a channel as a shared_ptr.  <a href="structst_1_1channel.html#a214ecec9501a9a59ea7abc838ccb1375">More...</a><br /></td></tr>
+<tr class="separator:a214ecec9501a9a59ea7abc838ccb1375"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-static-attribs"></a>
+Static Public Attributes</h2></td></tr>
+<tr class="memitem:a3a362a21600573123629ca5181b4a857"><td class="memItemLeft" align="right" valign="top"><a id="a3a362a21600573123629ca5181b4a857"></a>
+static constexpr std::size_t&#160;</td><td class="memItemRight" valign="bottom"><b>queue_no_limit</b> = 0</td></tr>
+<tr class="separator:a3a362a21600573123629ca5181b4a857"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Interthread message passing queue. </p>
@@ -300,8 +307,8 @@ Static Public Member Functions</h2></td></tr>
 
 </div>
 </div>
-<a id="aff2119514b28045d8ca812fc6e6970dd"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#aff2119514b28045d8ca812fc6e6970dd">&#9670;&nbsp;</a></span>make()</h2>
+<a id="a214ecec9501a9a59ea7abc838ccb1375"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a214ecec9501a9a59ea7abc838ccb1375">&#9670;&nbsp;</a></span>make()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -313,7 +320,7 @@ Static Public Member Functions</h2></td></tr>
           <td class="memname">static std::shared_ptr&lt;<a class="el" href="structst_1_1channel.html">channel</a>&gt; st::channel::make </td>
           <td>(</td>
           <td class="paramtype">std::size_t&#160;</td>
-          <td class="paramname"><em>max_queue_size</em> = <code>0</code></td><td>)</td>
+          <td class="paramname"><em>max_queue_size</em> = <code><a class="el" href="simple__thread_8hpp.html#aad78e102993029782413cdad8cf36fe1">SIMPLE_THREAD_CHANNEL_DEFAULT_MAX_QUEUE_SIZE</a></code></td><td>)</td>
           <td></td>
         </tr>
       </table>
