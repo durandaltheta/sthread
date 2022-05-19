@@ -193,12 +193,29 @@ struct channel {
         const eStatus status;
     };
 
+    static constexpr std::size_t queue_no_limit = 0;
+
+/**
+ * @def SIMPLE_THREAD_CHANNEL_DEFAULT_MAX_QUEUE_SIZE
+ *
+ * Default process wide maximum channel queue size. Defaults to 
+ * st::channel::queue_no_limit which causes channels to have no default maximum 
+ * size.
+ *
+ * Users can define this value themselves to set a custom process wide maximum
+ * channel queue size.
+ */
+#ifndef SIMPLE_THREAD_CHANNEL_DEFAULT_MAX_QUEUE_SIZE
+#define SIMPLE_THREAD_CHANNEL_DEFAULT_MAX_QUEUE_SIZE st::channel::queue_no_limit 
+#endif
+
     /**
      * @brief Construct a channel as a shared_ptr 
      * @param max_size maximum concurrent count of messages this channel will store before send() calls fail. Default value is no limit
      * @return a channel shared_ptr
      */
-    static inline std::shared_ptr<channel> make(std::size_t max_queue_size=0) {
+    static inline std::shared_ptr<channel> make(std::size_t max_queue_size=
+            SIMPLE_THREAD_CHANNEL_DEFAULT_MAX_QUEUE_SIZE) {
         auto ch = std::shared_ptr<channel>(new channel(max_queue_size));
         return ch;
     }
