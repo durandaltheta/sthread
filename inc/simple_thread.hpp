@@ -748,58 +748,23 @@ struct worker {
     inline result try_send(std::size_t id) {
         return m_ch->try_send(id);
     }
-
-    typedef std::size_t timer_id;
-
-    /**
-     * @brief Start a timer 
-     *
-     * On timeout the given message will be sent to this worker
-     *
-     * @param as arguments to call with `st::message::make()`
-     * @return timer_id of the started timer
-     */
-    template <typename... As>
-    timer_id start_timer(std::size_t sec, std::size_t milli, As&&... as) {
-        return TimerWorker::instance().start_timer(
-                m_self.lock(), 
-                std:;chrono::steady_clock::now() +
-                std::chrono::seconds(sec),
-                std::chrono::milliseconds(milli),
-                message::make(std::forward<As>(as)...));
-    }
-
-    /**
-     * @brief Stop a running timer 
-     *
-     * @param id unique id of running timer
-     * @return successful result on success, else result.status==result::eStatus::notFound
-     */
-    inline result stop_timer(timer_id id) {
-        return TimerWorker::instance().stop_timer(id);
-    }
-
-    inline void stop_all_timers() {
-        TimerWorker::instance().stop_all_timer();
-    }
-
     /**
      * @brief Provide access to calling worker object pointer
      *
-     * If not called by a running worker, returned weak_ptr is expired. Useful 
+     * If not called by a running worker, returned shared_ptr is null. Useful 
      * when the worker pointer is needed from within the FUNCTOR handler.
      *
-     * Provided as a weak_ptr to avoid preventing the worker from going out of 
-     * scope unless the user explicitly acquires a shared_ptr from it.
+     * Care must be taken when keeping a copy of this shared_ptr in existence, 
+     * as mishandling of this pointer can cause memory leak.
      *
-     * @return a weak_ptr to calling thread's worker
+     * @return a shared_ptr to calling thread's worker
      */
-    static inline std::weak_ptr<worker> this_worker() {
+    static inline std::shared_ptr<worker> this_worker() {
         auto wp = tl_worker();
         if(wp) {
-            return wp->m_self;
+            return wp->m_self.lock();
         } else {
-            return std::weak_ptr<worker>();
+            return std::shared_ptr<worker>();
         }
     }
 
@@ -844,223 +809,6 @@ private:
         m_thread_started_flag = false;
     }
 
-    // timer feature
-    struct TimerWorker {
-        struct timer_data_t {
-            timer_id id;
-            std::shared_ptr<worker> wkr;
-            std::shared_ptr<message> msg;
-        };
-
-        typedef std::chrono::steady_clock::time_point time_point_t;
-        typedef std::vector<timer_data_t> timer_data_vec_t;
-        typedef std::pair<time_point_t, timer_data_vec_t> timer_pair_t;
-        typedef std::map<time_point_t, timer_data_vec_t> timer_map_t;
-
-        static inline worker& instance() {
-            static TimerWorker wkr;
-            return wkr;
-        }
-
-        TimerWorker() : 
-            m_running(true), 
-            m_managment_worker(worker::make<TimerWorker>()),
-            m_timeout_handler_thd([&]{
-                std::unique_lock<std::mutex> lk(m_mtx);
-
-                while(m_running) {
-                    std::vector<timer_data_vec_t> ready_timeout_vecs;
-
-                    for(timer_map_t::iterator it = m_timers.begin(); it!= m_timers.end(); it++) {
-                        if(it->first < std::chrono::steady_clock::now()) {
-                            // handle free timer ids
-                            for(auto& timer_data : it->second) {
-                                m_free_ids.push_back(timer_data.id);
-                            }
-
-                            // store timeout vectors in local container
-                            ready_timeout_vecs.push_back(std::move(it->second));
-
-                            // erase timeouts from member container
-                            it = m_timers.erase(it);
-                        } else {
-                            break;
-                        }
-                    }
-
-                    // do not send timeouts with lock to prevent deadlock
-                    lk.unlock(); 
-                        
-                    // handle timeouts
-                    for(auto& read_timeout_vec : ready_timeout_vecs) { 
-                        for(auto& timer_data : ready_timeout_vec) {
-                            timer_data.wkr->send(timer_data.msg);
-                        }
-                    }
-
-                    // reacquire lock
-                    lk.lock(); 
-
-                    // wait until nearest timeout or indefinitely
-                    auto it = m_timers.begin();
-                    if(it != m_timers.end()) {
-                        m_timeout_handler_cv.wait_until(lk, it->first);
-                    } else {
-                        m_timeout_handler_cv.wait(lk);
-                    }
-                }
-            })
-        { }
-
-        ~TimerWorker() {
-            {
-                std::lock_guard<std::mutex> lk(m_mtx);
-                m_running = false;
-                m_timeout_handler_cv.notify_one();
-            }
-
-            m_timeout_handler_thd.join();
-        }
-
-        enum op {
-            eStart_timer,
-            eStop_timer,
-            eStop_all_timers
-        };
-
-        struct start_timer_data_t {
-            time_point_t timeout;
-            timer_data_t data;
-        };
-
-        struct stop_timer_data_t {
-            timer_id id;
-            std::shared_ptr<channel> result_ch;
-        };
-        
-        template <typename... As>
-        timer_id start_timer(
-                std::shared_ptr<worker> caller,
-                time_point_t timeout, 
-                std::shared_ptr<message> msg) { 
-            std::lock_guard<std::mutex> lk(m_mtx);
-            timer_id cur_id = 0;
-
-            if(m_free_ids.size()) {
-                cur_id = m_free_ids.front();
-                m_free_ids.pop_front();
-            } else {
-                cur_id = m_cur_id;
-                m_cur_id++;
-            }
-
-            instance().send(
-                    op::eStart_timer, 
-                    start_timer_data_t{
-                        timeout,
-                        timer_data_t{ cur_id, std::move(caller), std::move(msg) }});
-
-            return cur_id;
-        }
-
-        inline result stop_timer(timer_id id) {
-            auto result_ch = channel::make();
-            instance().send(op::eStop_timer, stop_timer_data_t{ id, result_ch });
-            result res;
-            std::shared_ptr<message> msg;
-            result_ch->wait(msg);
-            msg->copy_data_to(res);
-            return res;
-        }
-
-        inline result stop_all_timers() {
-            instance().send(op::eStart_timer);
-        }
-
-        inline void operator()(std::shared_ptr<message> msg) {
-            switch(msg->id()) {
-                case op::eStart_timer:
-                {
-                    start_timer_data_t st;
-                    if(msg->copy_data_to(st) {
-                        {
-                            std::unique_lock<std::mutex> lk(m_mtx);
-                            auto it = m_timers.find(st.timeout);
-
-                            if(it == m_timers.end()) {
-                                it = m_timers.insert(st.timeout, timer_data_vec_t>());
-                            }
-
-                            it->second.push_back(st.data);
-                        }
-
-                        // wakeup timeout handler thread to process updated timers
-                        m_timeout_handler_cv.notify_one(); 
-                    }
-                    break;
-                }
-                case op::eStop_timer:
-                {
-                    stop_timer_data_t st;
-                    if(msg->copy_data_to(st)) {
-                        std::unique_lock<std::mutex> lk(m_mtx);
-
-                        bool found = false;
-
-                        // search through all timeouts
-                        for(auto timer_data_vec_it = m_timers.begin();
-                            timer_data_vec_it < m_timers.end();
-                            timer_data_vec_it++) {
-
-                            // search through all timer data associated with a timeout
-                            for(auto it = timer_data_vec_it->begin(); 
-                                it != timer_data_vec_it->end(); 
-                                it++) {
-                                if(it->id == st.id) {
-                                    timer_data_vec_it->erase(it);
-                                    found = true;
-
-                                    // if timer is found end early
-                                    break;
-                                }
-                            }
-
-                            if(timer_data_vec_it->empty()) {
-                                timer_data_vec_it = m_timers.erase(timer_data_vec_it);
-                            }
-
-                            if(found) {
-                                break;
-                            }
-                        }
-
-                        if(found) {  
-                            st->result_ch(0,result{result::eStatus::success})
-                        } else {
-                            st->result_ch(0,result{result::eStatus::notFound})
-                        }
-                    }
-                    break;
-                }
-                case op::eStop_all_timers:
-                {
-                    std::unique_lock<std::mutex> lk(m_mtx);
-                    m_timers.clear();
-                    break;
-                }
-            }
-        }
-
-        bool m_running;
-        timer_id m_cur_id;
-        std::shared_ptr<worker> m_managment_worker;
-        std::list<timer_id> m_free_ids;
-        std::mutex m_mtx;
-        std::condition_variable m_timeout_handler_cv;
-        std::thread m_timeout_handler_thd;
-        timer_map_t m_timers;
-    };
-
     std::size_t m_ch_queue_max_size;
     bool m_thread_started_flag;
     std::weak_ptr<worker> m_self;
@@ -1069,6 +817,213 @@ private:
     std::function<handler()> m_generate_handler;
     std::shared_ptr<channel> m_ch;
     std::thread m_thd;
+};
+
+struct timer {
+    /**
+     * @brief Construct and start a timer 
+     *
+     * On timeout handler will be called. If argument handler is convertable to 
+     * std::function<void()> this overload will be selected.
+     *
+     * @param sec seconds before timeout will occur
+     * @param milli additional milliseconds before the timeout will occur 
+     * @param handler function will be called when timeout occurs
+     * @return allocated and running timer
+     */
+    inline std::shared_ptr<timer> make(std::size_t sec, 
+                                       std::size_t milli, 
+                                       std::function<void()> handler) {
+        std::shared_ptr<timer> sp(new timer(std::move(handler));
+        sp->m_self = sp;
+        TimerService::instance().start(
+                std:;chrono::steady_clock::now() +
+                std::chrono::seconds(sec) +
+                std::chrono::milliseconds(milli),
+                sp);
+        return sp;
+    }
+
+    /**
+     * @brief Construct and start a timer 
+     *
+     * On timeout handler will be called.
+     *
+     * @param sec seconds before timeout will occur
+     * @param milli additional milliseconds before the timeout will occur 
+     * @param f function that will be called with remaining arguments when timeout occurs
+     * @param t first argument to be applied to f 
+     * @param as remaining arguments to be applied to function f
+     * @return allocated and running timer
+     */
+    template <typename F, typename T, typename... As>
+    inline std::shared_ptr<timer> make(std::size_t sec, 
+                                       std::size_t milli, 
+                                       F&& f, 
+                                       T&& t, 
+                                       As&&... as) {
+        return make(sec, 
+                    milli, 
+                    [=]() mutable { 
+                        f(std::forward<T>(t), std::forward<As>(as)...); 
+                    });
+    }
+
+    /**
+     * @brief Stop a running timer 
+     *
+     * This operation is more expensive than starting a timer
+     *
+     * @param id unique id of running timer
+     * @return successful result on success, else result.status==result::eStatus::notFound
+     */
+    inline result stop() {
+        return TimerService::instance().stop_timer(m_self.lock());
+    }
+
+private:
+    timer(std::function<void()> handler) : m_handler(std::move(handler)) {}
+
+    timer(const timer& rhs) = delete;
+    timer(timer&& rhs) = delete;
+
+    // timer feature
+    struct TimerService {
+        typedef std::chrono::steady_clock::time_point time_point_t;
+        typedef std::vector<std::shared_ptr<timer>> timer_vec_t;
+        typedef std::pair<time_point_t, timer_vec_t> timer_pair_t;
+        typedef std::map<time_point_t, timer_vec_t> timer_map_t;
+
+        static inline TimerService& instance() {
+            static TimerService ts;
+            return ts;
+        }
+
+        TimerService() : 
+            m_running(true), 
+            out_handler_thd([&]{
+                std::unique_lock<std::mutex> lk(m_mtx);
+
+                while(m_running) {
+                    std::vector<timer_vec_t> ready_timer_vecs;
+
+                    for(timer_map_t::iterator it = rs.begin(); it!= m_timers.end(); it++) {
+                        if(it->first < std::chrono::steady_clock::now()) {
+                            // store timeout vectors in local container
+                            ready_timer_vecs.push_back(std::move(it->second));
+
+                            // erase timeouts from member container
+                            it = rs.erase(it);
+                        } else {
+                            // no more timers are ready
+                            break;
+                        }
+                    }
+
+                    // do not call timer handlers with lock to prevent deadlock
+                    lk.unlock(); 
+                        
+                    // call timer handlers
+                    for(auto& read_timer_vec : ready_timer_vecs) { 
+                        for(auto& timer : ready_timeout_vec) {
+                            timer.m_handler();
+                        }
+                    }
+
+                    // reacquire lock
+                    lk.lock(); 
+
+                    // wait until nearest timeout or indefinitely until a new 
+                    // timer is started
+                    auto it = rs.begin();
+                    if(it != rs.end()) {
+                        m_cv.wait_until(lk, it->first);
+                    } else {
+                        m_cv.wait(lk);
+                    }
+                }
+            })
+        { }
+
+        ~TimerService() {
+            {
+                std::lock_guard<std::mutex> lk(m_mtx);
+                m_running = false;
+                m_cv.notify_one();
+            }
+
+            out_handler_thd.join();
+        }
+
+        template <typename... As>
+        void start_timer(std::chrono::steady_clock::time_point timeout, 
+                         std::shared_ptr<timer> tim) {
+            std::lock_guard<std::mutex> lk(m_mtx);
+
+            {
+                std::unique_lock<std::mutex> lk(m_mtx);
+                auto it = rs.find(timeout);
+
+                // ensure container for timers at timeout time_point exists
+                if(it == rs.end()) {
+                    it = rs.insert(timeout, timer_vec_t>());
+                }
+
+                it->second.push_back(tim);
+            }
+
+            // wakeup timeout handler thread to process updated timers
+            m_cv.notify_one(); 
+        }
+
+        inline result stop_timer(std::shared_ptr<timer> tim) {
+            std::lock_guard<std::mutex> lk(m_mtx);
+
+            bool found = false;
+
+            // search through all timeouts
+            for(auto timer_data_vec_it = rs.begin();
+                timer_data_vec_it < rs.end();
+                timer_data_vec_it++) {
+
+                // search through all timer data associated with a timeout
+                for(auto it = timer_data_vec_it->begin(); 
+                    it != timer_data_vec_it->end(); 
+                    it++) {
+                    if(it->tim == tim) {
+                        timer_data_vec_it->erase(it);
+                        found = true;
+
+                        // if timer is found end early
+                        break;
+                    }
+                }
+
+                if(timer_data_vec_it->empty()) {
+                    timer_data_vec_it = rs.erase(timer_data_vec_it);
+                }
+
+                if(found) {
+                    break;
+                }
+            }
+
+            if(found) {  
+                return result{result::eStatus::success};
+            } else {
+                return result{result::eStatus::notFound};
+            }
+        }
+
+        bool m_running;
+        std::mutex m_mtx;
+        std::condition_variable m_cv;
+        std::thread out_handler_thd;
+        timer_map_t rs;
+    };
+
+    std::function<void()> m_handler;
+    std::weak_ptr<timer> m_self;
 };
 
 }
