@@ -15,10 +15,42 @@
 #include <deque>
 #include <typeinfo>
 #include <functional>
-#include <vector>
-#include <list>
+#include <set>
+#include <map>
+#include <atomic>
 
 namespace st {
+
+/**
+ * @brief Object representing the result of an operation 
+ *
+ * Can be used directly in if/else statements due to `operator bool`
+ */
+struct result {
+    /**
+     * Enumeration representing the status of the associated operation
+     */
+    enum estatus {
+        success, // operation succeeded
+        argument_null, // a given shared_ptr argument is a nullptr
+        full, // channel queue is full
+        closed, // channel is closed and cannot be operated on anymore
+        already_running, // timer is already running
+        not_found // timer was not found
+    };
+
+    /**
+     * @return true if the result of the operation succeeded, else false
+     */
+    inline operator bool() const {
+        return status == estatus::success;
+    }
+
+    /**
+     * Status of the operation
+     */
+    estatus status;
+};
 
 /**
  * @brief Interthread type erased message container
@@ -45,15 +77,9 @@ public:
     static constexpr std::size_t code() {
         return typeid(base<T>).hash_code();
     }
-    
-    template <typename T>
-    static std::shared_ptr<message> make(std::shared_ptr<message> msg) {
-        return msg;
-    }
 
     /**
-     * Construct a message
-     *
+     * @brief Construct a message
      * @param id an unsigned integer representing which type of message
      * @param t arbitrary typed data to be stored as the message data 
      * @return an allocated message
@@ -82,12 +108,12 @@ public:
     }
    
     /** 
-     * Convenience overload for templating
+     * @brief Convenience overload for message construction used in templates
      *
-     * @return an allocated message
+     * @return argument message
      */
     static inline std::shared_ptr<message> make(std::shared_ptr<message> msg) {
-        return msg;
+        return std::move(msg);
     }
 
     /**
@@ -180,35 +206,6 @@ private:
 };
 
 /**
- * @brief Object representing the result of an operation 
- *
- * Can be used directly in if/else statements dues to `operator bool`
- */
-struct result {
-    /**
-     * Enumeration representing the status of the associated operation
-     */
-    enum eStatus {
-        success,
-        full,
-        closed,
-        notFound
-    };
-
-    /**
-     * @return true if the result of the operation succeeded, else false
-     */
-    inline operator bool() const {
-        return status == eStatus::success;
-    }
-
-    /**
-     * Status of the operation
-     */
-    eStatus status;
-};
-
-/**
  * @brief Interthread message passing queue
  *
  * The internal mechanism used by this library to communicate between managed 
@@ -221,27 +218,12 @@ struct channel {
      */
     static constexpr std::size_t queue_no_limit = 0;
 
-/**
- * @def SIMPLE_THREAD_CHANNEL_DEFAULT_MAX_QUEUE_SIZE
- *
- * Default process wide maximum channel queue size. Defaults to 
- * st::channel::queue_no_limit which causes channels to have no default maximum 
- * size.
- *
- * Users can define this value themselves to set a custom process wide maximum
- * channel queue size.
- */
-#ifndef SIMPLE_THREAD_CHANNEL_DEFAULT_MAX_QUEUE_SIZE
-#define SIMPLE_THREAD_CHANNEL_DEFAULT_MAX_QUEUE_SIZE channel::queue_no_limit 
-#endif
-
     /**
      * @brief Construct a channel as a shared_ptr 
      * @param max_queue_size maximum concurrent count of messages this channel will store before send() calls fail. Default value is no limit
      * @return a channel shared_ptr
      */
-    static inline std::shared_ptr<channel> make(std::size_t max_queue_size=
-            SIMPLE_THREAD_CHANNEL_DEFAULT_MAX_QUEUE_SIZE) {
+    static inline std::shared_ptr<channel> make(std::size_t max_queue_size = channel::queue_no_limit) {
         auto ch = std::shared_ptr<channel>(new channel(max_queue_size));
         return ch;
     }
@@ -331,129 +313,30 @@ struct channel {
     }
 
     /**
-     * @brief Attempt to send a message over the channel
-     *
-     * This is a blocking operation. 
-     *
-     * @param m interprocess message object
-     * @return result.status==result::eStatus::success on success, result.status==result::eStatus::closed if closed
-     */
-    inline result send(std::shared_ptr<message> m) {
-        bool notify = false;
-
-        {
-            std::unique_lock<std::mutex> lk(m_mtx);
-            if(internal_full()) {
-                m_senders_count++;
-
-                do {
-                    m_sender_cv.wait(lk);
-                } while(internal_full());
-
-                m_senders_count--;
-            }
-
-            if(m_closed) {
-                return result{ result::eStatus::closed };
-            }
-
-            m_msg_q.push_back(std::move(m));
-
-            if(m_receivers_count) {
-                notify = true;
-            }
-        }
-
-        if(notify) {
-            m_receiver_cv.notify_one();
-        }
-
-        return result{ result::eStatus::success };
-    }
-
-    /**
      * Send a message over the channel with given parameters 
      *
-     * This is a blocking operation.
+     * This is a non-blocking operation until the internal message queue
+     * becomes full, at which point it becomes a blocking operation.
      *
-     * @param id an unsigned integer representing which type of message 
-     * @param t template variable to package as the message payload
-     * @return result.status==result::eStatus::success on success, result.status==result::eStatus::closed if closed
+     * @param as arguments passed to `st::message::make()`
+     * @return result::estatus::success on success, result::estatus::closed if closed
      */
-    template <typename T>
-    result send(std::size_t id, T&& t) {
-        return send(message::make(id, std::forward<T>(t)));
+    template <typename... As>
+    result send(As&&... as) {
+        return internal_send(message::make(std::forward<As>(as)...));
     }
-    
+
     /**
-     * Send a message over the channel with given parameter
+     * @brief Send a message over the channel
      *
      * This is a non-blocking operation.
      *
-     * @param id an unsigned integer representing which type of message 
-     * @return result.status==result::eStatus::success on success, result.status==result::eStatus::closed if closed
+     * @param as arguments passed to `st::message::make()`
+     * @return true on success, false if channel is closed
      */
-    inline result send(std::size_t id) {
-        return send(message::make(id));
-    }
-
-    /**
-     * @brief Attempt to send a message over the channel
-     *
-     * This is a non-blocking operation. If queue is full, operation will fail early.
-     *
-     * @param m interprocess message object
-     * @return result.status==result::eStatus::success on success, result.status==result::eStatus::closed if closed, result.status==result::eStatus::full if full
-     */
-    inline result try_send(std::shared_ptr<message> m) {
-        bool notify = false;
-
-        {
-            std::lock_guard<std::mutex> lk(m_mtx);
-            if(m_closed) {
-                return result{ result::eStatus::closed };
-            } else if(internal_full()) {
-                return result{ result::eStatus::full };
-            }
-
-            m_msg_q.push_back(std::move(m));
-
-            if(m_receivers_count) {
-                notify = true;
-            }
-        }
-
-        if(notify) {
-            m_receiver_cv.notify_one();
-        }
-
-        return result{ result::eStatus::success };
-    }
-
-    /**
-     * Send a message over the channel with given parameters 
-     *
-     * This is a non-blocking operation. If queue is full, operation will fail early.
-     *
-     * @param id an unsigned integer representing which type of message 
-     * @param t template variable to package as the message payload
-     * @return result.status==result::eStatus::success on success, result.status==result::eStatus::closed if closed, result.status==result::eStatus::full if full
-     */
-    template <typename T>
-    result try_send(std::size_t id, T&& t) {
-        return try_send(message::make(id, std::forward<T>(t)));
-    }
-    
-    /**
-     * Send a message over the channel with given parameter
-     *
-     * This is a non-blocking operation. If queue is full, operation will fail early.
-     *
-     * @param id an unsigned integer representing which type of message 
-     * @return result.status==result::eStatus::success on success, result.status==result::eStatus::closed if closed, result.status==result::eStatus::full if full
-     */
-    inline result try_send(std::size_t id) {
-        return try_send(message::make(id));
+    template <typename... As>
+    result try_send(As&&... as) {
+        return internal_try_send(message::make(std::forward<As>(as)...));
     }
 
     /**
@@ -465,12 +348,11 @@ struct channel {
      * @return true on success, false if channel is closed
      */
     result recv(std::shared_ptr<message>& m) {
-        result r;
         bool notify = false;
 
         auto no_messages = [&]{ return m_msg_q.empty() && !m_closed; };
 
-        {
+        if(m) {
             std::unique_lock<std::mutex> lk(m_mtx);
             if(no_messages()) {
                 m_receivers_count++;
@@ -483,7 +365,7 @@ struct channel {
             }
 
             if(m_msg_q.empty()) {
-                r = result{ result::eStatus::closed };
+                return result{ result::estatus::closed };
             } else {
                 m = m_msg_q.front();
                 m_msg_q.pop_front();
@@ -491,16 +373,16 @@ struct channel {
                 if(m_senders_count) {
                     notify = true;
                 }
-
-                r = result{ result::eStatus::success };
             } 
+        } else {
+            return result{ result::estatus::argument_null };
         }
 
         if(notify) {
             m_sender_cv.notify_one();
         }
 
-        return r;
+        return result{ result::estatus::success };
     }
 
 private:
@@ -517,6 +399,68 @@ private:
         return !m_closed && m_max_q_size && m_msg_q.size() >= m_max_q_size;
     }
 
+    inline result internal_send(std::shared_ptr<message> m) {
+        bool notify = false;
+
+        if(m) { 
+            std::unique_lock<std::mutex> lk(m_mtx);
+            if(internal_full()) {
+                m_senders_count++;
+
+                do {
+                    m_sender_cv.wait(lk);
+                } while(internal_full());
+
+                m_senders_count--;
+            }
+
+            if(m_closed) {
+                return result{ result::estatus::closed };
+            } else {
+                m_msg_q.push_back(std::move(m));
+
+                if(m_receivers_count) {
+                    notify = true;
+                }
+            }
+        } else {
+            return result{ result::estatus::argument_null };
+        }
+
+        if(notify) {
+            m_receiver_cv.notify_one();
+        }
+
+        return result{ result::estatus::success };
+    }
+
+    inline result internal_try_send(std::shared_ptr<message> m) {
+        bool notify = false;
+
+        if(m) { 
+            std::lock_guard<std::mutex> lk(m_mtx);
+            if(m_closed) {
+                return result{ result::estatus::closed };
+            } else if(internal_full()) {
+                return result{ result::estatus::full };
+            } else {
+                m_msg_q.push_back(std::move(m));
+
+                if(m_receivers_count) {
+                    notify = true;
+                }
+            }
+        } else {
+            return result{ result::estatus::argument_null };
+        }
+
+        if(notify) {
+            m_receiver_cv.notify_one();
+        }
+
+        return r;
+    }
+
     bool m_closed;
     const std::size_t m_max_q_size;
     std::size_t m_receivers_count; // heuristic to limit condition_variable signals
@@ -529,6 +473,9 @@ private:
 
 /**
  * @brief Managed system worker thread
+ *
+ * System worker thread's lifecycle is directly controlled by this object. The
+ * worker is capable of receiving messages sent via this object.
  */
 struct worker {
     /**
@@ -555,7 +502,7 @@ struct worker {
      * @return allocated running worker thread shared_ptr
      */
     template <typename FUNCTOR, 
-              int QUEUE_MAX_SIZE=SIMPLE_THREAD_CHANNEL_DEFAULT_MAX_QUEUE_SIZE, 
+              int QUEUE_MAX_SIZE=channel::queue_no_limit, 
               typename... As>
     static std::shared_ptr<worker> make(As&&... as) {
         std::shared_ptr<worker> wp(new worker(
@@ -680,74 +627,31 @@ struct worker {
     }
 
     /**
-     * @brief Send a message over the channel
-     * @param m interprocess message object
-     * @return true on success, false if channel is closed
-     */
-    inline result send(std::shared_ptr<message> m) {
-        return m_ch->send(std::move(m));
-    }
-
-    /**
      * Send a message over the channel with given parameters 
      *
      * This is a blocking operation.
      *
-     * @param id an unsigned integer representing which type of message 
-     * @param t template variable to package as the message payload
-     * @return result.status==result::eStatus::success on success, result.status==result::eStatus::closed if closed
+     * @param as arguments passed to `st::message::make()`
+     * @return result::estatus::success on success, result::estatus::closed if closed
      */
-    template <typename T>
-    result send(std::size_t id, T&& t) {
-        return m_ch->send(id, std::forward<T>(t));
-    }
-    
-    /**
-     * Send a message over the channel with given parameter
-     *
-     * This is a non-blocking operation.
-     *
-     * @param id an unsigned integer representing which type of message 
-     * @return result.status==result::eStatus::success on success, result.status==result::eStatus::closed if closed
-     */
-    inline result send(std::size_t id) {
-        return m_ch->send(id);
+    template <typename... As>
+    result send(As&&... as) {
+        return m_ch->send(message::make(std::forward<As>(as)...));
     }
 
     /**
      * @brief Send a message over the channel
-     * @param m interprocess message object
+     *
+     * This is a non-blocking operation.
+     *
+     * @param as arguments passed to `st::message::make()`
      * @return true on success, false if channel is closed
      */
-    inline result try_send(std::shared_ptr<message> m) {
-        return m_ch->try_send(std::move(m));
+    template <typename... As>
+    result try_send(As&&... as) {
+        return m_ch->try_send(message::make(std::forward<As>(as)...));
     }
 
-    /**
-     * Send a message over the channel with given parameters 
-     *
-     * This is a non-blocking operation. If queue is full, operation will fail early.
-     *
-     * @param id an unsigned integer representing which type of message 
-     * @param t template variable to package as the message payload
-     * @return result.status==result::eStatus::success on success, result.status==result::eStatus::closed if closed, result.status==result::eStatus::full if full
-     */
-    template <typename T>
-    result try_send(std::size_t id, T&& t) {
-        return m_ch->try_send(id, std::forward<T>(t));
-    }
-    
-    /**
-     * Send a message over the channel with given parameter
-     *
-     * This is a non-blocking operation. If queue is full, operation will fail early.
-     *
-     * @param id an unsigned integer representing which type of message 
-     * @return result.status==result::eStatus::success on success, result.status==result::eStatus::closed if closed, result.status==result::eStatus::full if full
-     */
-    inline result try_send(std::size_t id) {
-        return m_ch->try_send(id);
-    }
     /**
      * @brief Provide access to calling worker object pointer
      *
@@ -819,101 +723,272 @@ private:
     std::thread m_thd;
 };
 
+/**
+ * @brief Managed timer and callback handler class  
+ *
+ * A timer can be started with `timer::service::start()`.
+ *
+ * Typical callback design is to have the callback hold a copy of a `st::worker` 
+ * shared_ptr and `st::worker::send()` a message indicating the timer has timed
+ * out. 
+ *
+ * Note: if the callback blocks indefinitely, the timer callback thread will 
+ * also remain blocked. An option for addressing long running callbacks is to 
+ * provide async==true to `timer::make()` which will cause a dedicated thread to 
+ * be launched to execute the callback.
+ */
 struct timer {
     /**
-     * @brief Construct and start a timer 
-     *
-     * On timeout handler will be called. If argument handler is convertable to 
-     * std::function<void()> this overload will be selected.
-     *
-     * @param sec seconds before timeout will occur
-     * @param milli additional milliseconds before the timeout will occur 
-     * @param handler function will be called when timeout occurs
-     * @return allocated and running timer
+     * @brief time_point type used by this class
      */
-    inline std::shared_ptr<timer> make(std::size_t sec, 
-                                       std::size_t milli, 
-                                       std::function<void()> handler) {
-        std::shared_ptr<timer> sp(new timer(std::move(handler));
+    typedef std::chrono::time_point<std::chrono::steady_clock> time_point;
+
+    /**
+     * @brief Construct a non-started timer
+     *
+     * @param callback function will be called when timeout occurs
+     * @param sec seconds interval before timeout will occur
+     * @param milli additional milliseconds interval before the timeout will occur 
+     * @param repeat true if timer should repeat, else false 
+     * @param async true if callback should execute on its own thread, else false 
+     */
+    inline std::shared_ptr<timer> make(
+            std::function<void()> callback,
+            std::size_t sec, 
+            std::size_t milli, 
+            bool repeat=false, 
+            bool async=false) {
+        std::shared_ptr<timer> sp(new timer(
+                    std::move(handler),
+                    sec,
+                    milli,
+                    repeat,
+                    async);
         sp->m_self = sp;
-        TimerService::instance().start(
-                std:;chrono::steady_clock::now() +
-                std::chrono::seconds(sec) +
-                std::chrono::milliseconds(milli),
-                sp);
         return sp;
     }
 
     /**
-     * @brief Construct and start a timer 
-     *
-     * On timeout handler will be called.
-     *
-     * @param sec seconds before timeout will occur
-     * @param milli additional milliseconds before the timeout will occur 
-     * @param f function that will be called with remaining arguments when timeout occurs
-     * @param t first argument to be applied to f 
-     * @param as remaining arguments to be applied to function f
-     * @return allocated and running timer
+     * @return true if timer is running, else false
      */
-    template <typename F, typename T, typename... As>
-    inline std::shared_ptr<timer> make(std::size_t sec, 
-                                       std::size_t milli, 
-                                       F&& f, 
-                                       T&& t, 
-                                       As&&... as) {
-        return make(sec, 
-                    milli, 
-                    [=]() mutable { 
-                        f(std::forward<T>(t), std::forward<As>(as)...); 
-                    });
+    inline bool running() {
+        return m_timeout.load() != time_point();
     }
 
     /**
-     * @brief Stop a running timer 
-     *
-     * This operation is more expensive than starting a timer
-     *
-     * @param id unique id of running timer
-     * @return successful result on success, else result.status==result::eStatus::notFound
+     * @return the time_point representing the timeout
      */
-    inline result stop() {
-        return TimerService::instance().stop_timer(m_self.lock());
+    inline time_point get_timeout() {
+        return m_timeout.load();
     }
 
-private:
-    timer(std::function<void()> handler) : m_handler(std::move(handler)) {}
+    /**
+     * @brief Structure representing the time left until timer times out
+     */
+    struct time_left {
+        /**
+         * @brief Seconds left until timeout
+         */
+        std::size_t sec; 
 
-    timer(const timer& rhs) = delete;
-    timer(timer&& rhs) = delete;
+        /**
+         * @brief Milliseconds left until timeout
+         */
+        std::size_t milli;
+    };
 
-    // timer feature
-    struct TimerService {
-        typedef std::chrono::steady_clock::time_point time_point_t;
-        typedef std::vector<std::shared_ptr<timer>> timer_vec_t;
-        typedef std::pair<time_point_t, timer_vec_t> timer_pair_t;
-        typedef std::map<time_point_t, timer_vec_t> timer_map_t;
+    /**
+     * @return the time_left on the timer till timeout
+     */
+    inline time_left get_time_left() {
+        time_left ret{0,0};
 
-        static inline TimerService& instance() {
-            static TimerService ts;
-            return ts;
+        if(running()) {
+            auto timeout_tp = m_timeout.load();
+            auto now = std::chrono::steady_clock::now();
+
+            if(timeout_tp > now) {
+                auto diff = timeout_tp - now;
+                auto dur_secs_left = std::chrono::duration_cast<std::chrono::seconds>(diff);
+
+                auto dur_milli_left = 
+                    std::chrono::duration_cast<std::chrono::milliseconds>(diff) -
+                    std::chrono::duration_cast<std::chrono::milliseconds>(dur_secs_left);
+
+                if(dur_secs_left.count()) {
+                    ret.sec = dur_secs_left.count();
+                }
+
+                if(dur_milli_left.count()) {
+                    ret.milli = dur_milli_left.count();
+                }
+            } 
         }
 
-        TimerService() : 
+        return ret;
+    }
+
+    /**
+     * @brief Timer executor object capable of starting and stopping timers
+     *
+     * Manages a timer callback thread which will execute timer callbacks on 
+     * timeout.
+     */
+    struct service {
+        /**
+         * @brief Allocate a running timer service
+         */
+        inline std::shared_ptr<timer> make() {
+            std::shared_ptr<service> sp(new service);
+            sp->m_self = sp;
+            return sp;
+        }
+
+        /**
+         * @brief Destructor will end and join callback thread
+         */
+        ~service() {
+            bool notify = false;
+
+            {
+                std::lock_guard<std::mutex> lk(m_mtx);
+                m_running = false;
+
+                if(m_interval_handler_waiting) {
+                    notify = true;
+                }
+            }
+               
+            if(notify) { 
+                m_cv.notify_one();
+            }
+
+            m_timeout_handler_thd.join();
+        }
+
+        /**
+         * @brief Start the timer 
+         * @param tim timer to be started
+         * @return result::estatus::success on success, result::estatus::argument_null if argument is nullptr, else result::estatus::already_running if the timer was already started
+         */
+        template <typename... As>
+        result start(std::shared_ptr<timer> tim) {
+            bool notify = false;
+            timer::time_point timeout;
+            result r{result::estatus::success};
+
+            if(!tim) { 
+                return result{ result::estatus::argument_null };
+            }
+
+            {
+                std::lock_guard<std::mutex> lk(m_mtx);
+
+                // check if the timer can be started, and set the necessary 
+                // internal state to started if it can be 
+                r = tim->handle_start();
+
+                if(!r) {
+                    return r;
+                } else {
+                    timeout = tim->timeout();
+                }
+
+                auto it = m_timers.find(timeout);
+
+                // ensure container for timers at timeout time_point exists
+                if(it == m_timers.end()) {
+                    it = m_timers.insert(timeout, timer_set_t());
+                }
+
+                it->second.insert(tim);
+
+                if(m_interval_handler_waiting) {
+                    notify = true;
+                }
+            }
+
+            if(notify) {
+                // wakeup timeout handler thread to process updated timers 
+                m_cv.notify_one(); 
+            }
+
+            return r;
+        }
+
+        /**
+         * @brief Stop a running timer 
+         *
+         * Will immediately return if timer is not running.
+         *
+         * @param tim timer to be stopped
+         * @return result::estatus::success on success, result::estatus::argument_null if argument is nullptr, else result::estatus::not_found if timer could not be found
+         */
+        inline result stop(std::shared_ptr<timer> tim) {
+            bool found = false;
+
+            if(!tim) { 
+                return result{ result::estatus::argument_null };
+            }
+
+            {
+                std::lock_guard<std::mutex> lk(m_mtx);
+
+                // Determine if we've already handled timeout or stopped timer, 
+                // as the underlying value is only set by this class under mutex 
+                // lock. If timer is not running, we have succeeded at stopping the 
+                // timer.
+                if(!(tim->running())) {
+                    return result{ result::estatus::success };
+                }
+
+                // search through timeouts 
+                auto timer_set_it = m_timers.find(tim->get_status()->timeout.load());
+                if(timer_set_it != m_timers.end()) {
+                    // search through timer set associated with a timeout 
+                    auto it = timer_set_it->second.find(tim);
+                    if(it != timer_set_it->end()) {
+                        found = true;
+                        it->tim->handle_stop();
+                        timer_set_it->erase(it);
+
+                        // remove any empty timer containers
+                        if(timer_set_it->empty()) {
+                            m_timers.erase(timer_set_it);
+                        }
+                    }
+                }
+            }
+
+            if(found) {  
+                return result{ result::estatus::success };
+            } else {
+                return result{ result::estatus::not_found };
+            }
+        }
+
+    private:
+        typedef std::set<std::shared_ptr<timer>> timer_set_t;
+
+        // Is a template to prevent compiler from generating code unless it is used.
+        service() : 
             m_running(true), 
-            out_handler_thd([&]{
+            m_interval_handler_waiting(false),
+            m_timeout_handler_thd([&]{
                 std::unique_lock<std::mutex> lk(m_mtx);
 
-                while(m_running) {
-                    std::vector<timer_vec_t> ready_timer_vecs;
+                auto self = m_self;
 
-                    for(timer_map_t::iterator it = rs.begin(); it!= m_timers.end(); it++) {
+                while(m_running) {
+                    std::vector<timer_set_t> ready_timer_sets;
+
+                    for(auto it = m_timers.begin(); it!= m_timers.end(); it++) {
                         if(it->first < std::chrono::steady_clock::now()) {
                             // store timeout vectors in local container
-                            ready_timer_vecs.push_back(std::move(it->second));
+                            ready_timer_sets.push_back(std::move(it->second));
 
                             // erase timeouts from member container
-                            it = rs.erase(it);
+                            it = m_timers.erase(it);
                         } else {
                             // no more timers are ready
                             break;
@@ -924,9 +999,9 @@ private:
                     lk.unlock(); 
                         
                     // call timer handlers
-                    for(auto& read_timer_vec : ready_timer_vecs) { 
-                        for(auto& timer : ready_timeout_vec) {
-                            timer.m_handler();
+                    for(auto& ready_timer_set : ready_timer_sets) { 
+                        for(auto& tim : ready_timer_set) {
+                            tim->handle_timeout(self);
                         }
                     }
 
@@ -935,95 +1010,106 @@ private:
 
                     // wait until nearest timeout or indefinitely until a new 
                     // timer is started
-                    auto it = rs.begin();
-                    if(it != rs.end()) {
-                        m_cv.wait_until(lk, it->first);
-                    } else {
-                        m_cv.wait(lk);
+                    if(m_running) {
+                        m_interval_handler_waiting = true;
+
+                        auto it = m_timers.begin();
+                        if(it != m_timers.end()) {
+                            auto timeout = it->first;
+                            m_cv.wait_until(lk, timeout);
+                        } else {
+                            m_cv.wait(lk);
+                        }
+
+                        m_interval_handler_waiting = false;
+                    } 
+                }
+
+                // set remaining timer state to indicate they are not running
+                for(auto& timer_set : m_timers) {
+                    for(auto& tim : timer_set) {
+                        tim->handle_stop();
                     }
                 }
             })
         { }
 
-        ~TimerService() {
-            {
-                std::lock_guard<std::mutex> lk(m_mtx);
-                m_running = false;
-                m_cv.notify_one();
-            }
+        service(const service& rhs) = delete;
+        service(service&& rhs) = delete;
 
-            out_handler_thd.join();
-        }
-
-        template <typename... As>
-        void start_timer(std::chrono::steady_clock::time_point timeout, 
-                         std::shared_ptr<timer> tim) {
-            std::lock_guard<std::mutex> lk(m_mtx);
-
-            {
-                std::unique_lock<std::mutex> lk(m_mtx);
-                auto it = rs.find(timeout);
-
-                // ensure container for timers at timeout time_point exists
-                if(it == rs.end()) {
-                    it = rs.insert(timeout, timer_vec_t>());
-                }
-
-                it->second.push_back(tim);
-            }
-
-            // wakeup timeout handler thread to process updated timers
-            m_cv.notify_one(); 
-        }
-
-        inline result stop_timer(std::shared_ptr<timer> tim) {
-            std::lock_guard<std::mutex> lk(m_mtx);
-
-            bool found = false;
-
-            // search through all timeouts
-            for(auto timer_data_vec_it = rs.begin();
-                timer_data_vec_it < rs.end();
-                timer_data_vec_it++) {
-
-                // search through all timer data associated with a timeout
-                for(auto it = timer_data_vec_it->begin(); 
-                    it != timer_data_vec_it->end(); 
-                    it++) {
-                    if(it->tim == tim) {
-                        timer_data_vec_it->erase(it);
-                        found = true;
-
-                        // if timer is found end early
-                        break;
-                    }
-                }
-
-                if(timer_data_vec_it->empty()) {
-                    timer_data_vec_it = rs.erase(timer_data_vec_it);
-                }
-
-                if(found) {
-                    break;
-                }
-            }
-
-            if(found) {  
-                return result{result::eStatus::success};
-            } else {
-                return result{result::eStatus::notFound};
-            }
-        }
-
+        std::weak_ptr<service> m_self;
         bool m_running;
+        bool m_interval_handler_waiting; // heuristic to limit condition_variable signals
         std::mutex m_mtx;
         std::condition_variable m_cv;
-        std::thread out_handler_thd;
-        timer_map_t rs;
+        std::thread m_timeout_handler_thd;
+
+        // container chosen for automatic ordering of timers by their timeout
+        std::map<timer::time_point, timer_set_t> m_timers; 
     };
 
-    std::function<void()> m_handler;
+private:
+    timer(std::function<void()> callback,
+          std::size_t sec,
+          std::size_t milli,
+          bool repeat,
+          bool async) : 
+        m_callback(std::move(callback)),
+        m_interval_sec(0),
+        m_interval_milli(0),
+        m_repeat(false),
+        m_async(false)
+    { }
+
+    timer(const timer& rhs) = delete;
+    timer(timer&& rhs) = delete;
+
+    // The following timer operations are used exclusively by timer::service
+
+    // do not start timer if the timer is already running, if no timeout has 
+    // been set, or if no callback has been set
+    inline result handle_start() {
+        if(m_timeout.load() != time_point()) {
+            return result{ result::estatus::already_running };
+        } else {
+            m_timeout.store(time_point{std::chrono::steady_clock::now() +
+                                               std::chrono::seconds(m_interval_sec) +
+                                               std::chrono::milliseconds(m_interval_milli)});
+            return result{ result::estatus::success };
+        }
+    }
+
+    // return true if repeat requested, else false
+    inline void handle_timeout(std::weak_ptr<timer::service>& weak_svc) {
+        if(m_async) {
+            std::thread([=]() mutable { m_callback(); }).detach();
+        } else {
+            m_callback();
+        }
+
+        if(m_repeat) {
+            auto svc = weak_svc.lock();
+            if(svc) {
+                svc->start(m_self.lock());
+            } else {
+                m_timeout.store(time_point());
+            }
+        } else {
+            m_timeout.store(time_point());
+        }
+    }
+
+    inline void handle_stop() {
+        m_timeout.store(time_point());
+    }
+
+    std::function<void()> m_callback;
+    std::size_t m_interval_sec;
+    std::size_t m_interval_milli;
+    bool m_repeat;
+    bool m_async;
     std::weak_ptr<timer> m_self;
+    std::atomic<time_point> m_timeout;
 };
 
 }
