@@ -943,7 +943,7 @@ struct timer {
                 }
 
                 // search through timeouts 
-                auto timer_set_it = m_timers.find(tim->get_status()->timeout.load());
+                auto timer_set_it = m_timers.find(tim->get_timeout());
                 if(timer_set_it != m_timers.end()) {
                     // search through timer set associated with a timeout 
                     auto it = timer_set_it->second.find(tim);
