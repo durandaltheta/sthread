@@ -38,6 +38,8 @@ are needed try cloning this project with submodules:
 - cmake .
 - sudo make install  
 
+Alternatively just copy the .h files in inc/ folder to your local project headers and include as normal.
+
 ## Build Unit Tests 
 - cmake .
 - make simple_thread_tst 
