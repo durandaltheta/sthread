@@ -361,12 +361,12 @@ forward this string
 ### Close, Shutdown, and Restart
 In looping `st::channel::recv()` operations `st::channel::close()` can be manually called to force all operations to cease on the `st::channel` (operations will return `false`). The default behavior for `st::channel::close()` is to cause all current and future all `st::channel::send()` operations to fail early but to allow `st::channel::recv()` to continue succeeding until the internal message queue is empty. 
 
-This is the default behavior of several functions:
+This 'soft_shutdown' behavior is the default behavior for several functions:
 - `st::channel::close(/* default true */)`
 - `st::worker::shutdown(/* default true */)`
 - `st::worker::restart(/* default true */)`
 
-Alternatively, the user can call said functions with explicit `false` to immediately end all operations on the channel:
+Alternatively, the user can call said functions with explicit `false` to clear all queued actions on the object:
 - `st::channel::close(false)`
 - `st::worker::shutdown(false)`
 - `st::worker::restart(false)`

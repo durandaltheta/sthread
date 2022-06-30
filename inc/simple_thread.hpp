@@ -17,6 +17,7 @@
 #include <functional>
 #include <set>
 #include <map>
+#include <vector>
 #include <atomic>
 
 namespace st {
@@ -209,8 +210,7 @@ private:
  * @brief Interthread message passing queue
  *
  * The internal mechanism used by this library to communicate between managed 
- * system threads. Provided here as a convenience for communicating from managed 
- * system threads to other user threads.
+ * system threads. 
  */
 struct channel { 
     /**
@@ -290,7 +290,7 @@ struct channel {
      *
      * @param process_remaining_messages if true allow current and future recv() to succeed until queue empty
      */
-    inline void close(bool process_remaining_messages=true) {
+    inline void close(bool process_remaining_messages = true) {
         bool notify = false;
 
         {
@@ -458,7 +458,7 @@ private:
             m_receiver_cv.notify_one();
         }
 
-        return r;
+        return result{ result::estatus::success };
     }
 
     bool m_closed;
@@ -532,11 +532,11 @@ struct worker {
     /** 
      * @brief Shutdown the worker thread
      *
-     * @param process_remaining_messages if true allow recv() to succeed until queue empty
+     * @param soft_shutdown if true allow recv() to succeed until queue empty
      */
-    inline void shutdown(bool process_remaining_messages=true) {
+    inline void shutdown(bool soft_shutdown = true) {
         std::lock_guard<std::mutex> lk(m_mtx);
-        inner_shutdown(process_remaining_messages);
+        inner_shutdown(soft_shutdown);
     }
 
     /**
@@ -544,11 +544,11 @@ struct worker {
      *
      * Shutdown threads and reset state when necessary. 
      *
-     * @param process_remaining_messages if true allow recv() to succeed until queue empty
+     * @param soft_shutdown if true allow recv() to succeed until queue empty
      */
-    inline void restart(bool process_remaining_messages=true) {
+    inline void restart(bool soft_shutdown = true) {
         std::unique_lock<std::mutex> lk(m_mtx);
-        inner_shutdown(process_remaining_messages);
+        inner_shutdown(soft_shutdown);
         m_ch = channel::make(m_ch_queue_max_size);
         m_thread_started_flag = false;
         m_thd = std::thread([&]{
@@ -721,395 +721,6 @@ private:
     std::function<handler()> m_generate_handler;
     std::shared_ptr<channel> m_ch;
     std::thread m_thd;
-};
-
-/**
- * @brief Managed timer and callback handler class  
- *
- * A timer can be started with `timer::service::start()`.
- *
- * Typical callback design is to have the callback hold a copy of a `st::worker` 
- * shared_ptr and `st::worker::send()` a message indicating the timer has timed
- * out. 
- *
- * Note: if the callback blocks indefinitely, the timer callback thread will 
- * also remain blocked. An option for addressing long running callbacks is to 
- * provide async==true to `timer::make()` which will cause a dedicated thread to 
- * be launched to execute the callback.
- */
-struct timer {
-    /**
-     * @brief time_point type used by this class
-     */
-    typedef std::chrono::time_point<std::chrono::steady_clock> time_point;
-
-    /**
-     * @brief Construct a non-started timer
-     *
-     * @param callback function will be called when timeout occurs
-     * @param sec seconds interval before timeout will occur
-     * @param milli additional milliseconds interval before the timeout will occur 
-     * @param repeat true if timer should repeat, else false 
-     * @param async true if callback should execute on its own thread, else false 
-     */
-    inline std::shared_ptr<timer> make(
-            std::function<void()> callback,
-            std::size_t sec, 
-            std::size_t milli, 
-            bool repeat=false, 
-            bool async=false) {
-        std::shared_ptr<timer> sp(new timer(
-                    std::move(handler),
-                    sec,
-                    milli,
-                    repeat,
-                    async);
-        sp->m_self = sp;
-        return sp;
-    }
-
-    /**
-     * @return true if timer is running, else false
-     */
-    inline bool running() {
-        return m_timeout.load() != time_point();
-    }
-
-    /**
-     * @return the time_point representing the timeout
-     */
-    inline time_point get_timeout() {
-        return m_timeout.load();
-    }
-
-    /**
-     * @brief Structure representing the time left until timer times out
-     */
-    struct time_left {
-        /**
-         * @brief Seconds left until timeout
-         */
-        std::size_t sec; 
-
-        /**
-         * @brief Milliseconds left until timeout
-         */
-        std::size_t milli;
-    };
-
-    /**
-     * @return the time_left on the timer till timeout
-     */
-    inline time_left get_time_left() {
-        time_left ret{0,0};
-
-        if(running()) {
-            auto timeout_tp = m_timeout.load();
-            auto now = std::chrono::steady_clock::now();
-
-            if(timeout_tp > now) {
-                auto diff = timeout_tp - now;
-                auto dur_secs_left = std::chrono::duration_cast<std::chrono::seconds>(diff);
-
-                auto dur_milli_left = 
-                    std::chrono::duration_cast<std::chrono::milliseconds>(diff) -
-                    std::chrono::duration_cast<std::chrono::milliseconds>(dur_secs_left);
-
-                if(dur_secs_left.count()) {
-                    ret.sec = dur_secs_left.count();
-                }
-
-                if(dur_milli_left.count()) {
-                    ret.milli = dur_milli_left.count();
-                }
-            } 
-        }
-
-        return ret;
-    }
-
-    /**
-     * @brief Timer executor object capable of starting and stopping timers
-     *
-     * Manages a timer callback thread which will execute timer callbacks on 
-     * timeout.
-     */
-    struct service {
-        /**
-         * @brief Allocate a running timer service
-         */
-        inline std::shared_ptr<timer> make() {
-            std::shared_ptr<service> sp(new service);
-            sp->m_self = sp;
-            return sp;
-        }
-
-        /**
-         * @brief Destructor will end and join callback thread
-         */
-        ~service() {
-            bool notify = false;
-
-            {
-                std::lock_guard<std::mutex> lk(m_mtx);
-                m_running = false;
-
-                if(m_interval_handler_waiting) {
-                    notify = true;
-                }
-            }
-               
-            if(notify) { 
-                m_cv.notify_one();
-            }
-
-            m_timeout_handler_thd.join();
-        }
-
-        /**
-         * @brief Start the timer 
-         * @param tim timer to be started
-         * @return result::estatus::success on success, result::estatus::argument_null if argument is nullptr, else result::estatus::already_running if the timer was already started
-         */
-        template <typename... As>
-        result start(std::shared_ptr<timer> tim) {
-            bool notify = false;
-            timer::time_point timeout;
-            result r{result::estatus::success};
-
-            if(!tim) { 
-                return result{ result::estatus::argument_null };
-            }
-
-            {
-                std::lock_guard<std::mutex> lk(m_mtx);
-
-                // check if the timer can be started, and set the necessary 
-                // internal state to started if it can be 
-                r = tim->handle_start();
-
-                if(!r) {
-                    return r;
-                } else {
-                    timeout = tim->timeout();
-                }
-
-                auto it = m_timers.find(timeout);
-
-                // ensure container for timers at timeout time_point exists
-                if(it == m_timers.end()) {
-                    it = m_timers.insert(timeout, timer_set_t());
-                }
-
-                it->second.insert(tim);
-
-                if(m_interval_handler_waiting) {
-                    notify = true;
-                }
-            }
-
-            if(notify) {
-                // wakeup timeout handler thread to process updated timers 
-                m_cv.notify_one(); 
-            }
-
-            return r;
-        }
-
-        /**
-         * @brief Stop a running timer 
-         *
-         * Will immediately return if timer is not running.
-         *
-         * @param tim timer to be stopped
-         * @return result::estatus::success on success, result::estatus::argument_null if argument is nullptr, else result::estatus::not_found if timer could not be found
-         */
-        inline result stop(std::shared_ptr<timer> tim) {
-            bool found = false;
-
-            if(!tim) { 
-                return result{ result::estatus::argument_null };
-            }
-
-            {
-                std::lock_guard<std::mutex> lk(m_mtx);
-
-                // Determine if we've already handled timeout or stopped timer, 
-                // as the underlying value is only set by this class under mutex 
-                // lock. If timer is not running, we have succeeded at stopping the 
-                // timer.
-                if(!(tim->running())) {
-                    return result{ result::estatus::success };
-                }
-
-                // search through timeouts 
-                auto timer_set_it = m_timers.find(tim->get_timeout());
-                if(timer_set_it != m_timers.end()) {
-                    // search through timer set associated with a timeout 
-                    auto it = timer_set_it->second.find(tim);
-                    if(it != timer_set_it->end()) {
-                        found = true;
-                        it->tim->handle_stop();
-                        timer_set_it->erase(it);
-
-                        // remove any empty timer containers
-                        if(timer_set_it->empty()) {
-                            m_timers.erase(timer_set_it);
-                        }
-                    }
-                }
-            }
-
-            if(found) {  
-                return result{ result::estatus::success };
-            } else {
-                return result{ result::estatus::not_found };
-            }
-        }
-
-    private:
-        typedef std::set<std::shared_ptr<timer>> timer_set_t;
-
-        // Is a template to prevent compiler from generating code unless it is used.
-        service() : 
-            m_running(true), 
-            m_interval_handler_waiting(false),
-            m_timeout_handler_thd([&]{
-                std::unique_lock<std::mutex> lk(m_mtx);
-
-                auto self = m_self;
-
-                while(m_running) {
-                    std::vector<timer_set_t> ready_timer_sets;
-
-                    for(auto it = m_timers.begin(); it!= m_timers.end(); it++) {
-                        if(it->first < std::chrono::steady_clock::now()) {
-                            // store timeout vectors in local container
-                            ready_timer_sets.push_back(std::move(it->second));
-
-                            // erase timeouts from member container
-                            it = m_timers.erase(it);
-                        } else {
-                            // no more timers are ready
-                            break;
-                        }
-                    }
-
-                    // do not call timer handlers with lock to prevent deadlock
-                    lk.unlock(); 
-                        
-                    // call timer handlers
-                    for(auto& ready_timer_set : ready_timer_sets) { 
-                        for(auto& tim : ready_timer_set) {
-                            tim->handle_timeout(self);
-                        }
-                    }
-
-                    // reacquire lock
-                    lk.lock(); 
-
-                    // wait until nearest timeout or indefinitely until a new 
-                    // timer is started
-                    if(m_running) {
-                        m_interval_handler_waiting = true;
-
-                        auto it = m_timers.begin();
-                        if(it != m_timers.end()) {
-                            auto timeout = it->first;
-                            m_cv.wait_until(lk, timeout);
-                        } else {
-                            m_cv.wait(lk);
-                        }
-
-                        m_interval_handler_waiting = false;
-                    } 
-                }
-
-                // set remaining timer state to indicate they are not running
-                for(auto& timer_set : m_timers) {
-                    for(auto& tim : timer_set) {
-                        tim->handle_stop();
-                    }
-                }
-            })
-        { }
-
-        service(const service& rhs) = delete;
-        service(service&& rhs) = delete;
-
-        std::weak_ptr<service> m_self;
-        bool m_running;
-        bool m_interval_handler_waiting; // heuristic to limit condition_variable signals
-        std::mutex m_mtx;
-        std::condition_variable m_cv;
-        std::thread m_timeout_handler_thd;
-
-        // container chosen for automatic ordering of timers by their timeout
-        std::map<timer::time_point, timer_set_t> m_timers; 
-    };
-
-private:
-    timer(std::function<void()> callback,
-          std::size_t sec,
-          std::size_t milli,
-          bool repeat,
-          bool async) : 
-        m_callback(std::move(callback)),
-        m_interval_sec(0),
-        m_interval_milli(0),
-        m_repeat(false),
-        m_async(false)
-    { }
-
-    timer(const timer& rhs) = delete;
-    timer(timer&& rhs) = delete;
-
-    // The following timer operations are used exclusively by timer::service
-
-    // do not start timer if the timer is already running, if no timeout has 
-    // been set, or if no callback has been set
-    inline result handle_start() {
-        if(m_timeout.load() != time_point()) {
-            return result{ result::estatus::already_running };
-        } else {
-            m_timeout.store(time_point{std::chrono::steady_clock::now() +
-                                               std::chrono::seconds(m_interval_sec) +
-                                               std::chrono::milliseconds(m_interval_milli)});
-            return result{ result::estatus::success };
-        }
-    }
-
-    // return true if repeat requested, else false
-    inline void handle_timeout(std::weak_ptr<timer::service>& weak_svc) {
-        if(m_async) {
-            std::thread([=]() mutable { m_callback(); }).detach();
-        } else {
-            m_callback();
-        }
-
-        if(m_repeat) {
-            auto svc = weak_svc.lock();
-            if(svc) {
-                svc->start(m_self.lock());
-            } else {
-                m_timeout.store(time_point());
-            }
-        } else {
-            m_timeout.store(time_point());
-        }
-    }
-
-    inline void handle_stop() {
-        m_timeout.store(time_point());
-    }
-
-    std::function<void()> m_callback;
-    std::size_t m_interval_sec;
-    std::size_t m_interval_milli;
-    bool m_repeat;
-    bool m_async;
-    std::weak_ptr<timer> m_self;
-    std::atomic<time_point> m_timeout;
 };
 
 }
