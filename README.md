@@ -417,10 +417,9 @@ thread done
 This library provides a fairly simple finite state machine (FSM) implementation 
 as a design tool. 
 
-The reasoning for even including this in the library is that the inherent 
-complexity of asynchronous programming can lead to complex state management and
-simplifying designs with a state machine can *sometimes* be advantagous, 
-when used intelligently and judiciously. 
+The reasoning for including this feature in the library is that asynchronous 
+programming can have complex state management. Simplifying designs with a state 
+machine can *sometimes* be advantagous, when used intelligently and judiciously. 
 
 The state machine object type is `st::state::machine`, which can register new 
 state transitions with calls to `st::state::machine::register_transition()` and 
