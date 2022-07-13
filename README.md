@@ -481,7 +481,7 @@ your partner begins speaking and you listen
 Since function signatures `void st::state::enter(std::shared_ptr<st::message>)` 
 and  `bool st::state::exit(std::shared_ptr<st::message>)` accept a message 
 object as their arguments, the user can directly replace `switch` statements 
-from within `st::worker` instances with calls to a 
+from within `st::worker` instances with calls to 
 `st::state::machine::process_event()` if desired.
 ```
 int main() {
