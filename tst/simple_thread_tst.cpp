@@ -910,7 +910,148 @@ TEST(simple_thread, weight) {
     EXPECT_TRUE(wait_ch->closed());
 }
 
-TEST(simple_thread, state_machine) {
+TEST(simple_thread, state_machine1) {
+    enum class conversation {
+        partner_speaks,
+        you_speak 
+    };
+
+    struct listening : public st::state {
+        void enter(std::shared_ptr<st::message> event) {
+            std::cout << "your partner begins speaking and you listen" << std::endl;
+        }
+    };
+
+    struct talking : public st::state {
+        void enter(std::shared_ptr<st::message> event) {
+            std::cout << "you begin speaking and your partner listens" << std::endl;
+        }
+    };
+
+    auto listening_st = st::state::make<listening>();
+    auto talking_st = st::state::make<talking>();
+    auto conversation_machine = st::state::machine::make();
+
+    // register the state transitions 
+    conversation_machine->register_transition(conversation::partner_speaks, listening_st);
+    conversation_machine->register_transition(conversation::you_speak, talking_st);
+
+    // set the initial machine state 
+    conversation_machine->process_event(conversation::partner_speaks);
+
+    // have a conversation
+    conversation_machine->process_event(conversation::you_speak); 
+    conversation_machine->process_event(conversation::partner_speaks); 
+}
+
+TEST(simple_thread, state_machine2) {
+    enum class conversation {
+        partner_speaks,
+        you_speak 
+    };
+
+    struct listening : public st::state {
+        void enter(std::shared_ptr<st::message> event) {
+            std::string s;
+            event->copy_data_to(s);
+            std::cout << "your partner speaks: " << s << std::endl;
+        }
+
+        bool exit(std::shared_ptr<st::message> event) {
+            // standard guard preventing transitioning to the same event as we
+            // are leaving
+            return event 
+                   ? event->id() == static_cast<std::size_t>(conversation::partner_speaks)
+                     ? false
+                     : true
+                   : false;
+        }
+    };
+
+    struct talking : public st::state {
+        void enter(std::shared_ptr<st::message> event) {
+            std::string s;
+            event->copy_data_to(s);
+            std::cout << "you speak: " << s << std::endl;
+        }
+
+        bool exit(std::shared_ptr<st::message> event) {
+            // standard guard preventing transitioning to the same event as we
+            // are leaving
+            return event 
+                   ? event->id() == static_cast<std::size_t>(conversation::you_speak)
+                     ? false
+                     : true
+                   : false;
+        }
+    };
+
+    auto listening_st = st::state::make<listening>();
+    auto talking_st = st::state::make<listening>();
+    auto conversation_machine = st::state::machine::make();
+
+    // register the state transitions 
+    conversation_machine->register_transition(conversation::partner_speaks, listening_st);
+    conversation_machine->register_transition(conversation::you_speak, talking_st);
+
+    // set the initial machine state and begin handling events
+    conversation_machine->process_event(conversation::partner_speaks, std::string("hello foo"));
+    conversation_machine->process_event(conversation::partner_speaks, std::string("hello foo2"));
+    conversation_machine->process_event(conversation::partner_speaks, std::string("hello foo3"));
+    conversation_machine->process_event(conversation::you_speak, std::string("hello faa")); 
+    conversation_machine->process_event(conversation::you_speak, std::string("hello faa2")); 
+    conversation_machine->process_event(conversation::you_speak, std::string("hello faa3")); 
+}
+
+TEST(simple_thread, state_machine3) {
+    enum class conversation {
+        partner_speaks,
+        you_speak 
+    };
+
+    struct listening : public st::state {
+        void enter(std::shared_ptr<st::message> event) {
+            std::string s;
+            event->copy_data_to(s);
+            std::cout << "your partner speaks: " << s << std::endl;
+        }
+    };
+
+    struct talking : public st::state {
+        void enter(std::shared_ptr<st::message> event) {
+            std::string s;
+            event->copy_data_to(s);
+            std::cout << "you speak: " << s << std::endl;
+        }
+    };
+
+    struct conversation_worker {
+        conversation_worker(std::shared_ptr<st::state::machine> m) : m_machine(m) { }
+        inline void operator()(std::shared_ptr<st::message> msg) {
+            m_machine->process_event(msg);
+        }
+        std::shared_ptr<st::state::machine> m_machine;
+    };
+
+    auto listening_st = st::state::make<listening>();
+    auto talking_st = st::state::make<listening>();
+    auto conversation_machine = st::state::machine::make();
+
+    // register the state transitions 
+    conversation_machine->register_transition(conversation::partner_speaks, listening_st);
+    conversation_machine->register_transition(conversation::you_speak, talking_st);
+
+    // launch a worker thread to utilize the state machine
+    auto wkr = st::worker::make<conversation_worker>(conversation_machine);
+
+    // set the initial machine state and begin handling events
+    wkr->send(conversation::partner_speaks, std::string("hello foo"));
+    wkr->send(conversation::you_speak, std::string("hello faa")); 
+    wkr->send(conversation::partner_speaks, std::string("goodbye foo")); 
+    wkr->send(conversation::you_speak, std::string("goodbye faa")); 
+}
+
+TEST(simple_thread, state_machine4) {
     enum class the_vicious_cycle {
         enter_the_dmv,
         exit_the_dmv
@@ -957,30 +1098,30 @@ TEST(simple_thread, state_machine) {
     auto my_life = st::state::machine::make();
 
     // verify error checking behavior
-    EXPECT_FALSE(my_life->notify(std::shared_ptr<st::message>()));
-    EXPECT_FALSE(my_life->notify(the_vicious_cycle::exit_the_dmv));
-    EXPECT_FALSE(my_life->notify(the_vicious_cycle::enter_the_dmv, 2));
+    EXPECT_FALSE(my_life->process_event(std::shared_ptr<st::message>()));
+    EXPECT_FALSE(my_life->process_event(the_vicious_cycle::exit_the_dmv));
+    EXPECT_FALSE(my_life->process_event(the_vicious_cycle::enter_the_dmv, 2));
 
     // register states
-    EXPECT_TRUE(my_life->register_state(the_vicious_cycle::enter_the_dmv, waiting));
-    EXPECT_FALSE(my_life->register_state(the_vicious_cycle::enter_the_dmv, waiting));
-    EXPECT_TRUE(my_life->register_state(the_vicious_cycle::exit_the_dmv, freedom));
+    EXPECT_TRUE(my_life->register_transition(the_vicious_cycle::enter_the_dmv, waiting));
+    EXPECT_FALSE(my_life->register_transition(the_vicious_cycle::enter_the_dmv, waiting));
+    EXPECT_TRUE(my_life->register_transition(the_vicious_cycle::exit_the_dmv, freedom));
 
     // set the starting state 
-    EXPECT_TRUE(my_life->notify(the_vicious_cycle::exit_the_dmv));
+    EXPECT_TRUE(my_life->process_event(the_vicious_cycle::exit_the_dmv));
     
     // test transitions 
-    EXPECT_TRUE(my_life->notify(the_vicious_cycle::enter_the_dmv, 1));
-    EXPECT_TRUE(my_life->notify(the_vicious_cycle::exit_the_dmv));
-    EXPECT_TRUE(my_life->notify(the_vicious_cycle::enter_the_dmv, 2));
-    EXPECT_TRUE(my_life->notify(the_vicious_cycle::exit_the_dmv));
+    EXPECT_TRUE(my_life->process_event(the_vicious_cycle::enter_the_dmv, 1));
+    EXPECT_TRUE(my_life->process_event(the_vicious_cycle::exit_the_dmv));
+    EXPECT_TRUE(my_life->process_event(the_vicious_cycle::enter_the_dmv, 2));
+    EXPECT_TRUE(my_life->process_event(the_vicious_cycle::exit_the_dmv));
 
     // choose not to enter the dmv 
     allow_loss_of_freedom = false;
-    EXPECT_TRUE(my_life->notify(the_vicious_cycle::enter_the_dmv, 3));
+    EXPECT_TRUE(my_life->process_event(the_vicious_cycle::enter_the_dmv, 3));
     allow_loss_of_freedom = true;
-    EXPECT_TRUE(my_life->notify(the_vicious_cycle::enter_the_dmv, 3));
-    EXPECT_TRUE(my_life->notify(the_vicious_cycle::exit_the_dmv));
+    EXPECT_TRUE(my_life->process_event(the_vicious_cycle::enter_the_dmv, 3));
+    EXPECT_TRUE(my_life->process_event(the_vicious_cycle::exit_the_dmv));
 }
 
 // README EXAMPLES 

@@ -412,3 +412,47 @@ You say goodbye
 And I say hello
 thread done 
 ```
+
+### States and Finite State Machine 
+This library provides a fairly simple finite state machine (FSM) implementation 
+as a design tool. 
+
+The reasoning for even including this in the library is that the inherent 
+complexity of asynchronous programming can lead to complex state management and
+simplifying designs with a state machine can *sometimes* be advantagous, 
+when used intelligently and judiciously. 
+
+The state machine object type is `st::state::machine`, which can register new 
+state transitions with calls to `st::state::machine::register_transition()` and 
+process events with `st::state::machine::process_event()`.
+
+The user can create states by defining classes which inherit `st::state`,
+optionally overriding methods and passing an allocated `shared_ptr<st::state>` 
+of that class to `st::state::machine::register_transition()`. The function
+`st::state::make<YourStateType>(/* YourStateType constructor args */)` is 
+provided as a convenience for this process. 
+```
+```
+
+Terminal output might be:
+```
+```
+
+Since function signatures `void st::state::enter(std::shared_ptr<st::message>)` 
+and  `bool st::state::exit(std::shared_ptr<st::message>)` accept a message 
+object as their arguments, the user can directly replace `switch` statements 
+from within `st::worker` instances with calls to a 
+`st::state::machine::process_event()` if desired.
+
+```
+```
+
+Terminal output might be:
+```
+```
+
+The user can implement transition guards and prevent transitioning away 
+from a state by overriding the 
+`bool st::state::exit(std::shared_ptr<st::message>)` method, where the state 
+will only transition if that function returns `true`.
+

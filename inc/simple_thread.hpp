@@ -816,7 +816,7 @@ private:
  * design is to make sure the necessary features are kept simple without overly 
  * limiting the user.
  *
- * My reasoning for even including this in the library is that the inherent 
+ * The reasoning for even including this in the library is that the inherent 
  * complexity of asynchronous programming can lead to complex state management.
  * Simplifying designs with a state machine can *sometimes* be advantagous, 
  * when used intelligently and judiciously. 
@@ -875,7 +875,7 @@ struct state {
          * param st a pointer to an object which implements abstract class state  
          * return true if state was registered, false if state pointer is null or the same event is already registered
          */
-        inline bool register_state(std::size_t event_id, std::shared_ptr<state> st) {
+        inline bool register_transition(std::size_t event_id, std::shared_ptr<state> st) {
             auto it = m_transition_table.find(event_id);
             if(st && it == m_transition_table.end()) {
                 m_transition_table[event_id] = st;
@@ -885,17 +885,17 @@ struct state {
             }
         }
 
-        template <typename T>
-        bool register_state(T&& event_id, std::shared_ptr<state> st) {
-            return register_state(static_cast<std::size_t>(event_id), std::move(st));
+        template <typename ID>
+        bool register_transition(ID event_id, std::shared_ptr<state> st) {
+            return register_transition(static_cast<std::size_t>(event_id), std::move(st));
         }
 
         /*
-         * @brief notify the state machine an event has occurred 
+         * @brief process_event the state machine an event has occurred 
          * param event a message containing the state event id and optional data payload 
          * return true if the event was processed successfully, else false
          */
-        inline bool notify(std::shared_ptr<message> event) {
+        inline bool process_event(std::shared_ptr<message> event) {
             if(event) {
                 auto it = m_transition_table.find(event->id());
 
@@ -921,13 +921,13 @@ struct state {
         }
        
         template <typename ID, typename T>
-        bool notify(ID id, T&& t) {
-            return notify(st::message::make(static_cast<std::size_t>(id), std::forward<T>(t)));
+        bool process_event(ID id, T&& t) {
+            return process_event(st::message::make(id, std::forward<T>(t)));
         }
        
         template <typename ID>
-        bool notify(ID id) {
-            return notify(st::message::make(static_cast<std::size_t>(id)));
+        bool process_event(ID id) {
+            return process_event(st::message::make(id));
         }
 
     private:
