@@ -78,18 +78,15 @@ $(function() {
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:ae2281d9b0422dc3ea4aabe375bab6024"><td class="memItemLeft" align="right" valign="top"><a id="ae2281d9b0422dc3ea4aabe375bab6024"></a>
-bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structst_1_1state_1_1machine.html#ae2281d9b0422dc3ea4aabe375bab6024">register_transition</a> (std::size_t event_id, std::shared_ptr&lt; <a class="el" href="structst_1_1state.html">state</a> &gt; st)</td></tr>
-<tr class="memdesc:ae2281d9b0422dc3ea4aabe375bab6024"><td class="mdescLeft">&#160;</td><td class="mdescRight">Register a state object to be transitioned to when notified of an event param event an unsigned integer representing an event that has occurred param st a pointer to an object which implements abstract class state <br  />
- return true if state was registered, false if state pointer is null or the same event is already registered. <br /></td></tr>
+<tr class="memitem:ae2281d9b0422dc3ea4aabe375bab6024"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structst_1_1state_1_1machine.html#ae2281d9b0422dc3ea4aabe375bab6024">register_transition</a> (std::size_t event_id, std::shared_ptr&lt; <a class="el" href="structst_1_1state.html">state</a> &gt; st)</td></tr>
+<tr class="memdesc:ae2281d9b0422dc3ea4aabe375bab6024"><td class="mdescLeft">&#160;</td><td class="mdescRight">Register a state object to be transitioned to when notified of an event.  <a href="structst_1_1state_1_1machine.html#ae2281d9b0422dc3ea4aabe375bab6024">More...</a><br /></td></tr>
 <tr class="separator:ae2281d9b0422dc3ea4aabe375bab6024"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aee4bae16a32dd34957e770901f541014"><td class="memTemplParams" colspan="2"><a id="aee4bae16a32dd34957e770901f541014"></a>
 template&lt;typename ID &gt; </td></tr>
 <tr class="memitem:aee4bae16a32dd34957e770901f541014"><td class="memTemplItemLeft" align="right" valign="top">bool&#160;</td><td class="memTemplItemRight" valign="bottom"><b>register_transition</b> (ID event_id, std::shared_ptr&lt; <a class="el" href="structst_1_1state.html">state</a> &gt; st)</td></tr>
 <tr class="separator:aee4bae16a32dd34957e770901f541014"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aab2fcf9b00f8f7b7aad31ec7e60c4199"><td class="memItemLeft" align="right" valign="top"><a id="aab2fcf9b00f8f7b7aad31ec7e60c4199"></a>
-bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structst_1_1state_1_1machine.html#aab2fcf9b00f8f7b7aad31ec7e60c4199">process_event</a> (std::shared_ptr&lt; <a class="el" href="structst_1_1message.html">message</a> &gt; event)</td></tr>
-<tr class="memdesc:aab2fcf9b00f8f7b7aad31ec7e60c4199"><td class="mdescLeft">&#160;</td><td class="mdescRight">process_event the state machine an event has occurred param event a message containing the state event id and optional data payload return true if the event was processed successfully, else false <br /></td></tr>
+<tr class="memitem:aab2fcf9b00f8f7b7aad31ec7e60c4199"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structst_1_1state_1_1machine.html#aab2fcf9b00f8f7b7aad31ec7e60c4199">process_event</a> (std::shared_ptr&lt; <a class="el" href="structst_1_1message.html">message</a> &gt; event)</td></tr>
+<tr class="memdesc:aab2fcf9b00f8f7b7aad31ec7e60c4199"><td class="mdescLeft">&#160;</td><td class="mdescRight">process_event the state machine an event has occurred  <a href="structst_1_1state_1_1machine.html#aab2fcf9b00f8f7b7aad31ec7e60c4199">More...</a><br /></td></tr>
 <tr class="separator:aab2fcf9b00f8f7b7aad31ec7e60c4199"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0b8435f9873b74455bc1f89e598445ce"><td class="memTemplParams" colspan="2">template&lt;typename ID , typename T &gt; </td></tr>
 <tr class="memitem:a0b8435f9873b74455bc1f89e598445ce"><td class="memTemplItemLeft" align="right" valign="top">bool&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="structst_1_1state_1_1machine.html#a0b8435f9873b74455bc1f89e598445ce">process_event</a> (ID id, T &amp;&amp;t)</td></tr>
@@ -111,7 +108,7 @@ static std::shared_ptr&lt; <a class="el" href="structst_1_1state_1_1machine.html
 <p>This object is NOT mutex locked, as it is not intended to be used directly in an asynchronous manner. </p>
 </div><h2 class="groupheader">Member Function Documentation</h2>
 <a id="a78a9a78673437e5dfff2fd959fb10c7a"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a78a9a78673437e5dfff2fd959fb10c7a">&#9670;&nbsp;</a></span>process_event() <span class="overload">[1/2]</span></h2>
+<h2 class="memtitle"><span class="permalink"><a href="#a78a9a78673437e5dfff2fd959fb10c7a">&#9670;&nbsp;</a></span>process_event() <span class="overload">[1/3]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -139,15 +136,16 @@ template&lt;typename ID &gt; </div>
 <p>process the event that has occurred, transitioning states if necessary </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramname">id</td><td>an unsigned integer representing which type of message return true if the event was processed successfully, else false </td></tr>
+    <tr><td class="paramname">id</td><td>an unsigned integer representing which type of message </td></tr>
   </table>
   </dd>
 </dl>
+<dl class="section return"><dt>Returns</dt><dd>true if the event was processed successfully, else false </dd></dl>
 
 </div>
 </div>
 <a id="a0b8435f9873b74455bc1f89e598445ce"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a0b8435f9873b74455bc1f89e598445ce">&#9670;&nbsp;</a></span>process_event() <span class="overload">[2/2]</span></h2>
+<h2 class="memtitle"><span class="permalink"><a href="#a0b8435f9873b74455bc1f89e598445ce">&#9670;&nbsp;</a></span>process_event() <span class="overload">[2/3]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -186,10 +184,93 @@ template&lt;typename ID , typename T &gt; </div>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">id</td><td>an unsigned integer representing which type of message </td></tr>
-    <tr><td class="paramname">t</td><td>arbitrary typed data to be stored as the message data return true if the event was processed successfully, else false </td></tr>
+    <tr><td class="paramname">t</td><td>arbitrary typed data to be stored as the message data </td></tr>
   </table>
   </dd>
 </dl>
+<dl class="section return"><dt>Returns</dt><dd>true if the event was processed successfully, else false </dd></dl>
+
+</div>
+</div>
+<a id="aab2fcf9b00f8f7b7aad31ec7e60c4199"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aab2fcf9b00f8f7b7aad31ec7e60c4199">&#9670;&nbsp;</a></span>process_event() <span class="overload">[3/3]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool st::state::machine::process_event </td>
+          <td>(</td>
+          <td class="paramtype">std::shared_ptr&lt; <a class="el" href="structst_1_1message.html">message</a> &gt;&#160;</td>
+          <td class="paramname"><em>event</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>process_event the state machine an event has occurred </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">event</td><td>a message containing the state event id and optional data payload </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>true if the event was processed successfully, else false </dd></dl>
+
+</div>
+</div>
+<a id="ae2281d9b0422dc3ea4aabe375bab6024"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae2281d9b0422dc3ea4aabe375bab6024">&#9670;&nbsp;</a></span>register_transition()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool st::state::machine::register_transition </td>
+          <td>(</td>
+          <td class="paramtype">std::size_t&#160;</td>
+          <td class="paramname"><em>event_id</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::shared_ptr&lt; <a class="el" href="structst_1_1state.html">state</a> &gt;&#160;</td>
+          <td class="paramname"><em>st</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Register a state object to be transitioned to when notified of an event. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">event</td><td>an unsigned integer representing an event that has occurred </td></tr>
+    <tr><td class="paramname">st</td><td>a pointer to an object which implements abstract class state <br  />
+ </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>true if state was registered, false if state pointer is null or the same event is already registered </dd></dl>
 
 </div>
 </div>
