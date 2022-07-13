@@ -910,6 +910,79 @@ TEST(simple_thread, weight) {
     EXPECT_TRUE(wait_ch->closed());
 }
 
+TEST(simple_thread, state_machine) {
+    enum class the_vicious_cycle {
+        enter_the_dmv,
+        exit_the_dmv
+    };
+
+    struct waiting_forever_at_the_dmv : public st::state {
+        void enter(std::shared_ptr<st::message> event) {
+            int i;
+            if(event && event->copy_data_to(i)) {
+                std::cout << "AAAAAAAAAAAAAAAAAAAAAAGGH[" << i << "]" << std::endl;
+            }
+        }
+
+        bool exit(std::shared_ptr<st::message> event) {
+            int i;
+            if(event && event->copy_data_to(i)) {
+                std::cout << "FREE AT LAST[" << i << "]" << std::endl;
+            }
+            return true;
+        }
+    };
+
+    struct living_the_rest_of_my_life : public st::state {
+        living_the_rest_of_my_life(bool& exit_flag) : m_do_i_really_want_to(exit_flag) { }
+
+        // no custom implementation of `enter()`
+    
+        bool exit(std::shared_ptr<st::message> event) {
+            if(m_do_i_really_want_to) {
+                std::cout << "Oh NOOOOOOOOOOOOOO" << std::endl;
+                return true;
+            } else {
+                std::cout << "... naaaaaawww" << std::endl;
+                return false;
+            }
+        }
+
+        bool& m_do_i_really_want_to;
+    };
+
+    bool allow_loss_of_freedom = true;
+    auto waiting = st::state::make<waiting_forever_at_the_dmv>();
+    auto freedom = st::state::make<living_the_rest_of_my_life>(allow_loss_of_freedom);
+    auto my_life = st::state::machine::make();
+
+    // verify error checking behavior
+    EXPECT_FALSE(my_life->notify(std::shared_ptr<st::message>()));
+    EXPECT_FALSE(my_life->notify(the_vicious_cycle::exit_the_dmv));
+    EXPECT_FALSE(my_life->notify(the_vicious_cycle::enter_the_dmv, 2));
+
+    // register states
+    EXPECT_TRUE(my_life->register_state(the_vicious_cycle::enter_the_dmv, waiting));
+    EXPECT_FALSE(my_life->register_state(the_vicious_cycle::enter_the_dmv, waiting));
+    EXPECT_TRUE(my_life->register_state(the_vicious_cycle::exit_the_dmv, freedom));
+
+    // set the starting state 
+    EXPECT_TRUE(my_life->notify(the_vicious_cycle::exit_the_dmv));
+    
+    // test transitions 
+    EXPECT_TRUE(my_life->notify(the_vicious_cycle::enter_the_dmv, 1));
+    EXPECT_TRUE(my_life->notify(the_vicious_cycle::exit_the_dmv));
+    EXPECT_TRUE(my_life->notify(the_vicious_cycle::enter_the_dmv, 2));
+    EXPECT_TRUE(my_life->notify(the_vicious_cycle::exit_the_dmv));
+
+    // choose not to enter the dmv 
+    allow_loss_of_freedom = false;
+    EXPECT_TRUE(my_life->notify(the_vicious_cycle::enter_the_dmv, 3));
+    allow_loss_of_freedom = true;
+    EXPECT_TRUE(my_life->notify(the_vicious_cycle::enter_the_dmv, 3));
+    EXPECT_TRUE(my_life->notify(the_vicious_cycle::exit_the_dmv));
+}
+
 // README EXAMPLES 
 TEST(simple_thread, readme_example1) {
     struct MyClass {

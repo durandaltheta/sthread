@@ -15,6 +15,7 @@
 #include <deque>
 #include <typeinfo>
 #include <functional>
+#include <unordered_map>
 
 namespace st {
 
@@ -51,10 +52,10 @@ public:
      * @param t arbitrary typed data to be stored as the message data 
      * @return an allocated message
      */
-    template <typename T>
-    static std::shared_ptr<message> make(std::size_t id, T&& t) {
+    template <typename ID, typename T>
+    static std::shared_ptr<message> make(ID id, T&& t) {
         return std::shared_ptr<message>(new message(
-            id,
+            static_cast<std::size_t>(id),
             code<T>(),
             data_pointer_t(
                 allocate<T>(std::forward<T>(t)),
@@ -67,9 +68,10 @@ public:
      * @param id an unsigned integer representing which type of message
      * @return an allocated message
      */
-    static inline std::shared_ptr<message> make(std::size_t id) {
+    template <typename ID>
+    static std::shared_ptr<message> make(ID id) {
         return std::shared_ptr<message>(new message(
-                    id, 
+                    static_cast<std::size_t>(id), 
                     0, 
                     data_pointer_t(nullptr, message::no_delete)));
     }
@@ -363,8 +365,8 @@ struct channel {
      * @param t template variable to package as the message payload
      * @return result.status==result::eStatus::success on success, result.status==result::eStatus::closed if closed
      */
-    template <typename T>
-    result send(std::size_t id, T&& t) {
+    template <typename ID, typename T>
+    result send(ID id, T&& t) {
         return send(message::make(id, std::forward<T>(t)));
     }
     
@@ -376,7 +378,8 @@ struct channel {
      * @param id an unsigned integer representing which type of message 
      * @return result.status==result::eStatus::success on success, result.status==result::eStatus::closed if closed
      */
-    inline result send(std::size_t id) {
+    template <typename ID>
+    result send(ID id) {
         return send(message::make(id));
     }
 
@@ -422,8 +425,8 @@ struct channel {
      * @param t template variable to package as the message payload
      * @return result.status==result::eStatus::success on success, result.status==result::eStatus::closed if closed, result.status==result::eStatus::full if full
      */
-    template <typename T>
-    result try_send(std::size_t id, T&& t) {
+    template <typename ID, typename T>
+    result try_send(ID id, T&& t) {
         return try_send(message::make(id, std::forward<T>(t)));
     }
     
@@ -435,7 +438,8 @@ struct channel {
      * @param id an unsigned integer representing which type of message 
      * @return result.status==result::eStatus::success on success, result.status==result::eStatus::closed if closed, result.status==result::eStatus::full if full
      */
-    inline result try_send(std::size_t id) {
+    template <typename ID>
+    result try_send(ID id) {
         return try_send(message::make(id));
     }
 
@@ -680,8 +684,8 @@ struct worker {
      * @param t template variable to package as the message payload
      * @return result.status==result::eStatus::success on success, result.status==result::eStatus::closed if closed
      */
-    template <typename T>
-    result send(std::size_t id, T&& t) {
+    template <typename ID, typename T>
+    result send(ID id, T&& t) {
         return m_ch->send(id, std::forward<T>(t));
     }
     
@@ -693,7 +697,8 @@ struct worker {
      * @param id an unsigned integer representing which type of message 
      * @return result.status==result::eStatus::success on success, result.status==result::eStatus::closed if closed
      */
-    inline result send(std::size_t id) {
+    template <typename ID>
+    result send(ID id) {
         return m_ch->send(id);
     }
 
@@ -715,8 +720,8 @@ struct worker {
      * @param t template variable to package as the message payload
      * @return result.status==result::eStatus::success on success, result.status==result::eStatus::closed if closed, result.status==result::eStatus::full if full
      */
-    template <typename T>
-    result try_send(std::size_t id, T&& t) {
+    template <typename ID, typename T>
+    result try_send(ID id, T&& t) {
         return m_ch->try_send(id, std::forward<T>(t));
     }
     
@@ -728,7 +733,8 @@ struct worker {
      * @param id an unsigned integer representing which type of message 
      * @return result.status==result::eStatus::success on success, result.status==result::eStatus::closed if closed, result.status==result::eStatus::full if full
      */
-    inline result try_send(std::size_t id) {
+    template <typename ID>
+    result try_send(ID id) {
         return m_ch->try_send(id);
     }
 
@@ -801,6 +807,136 @@ private:
     std::function<handler()> m_generate_handler;
     std::shared_ptr<channel> m_ch;
     std::thread m_thd;
+};
+
+/*
+ * A simple and extensible finite state machine mechanism (FSM). FSMs are
+ * somewhat infamous for being difficult to parse, too unwieldy, or otherwise 
+ * opaque. As with everything else in this library, the aim of this object's 
+ * design is to make sure the necessary features are kept simple without overly 
+ * limiting the user.
+ *
+ * My reasoning for even including this in the library is that the inherent 
+ * complexity of asynchronous programming can lead to complex state management.
+ * Simplifying designs with a state machine can *sometimes* be advantagous, 
+ * when used intelligently and judiciously. 
+ *
+ * The toplevel class for this feature is actually the `state` object. The user 
+ * should implement classes which inherit `st::state`. A static `state::make()` 
+ * function is included as convenience for the user so they do not have to 
+ * manually typecast their allocated pointers. 
+ *
+ * User must create a state machine (`std::shared_ptr<st::state::machine>`) 
+ * using static function `st:;state::machine::make()` to register their states.
+ * The state machine can then be notified of new events with a call to 
+ * `st::state::machine::notify(std::shared_ptr<st::message>)`.
+ */
+struct state {
+    // explicit destructor definition to allow for proper delete behavior
+    virtual ~state(){} 
+
+    /*
+     * @brief called when during a transition when a state is entered 
+     * param event a message containing the event id and an optional data payload
+     */
+    virtual void enter(std::shared_ptr<message> event){ }
+
+    /*
+     * @brief called when during a transition when a state is exitted
+     * param event a message containing the event id and an optional data payload
+     * return true if exit succeeded and transition can continue, else false
+     */
+    virtual bool exit(std::shared_ptr<message> event){ return true; }
+
+    /*
+     * @brief a convenience function for generating shared_ptr's to state objects
+     * param as Constructor arguments for type T
+     * return an allocated shared_ptr to type T implementing state
+     */
+    template <typename T, typename... As>
+    static std::shared_ptr<state> make(As&&... as) {
+        return std::shared_ptr<state>(dynamic_cast<state*>(new T(std::forward<As>(as)...)));
+    }
+
+    /*
+     * The actual state machine.
+     *
+     * This object is NOT mutex locked, as it is not intended to be used directly 
+     * in an asynchronous manner. 
+     */
+    struct machine {
+        static inline std::shared_ptr<machine> make() {
+            return std::shared_ptr<machine>(new machine);
+        }
+
+        /*
+         * @brief Register a state object to be transitioned to when notified of an event
+         * param event an unsigned integer representing an event that has occurred
+         * param st a pointer to an object which implements abstract class state  
+         * return true if state was registered, false if state pointer is null or the same event is already registered
+         */
+        inline bool register_state(std::size_t event_id, std::shared_ptr<state> st) {
+            auto it = m_transition_table.find(event_id);
+            if(st && it == m_transition_table.end()) {
+                m_transition_table[event_id] = st;
+                return true;
+            } else {
+                return false;
+            }
+        }
+
+        template <typename T>
+        bool register_state(T&& event_id, std::shared_ptr<state> st) {
+            return register_state(static_cast<std::size_t>(event_id), std::move(st));
+        }
+
+        /*
+         * @brief notify the state machine an event has occurred 
+         * param event a message containing the state event id and optional data payload 
+         * return true if the event was processed successfully, else false
+         */
+        inline bool notify(std::shared_ptr<message> event) {
+            if(event) {
+                auto it = m_transition_table.find(event->id());
+
+                if(it != m_transition_table.end()) {
+                    // exit old state 
+                    if(m_cur_state != m_transition_table.end()) {
+                        if(!m_cur_state->second->exit(event)) {
+                            // exit early as transition cannot continue
+                            return true; 
+                        }
+                    }
+
+                    // enter new state
+                    it->second->enter(event);
+                    m_cur_state = it;
+                    return true;
+                } else { 
+                    return false;
+                }
+            } else {
+                return false;
+            }
+        }
+       
+        template <typename ID, typename T>
+        bool notify(ID id, T&& t) {
+            return notify(st::message::make(static_cast<std::size_t>(id), std::forward<T>(t)));
+        }
+       
+        template <typename ID>
+        bool notify(ID id) {
+            return notify(st::message::make(static_cast<std::size_t>(id)));
+        }
+
+    private:
+        machine() : m_cur_state(m_transition_table.end()) { }
+
+        typedef std::unordered_map<std::size_t,std::shared_ptr<state>> transition_table_t;
+        transition_table_t m_transition_table;
+        transition_table_t::iterator m_cur_state;
+    };
 };
 
 }
