@@ -540,9 +540,9 @@ Terminal output might be:
 ```
 $./a.out 
 your partner speaks: hello foo
-your partner speaks: hello faa
+you speak: hello faa
 your partner speaks: goodbye foo
-your partner speaks: goodbye faa
+you speak: goodbye faa
 ```
 
 The user can implement transition guards and prevent transitioning away 
