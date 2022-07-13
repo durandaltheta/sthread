@@ -840,13 +840,13 @@ struct state {
     virtual ~state(){} 
 
     /**
-     * @brief called when during a transition when a state is entered 
+     * @brief called during a transition when a state is entered 
      * param event a message containing the event id and an optional data payload
      */
     virtual void enter(std::shared_ptr<message> event){ }
 
     /**
-     * @brief called when during a transition when a state is exitted
+     * @brief called during a transition when a state is exitted
      * param event a message containing the event id and an optional data payload
      * return true if exit succeeded and transition can continue, else false
      */
