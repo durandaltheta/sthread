@@ -549,4 +549,72 @@ The user can implement transition guards and prevent transitioning away
 from a state by overriding the 
 `bool st::state::exit(std::shared_ptr<st::message>)` method, where the state 
 will only transition if that function returns `true`.
+```
+int main() {
+    struct conversation {
+        enum event {
+            partner_speaks,
+            you_speak 
+        };
+    };
 
+    struct listening : public st::state {
+        void enter(std::shared_ptr<st::message> event) {
+            std::string s;
+            event->copy_data_to(s);
+            std::cout << "your partner speaks: " << s << std::endl;
+        }
+
+        bool exit(std::shared_ptr<st::message> event) {
+            // standard guard preventing transitioning to the same event as we are leaving
+            if(event->id() != conversation::event::partner_speaks) {
+                return true;
+            } else {
+                return false;
+            }
+        }
+    };
+
+    struct talking : public st::state {
+        void enter(std::shared_ptr<st::message> event) {
+            std::string s;
+            event->copy_data_to(s);
+            std::cout << "you speak: " << s << std::endl;
+        }
+
+        bool exit(std::shared_ptr<st::message> event) {
+            // standard guard preventing transitioning to the same event as we are leaving
+            if(event->id() != conversation::event::you_speak) {
+                return true;
+            } else {
+                return false;
+            }
+        }
+    };
+
+    auto listening_st = st::state::make<listening>();
+    auto talking_st = st::state::make<talking>();
+    auto conversation_machine = st::state::machine::make();
+
+    // register the state transitions 
+    conversation_machine->register_transition(conversation::event::partner_speaks, listening_st);
+    conversation_machine->register_transition(conversation::event::you_speak, talking_st);
+
+    // set the initial machine state and begin handling events (duplicate events 
+    // will be ignored)
+    conversation_machine->process_event(conversation::event::partner_speaks, std::string("hello foo")); 
+    conversation_machine->process_event(conversation::event::partner_speaks, std::string("hello foo2")); 
+    conversation_machine->process_event(conversation::event::partner_speaks, std::string("hello foo3"));
+    conversation_machine->process_event(conversation::event::you_speak, std::string("hello faa")); 
+    conversation_machine->process_event(conversation::event::you_speak, std::string("hello faa2")); 
+    conversation_machine->process_event(conversation::event::you_speak, std::string("hello faa3")); 
+    return 0;
+}
+```
+
+Terminal output might be:
+```
+$./a.out 
+your partner speaks: hello foo
+you speak: hello faa
+```
