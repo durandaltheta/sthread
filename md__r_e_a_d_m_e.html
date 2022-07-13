@@ -524,9 +524,9 @@ States and Finite State Machine</h2>
 <div class="line">}</div>
 </div><!-- fragment --><p>Terminal output might be: </p><div class="fragment"><div class="line">$./a.out </div>
 <div class="line">your partner speaks: hello foo</div>
-<div class="line">your partner speaks: hello faa</div>
+<div class="line">you speak: hello faa</div>
 <div class="line">your partner speaks: goodbye foo</div>
-<div class="line">your partner speaks: goodbye faa</div>
+<div class="line">you speak: goodbye faa</div>
 </div><!-- fragment --><p>The user can implement transition guards and prevent transitioning away from a state by overriding the <code>bool <a class="el" href="structst_1_1state.html#a450771b125b1a1ba9b3ccc2dc07b959c" title="called during a transition when a state is exitted param event a message containing the event id and ...">st::state::exit</a>(std::shared_ptr&lt;<a class="el" href="structst_1_1message.html" title="Interthread type erased message container.">st::message</a>&gt;)</code> method, where the state will only transition if that function returns <code>true</code>. </p><div class="fragment"><div class="line">int main() {</div>
 <div class="line">    struct conversation {</div>
 <div class="line">        enum event {</div>
