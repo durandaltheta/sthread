@@ -1031,7 +1031,7 @@ TEST(simple_thread, state_machine_on_worker) {
 
         conversation_worker() { 
             auto listening_st = st::state::make<listening>();
-            auto talking_st = st::state::make<listening>();
+            auto talking_st = st::state::make<talking>();
             m_machine = st::state::machine::make();
 
             // register the state transitions 
