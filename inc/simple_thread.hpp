@@ -813,7 +813,7 @@ private:
     std::thread m_thd;
 };
 
-/*
+/**
  * A simple and extensible finite state machine mechanism (FSM). FSMs are
  * somewhat infamous for being difficult to parse, too unwieldy, or otherwise 
  * opaque. As with everything else in this library, the aim of this object's 
@@ -839,20 +839,20 @@ struct state {
     // explicit destructor definition to allow for proper delete behavior
     virtual ~state(){} 
 
-    /*
+    /**
      * @brief called when during a transition when a state is entered 
      * param event a message containing the event id and an optional data payload
      */
     virtual void enter(std::shared_ptr<message> event){ }
 
-    /*
+    /**
      * @brief called when during a transition when a state is exitted
      * param event a message containing the event id and an optional data payload
      * return true if exit succeeded and transition can continue, else false
      */
     virtual bool exit(std::shared_ptr<message> event){ return true; }
 
-    /*
+    /**
      * @brief a convenience function for generating shared_ptr's to state objects
      * param as Constructor arguments for type T
      * return an allocated shared_ptr to type T implementing state
@@ -862,7 +862,7 @@ struct state {
         return std::shared_ptr<state>(dynamic_cast<state*>(new T(std::forward<As>(as)...)));
     }
 
-    /*
+    /**
      * The actual state machine.
      *
      * This object is NOT mutex locked, as it is not intended to be used directly 
@@ -873,7 +873,7 @@ struct state {
             return std::shared_ptr<machine>(new machine);
         }
 
-        /*
+        /**
          * @brief Register a state object to be transitioned to when notified of an event
          * param event an unsigned integer representing an event that has occurred
          * param st a pointer to an object which implements abstract class state  
@@ -894,7 +894,7 @@ struct state {
             return register_transition(static_cast<std::size_t>(event_id), std::move(st));
         }
 
-        /*
+        /**
          * @brief process_event the state machine an event has occurred 
          * param event a message containing the state event id and optional data payload 
          * return true if the event was processed successfully, else false
@@ -924,11 +924,22 @@ struct state {
             }
         }
        
+        /**
+         * @brief process_event the state machine an event has occurred 
+         * @param id an unsigned integer representing which type of message
+         * @param t arbitrary typed data to be stored as the message data 
+         * return true if the event was processed successfully, else false
+         */
         template <typename ID, typename T>
         bool process_event(ID id, T&& t) {
             return process_event(st::message::make(id, std::forward<T>(t)));
         }
        
+        /**
+         * @brief process_event the state machine an event has occurred 
+         * @param id an unsigned integer representing which type of message
+         * return true if the event was processed successfully, else false
+         */
         template <typename ID>
         bool process_event(ID id) {
             return process_event(st::message::make(id));
