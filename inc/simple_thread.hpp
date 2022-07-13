@@ -925,7 +925,7 @@ struct state {
         }
        
         /**
-         * @brief process_event the state machine an event has occurred 
+         * @brief process the event that has occurred, transitioning states if necessary
          * @param id an unsigned integer representing which type of message
          * @param t arbitrary typed data to be stored as the message data 
          * return true if the event was processed successfully, else false
@@ -936,7 +936,7 @@ struct state {
         }
        
         /**
-         * @brief process_event the state machine an event has occurred 
+         * @brief process the event that has occurred, transitioning states if necessary
          * @param id an unsigned integer representing which type of message
          * return true if the event was processed successfully, else false
          */
