@@ -1,6 +1,10 @@
 var searchData=
 [
-  ['this_5fworker_35',['this_worker',['../structst_1_1worker.html#aec29be3a5f0972e678a756ff2a718a35',1,'st::worker']]],
-  ['try_5fsend_36',['try_send',['../structst_1_1channel.html#a161fdb7f9b43d9062a0720d1ae5a0afc',1,'st::channel::try_send(std::shared_ptr&lt; message &gt; m)'],['../structst_1_1channel.html#a6c2382aff40937c965f826c1b79519f3',1,'st::channel::try_send(ID id, T &amp;&amp;t)'],['../structst_1_1channel.html#ae1b224fdfb26b1ef40b6013787f47664',1,'st::channel::try_send(ID id)'],['../structst_1_1worker.html#a22d95b38561a3dab38a9ad143a434b30',1,'st::worker::try_send(std::shared_ptr&lt; message &gt; m)'],['../structst_1_1worker.html#a12116b59999872541fb0cf2012c6e261',1,'st::worker::try_send(ID id, T &amp;&amp;t)'],['../structst_1_1worker.html#aa1a6081b0d47e1e6d246126dfba9a57b',1,'st::worker::try_send(ID id)']]],
-  ['type_37',['type',['../structst_1_1message.html#ad5aa6102d07ce7a9db428d161cad1aa8',1,'st::message']]]
+  ['simple_20threading_20and_20communication_32',['Simple Threading and Communication',['../md__r_e_a_d_m_e.html',1,'']]],
+  ['send_33',['send',['../structst_1_1channel.html#a019ee37542778c52ae865ba3cec9db52',1,'st::channel::send(std::shared_ptr&lt; message &gt; m)'],['../structst_1_1channel.html#aa21f61c4673dff22ecb9dcaa98df5f72',1,'st::channel::send(ID id, T &amp;&amp;t)'],['../structst_1_1channel.html#a5e46ab3b4a67b937966c6df5244c0726',1,'st::channel::send(ID id)'],['../structst_1_1worker.html#af8e24b75e5f3b0279429b4ac594f513c',1,'st::worker::send(std::shared_ptr&lt; message &gt; m)'],['../structst_1_1worker.html#abf19a271d864fb01b39fd69a01c91115',1,'st::worker::send(ID id, T &amp;&amp;t)'],['../structst_1_1worker.html#aca2a556ac1d403945e32f781d778b1f7',1,'st::worker::send(ID id)']]],
+  ['shutdown_34',['shutdown',['../structst_1_1worker.html#a3f98d0479ad642ed572fd723caeb893d',1,'st::worker']]],
+  ['simple_5fthread_2ehpp_35',['simple_thread.hpp',['../simple__thread_8hpp.html',1,'']]],
+  ['simple_5fthread_5fchannel_5fdefault_5fmax_5fqueue_5fsize_36',['SIMPLE_THREAD_CHANNEL_DEFAULT_MAX_QUEUE_SIZE',['../simple__thread_8hpp.html#aad78e102993029782413cdad8cf36fe1',1,'simple_thread.hpp']]],
+  ['state_37',['state',['../structst_1_1state.html',1,'st']]],
+  ['status_38',['status',['../structst_1_1result.html#aa80f6879a068bcfe66860e43e3ecc275',1,'st::result']]]
 ];

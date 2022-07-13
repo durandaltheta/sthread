@@ -1,5 +1,7 @@
 var searchData=
 [
-  ['send_68',['send',['../structst_1_1channel.html#a019ee37542778c52ae865ba3cec9db52',1,'st::channel::send(std::shared_ptr&lt; message &gt; m)'],['../structst_1_1channel.html#aa21f61c4673dff22ecb9dcaa98df5f72',1,'st::channel::send(ID id, T &amp;&amp;t)'],['../structst_1_1channel.html#a5e46ab3b4a67b937966c6df5244c0726',1,'st::channel::send(ID id)'],['../structst_1_1worker.html#af8e24b75e5f3b0279429b4ac594f513c',1,'st::worker::send(std::shared_ptr&lt; message &gt; m)'],['../structst_1_1worker.html#abf19a271d864fb01b39fd69a01c91115',1,'st::worker::send(ID id, T &amp;&amp;t)'],['../structst_1_1worker.html#aca2a556ac1d403945e32f781d778b1f7',1,'st::worker::send(ID id)']]],
-  ['shutdown_69',['shutdown',['../structst_1_1worker.html#a3f98d0479ad642ed572fd723caeb893d',1,'st::worker']]]
+  ['recv_72',['recv',['../structst_1_1channel.html#a789de5ce12c798c90d6773085e275f35',1,'st::channel']]],
+  ['register_5ftransition_73',['register_transition',['../structst_1_1state_1_1machine.html#ae2281d9b0422dc3ea4aabe375bab6024',1,'st::state::machine']]],
+  ['restart_74',['restart',['../structst_1_1worker.html#a2e3f89739083c6d6779712081d30d459',1,'st::worker']]],
+  ['running_75',['running',['../structst_1_1worker.html#a4a3d6b7c743dd8e168d08b6b10faacff',1,'st::worker']]]
 ];

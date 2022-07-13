@@ -74,6 +74,8 @@ $(function() {
 <div class="title">st::state Struct Reference</div>  </div>
 </div><!--header-->
 <div class="contents">
+
+<p><code>#include &lt;<a class="el" href="simple__thread_8hpp_source.html">simple_thread.hpp</a>&gt;</code></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="nested-classes"></a>
 Classes</h2></td></tr>
@@ -83,20 +85,28 @@ Classes</h2></td></tr>
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
 <tr class="memitem:a5566da5549ee5fd834af66aec36c5d97"><td class="memItemLeft" align="right" valign="top"><a id="a5566da5549ee5fd834af66aec36c5d97"></a>
-virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>enter</b> (std::shared_ptr&lt; <a class="el" href="structst_1_1message.html">message</a> &gt; event)</td></tr>
+virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structst_1_1state.html#a5566da5549ee5fd834af66aec36c5d97">enter</a> (std::shared_ptr&lt; <a class="el" href="structst_1_1message.html">message</a> &gt; event)</td></tr>
+<tr class="memdesc:a5566da5549ee5fd834af66aec36c5d97"><td class="mdescLeft">&#160;</td><td class="mdescRight">called when during a transition when a state is entered param event a message containing the event id and an optional data payload <br /></td></tr>
 <tr class="separator:a5566da5549ee5fd834af66aec36c5d97"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a450771b125b1a1ba9b3ccc2dc07b959c"><td class="memItemLeft" align="right" valign="top"><a id="a450771b125b1a1ba9b3ccc2dc07b959c"></a>
-virtual bool&#160;</td><td class="memItemRight" valign="bottom"><b>exit</b> (std::shared_ptr&lt; <a class="el" href="structst_1_1message.html">message</a> &gt; event)</td></tr>
+virtual bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structst_1_1state.html#a450771b125b1a1ba9b3ccc2dc07b959c">exit</a> (std::shared_ptr&lt; <a class="el" href="structst_1_1message.html">message</a> &gt; event)</td></tr>
+<tr class="memdesc:a450771b125b1a1ba9b3ccc2dc07b959c"><td class="mdescLeft">&#160;</td><td class="mdescRight">called when during a transition when a state is exitted param event a message containing the event id and an optional data payload return true if exit succeeded and transition can continue, else false <br /></td></tr>
 <tr class="separator:a450771b125b1a1ba9b3ccc2dc07b959c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-static-methods"></a>
 Static Public Member Functions</h2></td></tr>
 <tr class="memitem:ae4ee7ee1d9035c37b4ed5f875c90fad8"><td class="memTemplParams" colspan="2"><a id="ae4ee7ee1d9035c37b4ed5f875c90fad8"></a>
 template&lt;typename T , typename... As&gt; </td></tr>
-<tr class="memitem:ae4ee7ee1d9035c37b4ed5f875c90fad8"><td class="memTemplItemLeft" align="right" valign="top">static std::shared_ptr&lt; <a class="el" href="structst_1_1state.html">state</a> &gt;&#160;</td><td class="memTemplItemRight" valign="bottom"><b>make</b> (As &amp;&amp;... as)</td></tr>
+<tr class="memitem:ae4ee7ee1d9035c37b4ed5f875c90fad8"><td class="memTemplItemLeft" align="right" valign="top">static std::shared_ptr&lt; <a class="el" href="structst_1_1state.html">state</a> &gt;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="structst_1_1state.html#ae4ee7ee1d9035c37b4ed5f875c90fad8">make</a> (As &amp;&amp;... as)</td></tr>
+<tr class="memdesc:ae4ee7ee1d9035c37b4ed5f875c90fad8"><td class="mdescLeft">&#160;</td><td class="mdescRight">a convenience function for generating shared_ptr's to state objects param as Constructor arguments for type T return an allocated shared_ptr to type T implementing state <br /></td></tr>
 <tr class="separator:ae4ee7ee1d9035c37b4ed5f875c90fad8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
-<hr/>The documentation for this struct was generated from the following file:<ul>
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><p>A simple and extensible finite state machine mechanism (FSM). FSMs are somewhat infamous for being difficult to parse, too unwieldy, or otherwise opaque. As with everything else in this library, the aim of this object's design is to make sure the necessary features are kept simple without overly limiting the user.</p>
+<p>The reasoning for even including this in the library is that the inherent complexity of asynchronous programming can lead to complex state management. Simplifying designs with a state machine can <em>sometimes</em> be advantagous, when used intelligently and judiciously.</p>
+<p>The toplevel class for this feature is actually the <code>state</code> object. The user should implement classes which inherit <code><a class="el" href="structst_1_1state.html">st::state</a></code>. A static <code><a class="el" href="structst_1_1state.html#ae4ee7ee1d9035c37b4ed5f875c90fad8" title="a convenience function for generating shared_ptr&#39;s to state objects param as Constructor arguments fo...">state::make()</a></code> function is included as convenience for the user so they do not have to manually typecast their allocated pointers.</p>
+<p>User must create a state machine (<code>std::shared_ptr&lt;<a class="el" href="structst_1_1state_1_1machine.html">st::state::machine</a>&gt;</code>) using static function <code>st:;state::machine::make()</code> to register their states. The state machine can then be notified of new events with a call to <code>st::state::machine::notify(std::shared_ptr&lt;<a class="el" href="structst_1_1message.html" title="Interthread type erased message container.">st::message</a>&gt;)</code>. </p>
+</div><hr/>The documentation for this struct was generated from the following file:<ul>
 <li>inc/<a class="el" href="simple__thread_8hpp_source.html">simple_thread.hpp</a></li>
 </ul>
 </div><!-- contents -->
