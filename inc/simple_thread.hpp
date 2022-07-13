@@ -357,7 +357,7 @@ struct channel {
     }
 
     /**
-     * Send a message over the channel with given parameters 
+     * Send a message over the channel with given @parameters 
      *
      * This is a blocking operation.
      *
@@ -371,7 +371,7 @@ struct channel {
     }
     
     /**
-     * Send a message over the channel with given parameter
+     * Send a message over the channel with given @parameter
      *
      * This is a non-blocking operation.
      *
@@ -417,7 +417,7 @@ struct channel {
     }
 
     /**
-     * Send a message over the channel with given parameters 
+     * Send a message over the channel with given @parameters 
      *
      * This is a non-blocking operation. If queue is full, operation will fail early.
      *
@@ -431,7 +431,7 @@ struct channel {
     }
     
     /**
-     * Send a message over the channel with given parameter
+     * Send a message over the channel with given @parameter
      *
      * This is a non-blocking operation. If queue is full, operation will fail early.
      *
@@ -680,7 +680,7 @@ struct worker {
     }
 
     /**
-     * Send a message over the channel with given parameters 
+     * Send a message over the channel with given @parameters 
      *
      * This is a blocking operation.
      *
@@ -694,7 +694,7 @@ struct worker {
     }
     
     /**
-     * Send a message over the channel with given parameter
+     * Send a message over the channel with given @parameter
      *
      * This is a non-blocking operation.
      *
@@ -716,7 +716,7 @@ struct worker {
     }
 
     /**
-     * Send a message over the channel with given parameters 
+     * Send a message over the channel with given @parameters 
      *
      * This is a non-blocking operation. If queue is full, operation will fail early.
      *
@@ -730,7 +730,7 @@ struct worker {
     }
     
     /**
-     * Send a message over the channel with given parameter
+     * Send a message over the channel with given @parameter
      *
      * This is a non-blocking operation. If queue is full, operation will fail early.
      *
@@ -841,21 +841,21 @@ struct state {
 
     /**
      * @brief called during a transition when a state is entered 
-     * param event a message containing the event id and an optional data payload
+     * @param event a message containing the event id and an optional data payload
      */
     virtual void enter(std::shared_ptr<message> event){ }
 
     /**
      * @brief called during a transition when a state is exitted
-     * param event a message containing the event id and an optional data payload
-     * return true if exit succeeded and transition can continue, else false
+     * @param event a message containing the event id and an optional data payload
+     * @return true if exit succeeded and transition can continue, else false
      */
     virtual bool exit(std::shared_ptr<message> event){ return true; }
 
     /**
      * @brief a convenience function for generating shared_ptr's to state objects
-     * param as Constructor arguments for type T
-     * return an allocated shared_ptr to type T implementing state
+     * @param as Constructor arguments for type T
+     * @return an allocated shared_ptr to type T implementing state
      */
     template <typename T, typename... As>
     static std::shared_ptr<state> make(As&&... as) {
@@ -875,9 +875,9 @@ struct state {
 
         /**
          * @brief Register a state object to be transitioned to when notified of an event
-         * param event an unsigned integer representing an event that has occurred
-         * param st a pointer to an object which implements abstract class state  
-         * return true if state was registered, false if state pointer is null or the same event is already registered
+         * @param event an unsigned integer representing an event that has occurred
+         * @param st a pointer to an object which implements abstract class state  
+         * @return true if state was registered, false if state pointer is null or the same event is already registered
          */
         inline bool register_transition(std::size_t event_id, std::shared_ptr<state> st) {
             auto it = m_transition_table.find(event_id);
@@ -896,8 +896,8 @@ struct state {
 
         /**
          * @brief process_event the state machine an event has occurred 
-         * param event a message containing the state event id and optional data payload 
-         * return true if the event was processed successfully, else false
+         * @param event a message containing the state event id and optional data payload 
+         * @return true if the event was processed successfully, else false
          */
         inline bool process_event(std::shared_ptr<message> event) {
             if(event) {
@@ -928,7 +928,7 @@ struct state {
          * @brief process the event that has occurred, transitioning states if necessary
          * @param id an unsigned integer representing which type of message
          * @param t arbitrary typed data to be stored as the message data 
-         * return true if the event was processed successfully, else false
+         * @return true if the event was processed successfully, else false
          */
         template <typename ID, typename T>
         bool process_event(ID id, T&& t) {
@@ -938,7 +938,7 @@ struct state {
         /**
          * @brief process the event that has occurred, transitioning states if necessary
          * @param id an unsigned integer representing which type of message
-         * return true if the event was processed successfully, else false
+         * @return true if the event was processed successfully, else false
          */
         template <typename ID>
         bool process_event(ID id) {
