@@ -429,7 +429,7 @@ Example 7:</h3>
 </div><!-- fragment --><h2><a class="anchor" id="autotoc_md21"></a>
 States and Finite State Machine</h2>
 <p>This library provides a fairly simple finite state machine (FSM) implementation as a design tool.</p>
-<p>The reasoning for even including this in the library is that the inherent complexity of asynchronous programming can lead to complex state management and simplifying designs with a state machine can <em>sometimes</em> be advantagous, when used intelligently and judiciously.</p>
+<p>The reasoning for including this feature in the library is that asynchronous programming can have complex state management. Simplifying designs with a state machine can <em>sometimes</em> be advantagous, when used intelligently and judiciously.</p>
 <p>The state machine object type is <code><a class="el" href="structst_1_1state_1_1machine.html">st::state::machine</a></code>, which can register new state transitions with calls to <code>st::state::machine::register_transition()</code> and process events with <code>st::state::machine::process_event()</code>.</p>
 <p>The user can create states by defining classes which inherit <code><a class="el" href="structst_1_1state.html">st::state</a></code>, optionally overriding methods and passing an allocated <code>shared_ptr&lt;<a class="el" href="structst_1_1state.html">st::state</a>&gt;</code> of that class to <code>st::state::machine::register_transition()</code>. The function <code>st::state::make&lt;YourStateType&gt;(/* YourStateType constructor args */)</code> is provided as a convenience for this process.</p>
 <div class="fragment"><div class="line">int main() {</div>
