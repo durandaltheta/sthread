@@ -109,11 +109,12 @@ Static Public Member Functions</h2></td></tr>
 <tr class="memitem:ab1038fb1e9e186726582761daed09285"><td class="memTemplParams" colspan="2">template&lt;typename T &gt; </td></tr>
 <tr class="memitem:ab1038fb1e9e186726582761daed09285"><td class="memTemplItemLeft" align="right" valign="top">static constexpr std::size_t&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="structst_1_1message.html#ab1038fb1e9e186726582761daed09285">code</a> ()</td></tr>
 <tr class="separator:ab1038fb1e9e186726582761daed09285"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab91fc0cf15e73952cda267badf6de1a5"><td class="memTemplParams" colspan="2">template&lt;typename T &gt; </td></tr>
-<tr class="memitem:ab91fc0cf15e73952cda267badf6de1a5"><td class="memTemplItemLeft" align="right" valign="top">static std::shared_ptr&lt; <a class="el" href="structst_1_1message.html">message</a> &gt;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="structst_1_1message.html#ab91fc0cf15e73952cda267badf6de1a5">make</a> (std::size_t <a class="el" href="structst_1_1message.html#abfd004b90e13b7eb6e46ffc75f4d26b9">id</a>, T &amp;&amp;t)</td></tr>
-<tr class="separator:ab91fc0cf15e73952cda267badf6de1a5"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aeb42f6518446a1eee8328922b173caf9"><td class="memItemLeft" align="right" valign="top">static std::shared_ptr&lt; <a class="el" href="structst_1_1message.html">message</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structst_1_1message.html#aeb42f6518446a1eee8328922b173caf9">make</a> (std::size_t <a class="el" href="structst_1_1message.html#abfd004b90e13b7eb6e46ffc75f4d26b9">id</a>)</td></tr>
-<tr class="separator:aeb42f6518446a1eee8328922b173caf9"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7acb0cfda5d8f1b0d237517ccfcabcab"><td class="memTemplParams" colspan="2">template&lt;typename ID , typename T &gt; </td></tr>
+<tr class="memitem:a7acb0cfda5d8f1b0d237517ccfcabcab"><td class="memTemplItemLeft" align="right" valign="top">static std::shared_ptr&lt; <a class="el" href="structst_1_1message.html">message</a> &gt;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="structst_1_1message.html#a7acb0cfda5d8f1b0d237517ccfcabcab">make</a> (ID <a class="el" href="structst_1_1message.html#abfd004b90e13b7eb6e46ffc75f4d26b9">id</a>, T &amp;&amp;t)</td></tr>
+<tr class="separator:a7acb0cfda5d8f1b0d237517ccfcabcab"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9c33612b000c9816bc01eb414078f334"><td class="memTemplParams" colspan="2">template&lt;typename ID &gt; </td></tr>
+<tr class="memitem:a9c33612b000c9816bc01eb414078f334"><td class="memTemplItemLeft" align="right" valign="top">static std::shared_ptr&lt; <a class="el" href="structst_1_1message.html">message</a> &gt;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="structst_1_1message.html#a9c33612b000c9816bc01eb414078f334">make</a> (ID <a class="el" href="structst_1_1message.html#abfd004b90e13b7eb6e46ffc75f4d26b9">id</a>)</td></tr>
+<tr class="separator:a9c33612b000c9816bc01eb414078f334"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Interthread type erased message container. </p>
@@ -239,11 +240,13 @@ template&lt;typename T &gt; </div>
 
 </div>
 </div>
-<a id="aeb42f6518446a1eee8328922b173caf9"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#aeb42f6518446a1eee8328922b173caf9">&#9670;&nbsp;</a></span>make() <span class="overload">[1/2]</span></h2>
+<a id="a9c33612b000c9816bc01eb414078f334"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a9c33612b000c9816bc01eb414078f334">&#9670;&nbsp;</a></span>make() <span class="overload">[1/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
+<div class="memtemplate">
+template&lt;typename ID &gt; </div>
 <table class="mlabels">
   <tr>
   <td class="mlabels-left">
@@ -251,7 +254,7 @@ template&lt;typename T &gt; </div>
         <tr>
           <td class="memname">static std::shared_ptr&lt;<a class="el" href="structst_1_1message.html">message</a>&gt; st::message::make </td>
           <td>(</td>
-          <td class="paramtype">std::size_t&#160;</td>
+          <td class="paramtype">ID&#160;</td>
           <td class="paramname"><em>id</em></td><td>)</td>
           <td></td>
         </tr>
@@ -273,13 +276,13 @@ template&lt;typename T &gt; </div>
 
 </div>
 </div>
-<a id="ab91fc0cf15e73952cda267badf6de1a5"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ab91fc0cf15e73952cda267badf6de1a5">&#9670;&nbsp;</a></span>make() <span class="overload">[2/2]</span></h2>
+<a id="a7acb0cfda5d8f1b0d237517ccfcabcab"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a7acb0cfda5d8f1b0d237517ccfcabcab">&#9670;&nbsp;</a></span>make() <span class="overload">[2/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
 <div class="memtemplate">
-template&lt;typename T &gt; </div>
+template&lt;typename ID , typename T &gt; </div>
 <table class="mlabels">
   <tr>
   <td class="mlabels-left">
@@ -287,7 +290,7 @@ template&lt;typename T &gt; </div>
         <tr>
           <td class="memname">static std::shared_ptr&lt;<a class="el" href="structst_1_1message.html">message</a>&gt; st::message::make </td>
           <td>(</td>
-          <td class="paramtype">std::size_t&#160;</td>
+          <td class="paramtype">ID&#160;</td>
           <td class="paramname"><em>id</em>, </td>
         </tr>
         <tr>
