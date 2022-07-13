@@ -527,8 +527,70 @@ States and Finite State Machine</h2>
 <div class="line">your partner speaks: hello faa</div>
 <div class="line">your partner speaks: goodbye foo</div>
 <div class="line">your partner speaks: goodbye faa</div>
-</div><!-- fragment --><p>The user can implement transition guards and prevent transitioning away from a state by overriding the <code>bool <a class="el" href="structst_1_1state.html#a450771b125b1a1ba9b3ccc2dc07b959c" title="called when during a transition when a state is exitted param event a message containing the event id...">st::state::exit</a>(std::shared_ptr&lt;<a class="el" href="structst_1_1message.html" title="Interthread type erased message container.">st::message</a>&gt;)</code> method, where the state will only transition if that function returns <code>true</code>. </p>
-</div></div><!-- contents -->
+</div><!-- fragment --><p>The user can implement transition guards and prevent transitioning away from a state by overriding the <code>bool <a class="el" href="structst_1_1state.html#a450771b125b1a1ba9b3ccc2dc07b959c" title="called when during a transition when a state is exitted param event a message containing the event id...">st::state::exit</a>(std::shared_ptr&lt;<a class="el" href="structst_1_1message.html" title="Interthread type erased message container.">st::message</a>&gt;)</code> method, where the state will only transition if that function returns <code>true</code>. </p><div class="fragment"><div class="line">int main() {</div>
+<div class="line">    struct conversation {</div>
+<div class="line">        enum event {</div>
+<div class="line">            partner_speaks,</div>
+<div class="line">            you_speak </div>
+<div class="line">        };</div>
+<div class="line">    };</div>
+<div class="line"> </div>
+<div class="line">    struct listening : public st::state {</div>
+<div class="line">        void enter(std::shared_ptr&lt;st::message&gt; event) {</div>
+<div class="line">            std::string s;</div>
+<div class="line">            event-&gt;copy_data_to(s);</div>
+<div class="line">            std::cout &lt;&lt; &quot;your partner speaks: &quot; &lt;&lt; s &lt;&lt; std::endl;</div>
+<div class="line">        }</div>
+<div class="line"> </div>
+<div class="line">        bool exit(std::shared_ptr&lt;st::message&gt; event) {</div>
+<div class="line">            // standard guard preventing transitioning to the same event as we are leaving</div>
+<div class="line">            if(event-&gt;id() != conversation::event::partner_speaks) {</div>
+<div class="line">                return true;</div>
+<div class="line">            } else {</div>
+<div class="line">                return false;</div>
+<div class="line">            }</div>
+<div class="line">        }</div>
+<div class="line">    };</div>
+<div class="line"> </div>
+<div class="line">    struct talking : public st::state {</div>
+<div class="line">        void enter(std::shared_ptr&lt;st::message&gt; event) {</div>
+<div class="line">            std::string s;</div>
+<div class="line">            event-&gt;copy_data_to(s);</div>
+<div class="line">            std::cout &lt;&lt; &quot;you speak: &quot; &lt;&lt; s &lt;&lt; std::endl;</div>
+<div class="line">        }</div>
+<div class="line"> </div>
+<div class="line">        bool exit(std::shared_ptr&lt;st::message&gt; event) {</div>
+<div class="line">            // standard guard preventing transitioning to the same event as we are leaving</div>
+<div class="line">            if(event-&gt;id() != conversation::event::you_speak) {</div>
+<div class="line">                return true;</div>
+<div class="line">            } else {</div>
+<div class="line">                return false;</div>
+<div class="line">            }</div>
+<div class="line">        }</div>
+<div class="line">    };</div>
+<div class="line"> </div>
+<div class="line">    auto listening_st = st::state::make&lt;listening&gt;();</div>
+<div class="line">    auto talking_st = st::state::make&lt;talking&gt;();</div>
+<div class="line">    auto conversation_machine = st::state::machine::make();</div>
+<div class="line"> </div>
+<div class="line">    // register the state transitions </div>
+<div class="line">    conversation_machine-&gt;register_transition(conversation::event::partner_speaks, listening_st);</div>
+<div class="line">    conversation_machine-&gt;register_transition(conversation::event::you_speak, talking_st);</div>
+<div class="line"> </div>
+<div class="line">    // set the initial machine state and begin handling events (duplicate events </div>
+<div class="line">    // will be ignored)</div>
+<div class="line">    conversation_machine-&gt;process_event(conversation::event::partner_speaks, std::string(&quot;hello foo&quot;)); </div>
+<div class="line">    conversation_machine-&gt;process_event(conversation::event::partner_speaks, std::string(&quot;hello foo2&quot;)); </div>
+<div class="line">    conversation_machine-&gt;process_event(conversation::event::partner_speaks, std::string(&quot;hello foo3&quot;));</div>
+<div class="line">    conversation_machine-&gt;process_event(conversation::event::you_speak, std::string(&quot;hello faa&quot;)); </div>
+<div class="line">    conversation_machine-&gt;process_event(conversation::event::you_speak, std::string(&quot;hello faa2&quot;)); </div>
+<div class="line">    conversation_machine-&gt;process_event(conversation::event::you_speak, std::string(&quot;hello faa3&quot;)); </div>
+<div class="line">    return 0;</div>
+<div class="line">}</div>
+</div><!-- fragment --><p>Terminal output might be: </p><div class="fragment"><div class="line">$./a.out </div>
+<div class="line">your partner speaks: hello foo</div>
+<div class="line">you speak: hello faa</div>
+</div><!-- fragment --> </div></div><!-- contents -->
 </div><!-- PageDoc -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
