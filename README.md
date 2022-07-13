@@ -431,11 +431,52 @@ optionally overriding methods and passing an allocated `shared_ptr<st::state>`
 of that class to `st::state::machine::register_transition()`. The function
 `st::state::make<YourStateType>(/* YourStateType constructor args */)` is 
 provided as a convenience for this process. 
+
 ```
+int main() {
+    struct conversation {
+        enum event {
+            partner_speaks,
+            you_speak 
+        };
+    };
+
+    struct listening : public st::state {
+        void enter(std::shared_ptr<st::message> event) {
+            std::cout << "your partner begins speaking and you listen" << std::endl;
+        }
+    };
+
+    struct talking : public st::state {
+        void enter(std::shared_ptr<st::message> event) {
+            std::cout << "you begin speaking and your partner listens" << std::endl;
+        }
+    };
+
+    auto listening_st = st::state::make<listening>();
+    auto talking_st = st::state::make<talking>();
+    auto conversation_machine = st::state::machine::make();
+
+    // register the state transitions 
+    conversation_machine->register_transition(conversation::event::partner_speaks, listening_st);
+    conversation_machine->register_transition(conversation::event::you_speak, talking_st);
+
+    // set the initial machine state 
+    conversation_machine->process_event(conversation::event::partner_speaks);
+
+    // have a conversation
+    conversation_machine->process_event(conversation::event::you_speak); 
+    conversation_machine->process_event(conversation::event::partner_speaks); 
+    return 0;
+}
 ```
 
 Terminal output might be:
 ```
+$./a.out 
+your partner begins speaking and you listen
+you begin speaking and your partner listens
+your partner begins speaking and you listen
 ```
 
 Since function signatures `void st::state::enter(std::shared_ptr<st::message>)` 
@@ -443,12 +484,66 @@ and  `bool st::state::exit(std::shared_ptr<st::message>)` accept a message
 object as their arguments, the user can directly replace `switch` statements 
 from within `st::worker` instances with calls to a 
 `st::state::machine::process_event()` if desired.
-
 ```
+int main() {
+    struct conversation_worker {
+        enum op {
+            partner_speaks,
+            you_speak 
+        };
+
+        struct listening : public st::state {
+            void enter(std::shared_ptr<st::message> event) {
+                std::string s;
+                event->copy_data_to(s);
+                std::cout << "your partner speaks: " << s << std::endl;
+            }
+        };
+
+        struct talking : public st::state {
+            void enter(std::shared_ptr<st::message> event) {
+                std::string s;
+                event->copy_data_to(s);
+                std::cout << "you speak: " << s << std::endl;
+            }
+        };
+
+        conversation_worker() { 
+            auto listening_st = st::state::make<listening>();
+            auto talking_st = st::state::make<listening>();
+            m_machine = st::state::machine::make();
+
+            // register the state transitions 
+            m_machine->register_transition(conversation_worker::op::partner_speaks, listening_st);
+            m_machine->register_transition(conversation_worker::op::you_speak, talking_st);
+        }
+
+        inline void operator()(std::shared_ptr<st::message> msg) {
+            m_machine->process_event(msg);
+        }
+
+        std::shared_ptr<st::state::machine> m_machine;
+    };
+
+    // launch a worker thread to utilize the state machine
+    auto wkr = st::worker::make<conversation_worker>();
+
+    // set the initial machine state and begin handling events
+    wkr->send(conversation_worker::op::partner_speaks, std::string("hello foo"));
+    wkr->send(conversation_worker::op::you_speak, std::string("hello faa")); 
+    wkr->send(conversation_worker::op::partner_speaks, std::string("goodbye foo")); 
+    wkr->send(conversation_worker::op::you_speak, std::string("goodbye faa")); 
+    return 0;
+}
 ```
 
 Terminal output might be:
 ```
+$./a.out 
+your partner speaks: hello foo
+your partner speaks: hello faa
+your partner speaks: goodbye foo
+your partner speaks: goodbye faa
 ```
 
 The user can implement transition guards and prevent transitioning away 

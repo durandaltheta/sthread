@@ -910,10 +910,12 @@ TEST(simple_thread, weight) {
     EXPECT_TRUE(wait_ch->closed());
 }
 
-TEST(simple_thread, state_machine1) {
-    enum class conversation {
-        partner_speaks,
-        you_speak 
+TEST(simple_thread, state_machine_basic_usage) {
+    struct conversation {
+        enum event {
+            partner_speaks,
+            you_speak 
+        };
     };
 
     struct listening : public st::state {
@@ -933,21 +935,23 @@ TEST(simple_thread, state_machine1) {
     auto conversation_machine = st::state::machine::make();
 
     // register the state transitions 
-    conversation_machine->register_transition(conversation::partner_speaks, listening_st);
-    conversation_machine->register_transition(conversation::you_speak, talking_st);
+    conversation_machine->register_transition(conversation::event::partner_speaks, listening_st);
+    conversation_machine->register_transition(conversation::event::you_speak, talking_st);
 
     // set the initial machine state 
-    conversation_machine->process_event(conversation::partner_speaks);
+    conversation_machine->process_event(conversation::event::partner_speaks);
 
     // have a conversation
-    conversation_machine->process_event(conversation::you_speak); 
-    conversation_machine->process_event(conversation::partner_speaks); 
+    conversation_machine->process_event(conversation::event::you_speak); 
+    conversation_machine->process_event(conversation::event::partner_speaks); 
 }
 
-TEST(simple_thread, state_machine2) {
-    enum class conversation {
-        partner_speaks,
-        you_speak 
+TEST(simple_thread, state_machine_with_guards_and_payload) {
+    struct conversation {
+        enum event {
+            partner_speaks,
+            you_speak 
+        };
     };
 
     struct listening : public st::state {
@@ -958,170 +962,98 @@ TEST(simple_thread, state_machine2) {
         }
 
         bool exit(std::shared_ptr<st::message> event) {
-            // standard guard preventing transitioning to the same event as we
-            // are leaving
-            return event 
-                   ? event->id() == static_cast<std::size_t>(conversation::partner_speaks)
-                     ? false
-                     : true
-                   : false;
-        }
-    };
-
-    struct talking : public st::state {
-        void enter(std::shared_ptr<st::message> event) {
-            std::string s;
-            event->copy_data_to(s);
-            std::cout << "you speak: " << s << std::endl;
-        }
-
-        bool exit(std::shared_ptr<st::message> event) {
-            // standard guard preventing transitioning to the same event as we
-            // are leaving
-            return event 
-                   ? event->id() == static_cast<std::size_t>(conversation::you_speak)
-                     ? false
-                     : true
-                   : false;
-        }
-    };
-
-    auto listening_st = st::state::make<listening>();
-    auto talking_st = st::state::make<listening>();
-    auto conversation_machine = st::state::machine::make();
-
-    // register the state transitions 
-    conversation_machine->register_transition(conversation::partner_speaks, listening_st);
-    conversation_machine->register_transition(conversation::you_speak, talking_st);
-
-    // set the initial machine state and begin handling events
-    conversation_machine->process_event(conversation::partner_speaks, std::string("hello foo"));
-    conversation_machine->process_event(conversation::partner_speaks, std::string("hello foo2"));
-    conversation_machine->process_event(conversation::partner_speaks, std::string("hello foo3"));
-    conversation_machine->process_event(conversation::you_speak, std::string("hello faa")); 
-    conversation_machine->process_event(conversation::you_speak, std::string("hello faa2")); 
-    conversation_machine->process_event(conversation::you_speak, std::string("hello faa3")); 
-}
-
-TEST(simple_thread, state_machine3) {
-    enum class conversation {
-        partner_speaks,
-        you_speak 
-    };
-
-    struct listening : public st::state {
-        void enter(std::shared_ptr<st::message> event) {
-            std::string s;
-            event->copy_data_to(s);
-            std::cout << "your partner speaks: " << s << std::endl;
-        }
-    };
-
-    struct talking : public st::state {
-        void enter(std::shared_ptr<st::message> event) {
-            std::string s;
-            event->copy_data_to(s);
-            std::cout << "you speak: " << s << std::endl;
-        }
-    };
-
-    struct conversation_worker {
-        conversation_worker(std::shared_ptr<st::state::machine> m) : m_machine(m) { }
-        inline void operator()(std::shared_ptr<st::message> msg) {
-            m_machine->process_event(msg);
-        }
-        std::shared_ptr<st::state::machine> m_machine;
-    };
-
-    auto listening_st = st::state::make<listening>();
-    auto talking_st = st::state::make<listening>();
-    auto conversation_machine = st::state::machine::make();
-
-    // register the state transitions 
-    conversation_machine->register_transition(conversation::partner_speaks, listening_st);
-    conversation_machine->register_transition(conversation::you_speak, talking_st);
-
-    // launch a worker thread to utilize the state machine
-    auto wkr = st::worker::make<conversation_worker>(conversation_machine);
-
-    // set the initial machine state and begin handling events
-    wkr->send(conversation::partner_speaks, std::string("hello foo"));
-    wkr->send(conversation::you_speak, std::string("hello faa")); 
-    wkr->send(conversation::partner_speaks, std::string("goodbye foo")); 
-    wkr->send(conversation::you_speak, std::string("goodbye faa")); 
-}
-
-TEST(simple_thread, state_machine4) {
-    enum class the_vicious_cycle {
-        enter_the_dmv,
-        exit_the_dmv
-    };
-
-    struct waiting_forever_at_the_dmv : public st::state {
-        void enter(std::shared_ptr<st::message> event) {
-            int i;
-            if(event && event->copy_data_to(i)) {
-                std::cout << "AAAAAAAAAAAAAAAAAAAAAAGGH[" << i << "]" << std::endl;
-            }
-        }
-
-        bool exit(std::shared_ptr<st::message> event) {
-            int i;
-            if(event && event->copy_data_to(i)) {
-                std::cout << "FREE AT LAST[" << i << "]" << std::endl;
-            }
-            return true;
-        }
-    };
-
-    struct living_the_rest_of_my_life : public st::state {
-        living_the_rest_of_my_life(bool& exit_flag) : m_do_i_really_want_to(exit_flag) { }
-
-        // no custom implementation of `enter()`
-    
-        bool exit(std::shared_ptr<st::message> event) {
-            if(m_do_i_really_want_to) {
-                std::cout << "Oh NOOOOOOOOOOOOOO" << std::endl;
+            // standard guard preventing transitioning to the same event as we are leaving
+            if(event->id() != conversation::event::partner_speaks) {
                 return true;
             } else {
-                std::cout << "... naaaaaawww" << std::endl;
                 return false;
             }
         }
-
-        bool& m_do_i_really_want_to;
     };
 
-    bool allow_loss_of_freedom = true;
-    auto waiting = st::state::make<waiting_forever_at_the_dmv>();
-    auto freedom = st::state::make<living_the_rest_of_my_life>(allow_loss_of_freedom);
-    auto my_life = st::state::machine::make();
+    struct talking : public st::state {
+        void enter(std::shared_ptr<st::message> event) {
+            std::string s;
+            event->copy_data_to(s);
+            std::cout << "you speak: " << s << std::endl;
+        }
 
-    // verify error checking behavior
-    EXPECT_FALSE(my_life->process_event(std::shared_ptr<st::message>()));
-    EXPECT_FALSE(my_life->process_event(the_vicious_cycle::exit_the_dmv));
-    EXPECT_FALSE(my_life->process_event(the_vicious_cycle::enter_the_dmv, 2));
+        bool exit(std::shared_ptr<st::message> event) {
+            // standard guard preventing transitioning to the same event as we are leaving
+            if(event->id() != conversation::event::you_speak) {
+                return true;
+            } else {
+                return false;
+            }
+        }
+    };
 
-    // register states
-    EXPECT_TRUE(my_life->register_transition(the_vicious_cycle::enter_the_dmv, waiting));
-    EXPECT_FALSE(my_life->register_transition(the_vicious_cycle::enter_the_dmv, waiting));
-    EXPECT_TRUE(my_life->register_transition(the_vicious_cycle::exit_the_dmv, freedom));
+    auto listening_st = st::state::make<listening>();
+    auto talking_st = st::state::make<talking>();
+    auto conversation_machine = st::state::machine::make();
 
-    // set the starting state 
-    EXPECT_TRUE(my_life->process_event(the_vicious_cycle::exit_the_dmv));
-    
-    // test transitions 
-    EXPECT_TRUE(my_life->process_event(the_vicious_cycle::enter_the_dmv, 1));
-    EXPECT_TRUE(my_life->process_event(the_vicious_cycle::exit_the_dmv));
-    EXPECT_TRUE(my_life->process_event(the_vicious_cycle::enter_the_dmv, 2));
-    EXPECT_TRUE(my_life->process_event(the_vicious_cycle::exit_the_dmv));
+    // register the state transitions 
+    conversation_machine->register_transition(conversation::event::partner_speaks, listening_st);
+    conversation_machine->register_transition(conversation::event::you_speak, talking_st);
 
-    // choose not to enter the dmv 
-    allow_loss_of_freedom = false;
-    EXPECT_TRUE(my_life->process_event(the_vicious_cycle::enter_the_dmv, 3));
-    allow_loss_of_freedom = true;
-    EXPECT_TRUE(my_life->process_event(the_vicious_cycle::enter_the_dmv, 3));
-    EXPECT_TRUE(my_life->process_event(the_vicious_cycle::exit_the_dmv));
+    // set the initial machine state and begin handling events (duplicate events 
+    // will be ignored)
+    conversation_machine->process_event(conversation::event::partner_speaks, std::string("hello foo")); 
+    conversation_machine->process_event(conversation::event::partner_speaks, std::string("hello foo2")); 
+    conversation_machine->process_event(conversation::event::partner_speaks, std::string("hello foo3"));
+    conversation_machine->process_event(conversation::event::you_speak, std::string("hello faa")); 
+    conversation_machine->process_event(conversation::event::you_speak, std::string("hello faa2")); 
+    conversation_machine->process_event(conversation::event::you_speak, std::string("hello faa3")); 
+}
+
+TEST(simple_thread, state_machine_on_worker) {
+    struct conversation_worker {
+        enum op {
+            partner_speaks,
+            you_speak 
+        };
+
+        struct listening : public st::state {
+            void enter(std::shared_ptr<st::message> event) {
+                std::string s;
+                event->copy_data_to(s);
+                std::cout << "your partner speaks: " << s << std::endl;
+            }
+        };
+
+        struct talking : public st::state {
+            void enter(std::shared_ptr<st::message> event) {
+                std::string s;
+                event->copy_data_to(s);
+                std::cout << "you speak: " << s << std::endl;
+            }
+        };
+
+        conversation_worker() { 
+            auto listening_st = st::state::make<listening>();
+            auto talking_st = st::state::make<listening>();
+            m_machine = st::state::machine::make();
+
+            // register the state transitions 
+            m_machine->register_transition(conversation_worker::op::partner_speaks, listening_st);
+            m_machine->register_transition(conversation_worker::op::you_speak, talking_st);
+        }
+
+        inline void operator()(std::shared_ptr<st::message> msg) {
+            m_machine->process_event(msg);
+        }
+
+        std::shared_ptr<st::state::machine> m_machine;
+    };
+
+    // launch a worker thread to utilize the state machine
+    auto wkr = st::worker::make<conversation_worker>();
+
+    // set the initial machine state and begin handling events
+    wkr->send(conversation_worker::op::partner_speaks, std::string("hello foo"));
+    wkr->send(conversation_worker::op::you_speak, std::string("hello faa")); 
+    wkr->send(conversation_worker::op::partner_speaks, std::string("goodbye foo")); 
+    wkr->send(conversation_worker::op::you_speak, std::string("goodbye faa")); 
 }
 
 // README EXAMPLES 

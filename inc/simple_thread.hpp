@@ -530,6 +530,8 @@ struct worker {
      * };
      * ```
      *
+     * Note: Workers automatically throw out any null messages received.
+     *
      * Using a functor is useful because it allows member data to persist
      * between calls to `void operator()(std::shared_ptr<st::message> m)` and 
      * for all member data to be easily accessible. 
@@ -604,8 +606,10 @@ struct worker {
             m_thread_start_cv.notify_one();
 
             while(m_ch->recv(m)) {
-                hdl(m);
-                m.reset();
+                if(m) { // as a sanity, throw out null messages
+                    hdl(m);
+                    m.reset();
+                }
             }
 
             tl_worker() = nullptr; // reset the thread local worker pointer
