@@ -66,7 +66,6 @@ $(function() {
 </div><!-- top -->
 <div class="header">
   <div class="summary">
-<a href="#pub-types">Public Types</a> &#124;
 <a href="#pub-methods">Public Member Functions</a> &#124;
 <a href="#pub-static-methods">Static Public Member Functions</a> &#124;
 <a href="structst_1_1message-members.html">List of all members</a>  </div>
@@ -80,20 +79,12 @@ $(function() {
 
 <p><code>#include &lt;<a class="el" href="simple__thread_8hpp_source.html">simple_thread.hpp</a>&gt;</code></p>
 <table class="memberdecls">
-<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-types"></a>
-Public Types</h2></td></tr>
-<tr class="memitem:a1637dc0a9ce2d5375b201131707bf281"><td class="memTemplParams" colspan="2"><a id="a1637dc0a9ce2d5375b201131707bf281"></a>
-template&lt;typename T &gt; </td></tr>
-<tr class="memitem:a1637dc0a9ce2d5375b201131707bf281"><td class="memTemplItemLeft" align="right" valign="top">using&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="structst_1_1message.html#a1637dc0a9ce2d5375b201131707bf281">base</a> = typename std::remove_reference&lt; typename std::remove_cv&lt; T &gt;::<a class="el" href="structst_1_1message.html#ad5aa6102d07ce7a9db428d161cad1aa8">type</a> &gt;::<a class="el" href="structst_1_1message.html#ad5aa6102d07ce7a9db428d161cad1aa8">type</a></td></tr>
-<tr class="memdesc:a1637dc0a9ce2d5375b201131707bf281"><td class="mdescLeft">&#160;</td><td class="mdescRight">Typedef representing the unqualified type of T. <br /></td></tr>
-<tr class="separator:a1637dc0a9ce2d5375b201131707bf281"><td class="memSeparator" colspan="2">&#160;</td></tr>
-</table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
 <tr class="memitem:abfd004b90e13b7eb6e46ffc75f4d26b9"><td class="memItemLeft" align="right" valign="top">std::size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structst_1_1message.html#abfd004b90e13b7eb6e46ffc75f4d26b9">id</a> () const</td></tr>
 <tr class="separator:abfd004b90e13b7eb6e46ffc75f4d26b9"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad5aa6102d07ce7a9db428d161cad1aa8"><td class="memItemLeft" align="right" valign="top">std::size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structst_1_1message.html#ad5aa6102d07ce7a9db428d161cad1aa8">type</a> () const</td></tr>
-<tr class="separator:ad5aa6102d07ce7a9db428d161cad1aa8"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af3118f193af7802a5ead4a6d8a8e390f"><td class="memItemLeft" align="right" valign="top">std::size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structst_1_1message.html#af3118f193af7802a5ead4a6d8a8e390f">type_code</a> () const</td></tr>
+<tr class="separator:af3118f193af7802a5ead4a6d8a8e390f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a23536bf1bda738b333fc6723c8502eb0"><td class="memTemplParams" colspan="2">template&lt;typename T &gt; </td></tr>
 <tr class="memitem:a23536bf1bda738b333fc6723c8502eb0"><td class="memTemplItemLeft" align="right" valign="top">bool&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="structst_1_1message.html#a23536bf1bda738b333fc6723c8502eb0">is</a> () const</td></tr>
 <tr class="separator:a23536bf1bda738b333fc6723c8502eb0"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -106,9 +97,6 @@ Public Member Functions</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-static-methods"></a>
 Static Public Member Functions</h2></td></tr>
-<tr class="memitem:ab1038fb1e9e186726582761daed09285"><td class="memTemplParams" colspan="2">template&lt;typename T &gt; </td></tr>
-<tr class="memitem:ab1038fb1e9e186726582761daed09285"><td class="memTemplItemLeft" align="right" valign="top">static constexpr std::size_t&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="structst_1_1message.html#ab1038fb1e9e186726582761daed09285">code</a> ()</td></tr>
-<tr class="separator:ab1038fb1e9e186726582761daed09285"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7acb0cfda5d8f1b0d237517ccfcabcab"><td class="memTemplParams" colspan="2">template&lt;typename ID , typename T &gt; </td></tr>
 <tr class="memitem:a7acb0cfda5d8f1b0d237517ccfcabcab"><td class="memTemplItemLeft" align="right" valign="top">static std::shared_ptr&lt; <a class="el" href="structst_1_1message.html">message</a> &gt;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="structst_1_1message.html#a7acb0cfda5d8f1b0d237517ccfcabcab">make</a> (ID <a class="el" href="structst_1_1message.html#abfd004b90e13b7eb6e46ffc75f4d26b9">id</a>, T &amp;&amp;t)</td></tr>
 <tr class="separator:a7acb0cfda5d8f1b0d237517ccfcabcab"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -119,35 +107,6 @@ Static Public Member Functions</h2></td></tr>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Interthread type erased message container. </p>
 </div><h2 class="groupheader">Member Function Documentation</h2>
-<a id="ab1038fb1e9e186726582761daed09285"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ab1038fb1e9e186726582761daed09285">&#9670;&nbsp;</a></span>code()</h2>
-
-<div class="memitem">
-<div class="memproto">
-<div class="memtemplate">
-template&lt;typename T &gt; </div>
-<table class="mlabels">
-  <tr>
-  <td class="mlabels-left">
-      <table class="memname">
-        <tr>
-          <td class="memname">static constexpr std::size_t st::message::code </td>
-          <td>(</td>
-          <td class="paramname"></td><td>)</td>
-          <td></td>
-        </tr>
-      </table>
-  </td>
-  <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">inline</span><span class="mlabel">static</span><span class="mlabel">constexpr</span></span>  </td>
-  </tr>
-</table>
-</div><div class="memdoc">
-<dl class="section return"><dt>Returns</dt><dd>an unsigned integer representing a data type.</dd></dl>
-<p>The data type value is acquired by removing const and volatile qualifiers and then by acquiring the type_info::hash_code(). </p>
-
-</div>
-</div>
 <a id="a712cfd7aa3954f29645561f4e29a4af3"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a712cfd7aa3954f29645561f4e29a4af3">&#9670;&nbsp;</a></span>copy_data_to()</h2>
 
@@ -359,8 +318,8 @@ template&lt;typename T &gt; </div>
 
 </div>
 </div>
-<a id="ad5aa6102d07ce7a9db428d161cad1aa8"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ad5aa6102d07ce7a9db428d161cad1aa8">&#9670;&nbsp;</a></span>type()</h2>
+<a id="af3118f193af7802a5ead4a6d8a8e390f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af3118f193af7802a5ead4a6d8a8e390f">&#9670;&nbsp;</a></span>type_code()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -369,7 +328,7 @@ template&lt;typename T &gt; </div>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">std::size_t st::message::type </td>
+          <td class="memname">std::size_t st::message::type_code </td>
           <td>(</td>
           <td class="paramname"></td><td>)</td>
           <td> const</td>
@@ -382,7 +341,7 @@ template&lt;typename T &gt; </div>
 </table>
 </div><div class="memdoc">
 <dl class="section return"><dt>Returns</dt><dd>an unsigned integer representing message data's data type</dd></dl>
-<p>The data data type is acquired by calling <a class="el" href="structst_1_1message.html#ab1038fb1e9e186726582761daed09285">code&lt;T&gt;()</a>. </p>
+<p>The data data type is acquired by calling <a class="el" href="simple__thread_8hpp.html#a753484849762d1f81e13b677b1cd3b40">code&lt;T&gt;()</a>. </p>
 
 </div>
 </div>
