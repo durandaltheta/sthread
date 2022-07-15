@@ -180,7 +180,8 @@ private:
 /**
  * @brief Object representing the result of an operation 
  *
- * Can be used directly in if/else statements dues to `operator bool`
+ * Can be used directly in if/else statements due to this class having an 
+ * implementation of `operator bool`.
  */
 struct result {
     /**
