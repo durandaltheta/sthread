@@ -949,7 +949,7 @@ struct state {
          * state will be set to the new state. 
          *
          * If `enter()` returns a new valid event message, then the entire 
-         * algorithm will repeat with no new allocated or valid event messages 
+         * algorithm will repeat until no allocated or valid event messages 
          * are returned by `enter()`.
          *
          * @param event a message containing the state event id and optional data payload 
