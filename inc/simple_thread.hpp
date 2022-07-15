@@ -20,6 +20,23 @@
 namespace st {
 
 /**
+ * @brief Typedef representing the unqualified type of T
+ */
+template <typename T>
+using base = typename std::remove_reference<typename std::remove_cv<T>::type>::type;
+
+/**
+ * @return an unsigned integer representing a data type.
+ *
+ * The data type value is acquired by removing const and volatile 
+ * qualifiers and then by acquiring the type_info::hash_code().
+ */
+template <typename T>
+static constexpr std::size_t code() {
+    return typeid(base<T>).hash_code();
+}
+
+/**
  * @brief Interthread type erased message container
  */
 struct message {
@@ -28,22 +45,6 @@ private:
     typedef std::unique_ptr<void,deleter_t> data_pointer_t;
 
 public:
-    /**
-     * @brief Typedef representing the unqualified type of T
-     */
-    template <typename T>
-    using base = typename std::remove_reference<typename std::remove_cv<T>::type>::type;
-
-    /**
-     * @return an unsigned integer representing a data type.
-     *
-     * The data type value is acquired by removing const and volatile 
-     * qualifiers and then by acquiring the type_info::hash_code().
-     */
-    template <typename T>
-    static constexpr std::size_t code() {
-        return typeid(base<T>).hash_code();
-    }
 
     /**
      * Construct a message
@@ -91,7 +92,7 @@ public:
      *
      * The data data type is acquired by calling code<T>().
      */
-    inline std::size_t type() const {
+    inline std::size_t type_code() const {
         return m_data_type;
     }
    
@@ -814,26 +815,23 @@ private:
 };
 
 /**
- * A simple and extensible finite state machine mechanism (FSM). FSMs are
+ * A fairly simple finite state machine mechanism (FSM). FSMs are
  * somewhat infamous for being difficult to parse, too unwieldy, or otherwise 
  * opaque. As with everything else in this library, the aim of this object's 
  * design is to make sure the necessary features are kept simple without overly 
  * limiting the user.
  *
- * The reasoning for even including this in the library is that the inherent 
- * complexity of asynchronous programming can lead to complex state management.
- * Simplifying designs with a state machine can *sometimes* be advantagous, 
- * when used intelligently and judiciously. 
- *
  * The toplevel class for this feature is actually the `state` object. The user 
- * should implement classes which inherit `st::state`. A static `state::make()` 
- * function is included as convenience for the user so they do not have to 
- * manually typecast their allocated pointers. 
+ * should implement classes which inherit `st::state`, overriding its `enter()` 
+ * and `exit()` methods as desired. A static `state::make()` function is 
+ * included as convenience for the user so they do not have to manually typecast 
+ * allocated pointers. 
  *
  * User must create a state machine (`std::shared_ptr<st::state::machine>`) 
- * using static function `st:;state::machine::make()` to register their states.
- * The state machine can then be notified of new events with a call to 
- * `st::state::machine::notify(std::shared_ptr<st::message>)`.
+ * using static function `st:;state::machine::make()` to register their states
+ * and triggering events. The state machine can then be notified of new events 
+ * with a call to 
+ * `st::state::machine::process_event(std::shared_ptr<st::message>)`.
  */
 struct state {
     // explicit destructor definition to allow for proper delete behavior
@@ -841,16 +839,31 @@ struct state {
 
     /**
      * @brief called during a transition when a state is entered 
+     *
+     * The returned value from this function can contain further events to
+     * process, this function can be used to implement transitory states where 
+     * logic must occur before the next state is known.
+     *
      * @param event a message containing the event id and an optional data payload
+     * @return optional shared_ptr<message> containing the next event to process (if pointer is null, no futher event will be processed)
      */
-    virtual void enter(std::shared_ptr<message> event){ }
+    virtual std::shared_ptr<message> enter(std::shared_ptr<message> event) { 
+        return std::shared_ptr<message>();
+    }
 
     /**
      * @brief called during a transition when a state is exitted
+     *
+     * The return value determines whether the transition from the current state 
+     * will be allowed to continue. Thus, this function can be used to implement 
+     * transition guards.
+     *
      * @param event a message containing the event id and an optional data payload
      * @return true if exit succeeded and transition can continue, else false
      */
-    virtual bool exit(std::shared_ptr<message> event){ return true; }
+    inline virtual bool exit(std::shared_ptr<message> event) { 
+        return true; 
+    }
 
     /**
      * @brief a convenience function for generating shared_ptr's to state objects
@@ -859,7 +872,26 @@ struct state {
      */
     template <typename T, typename... As>
     static std::shared_ptr<state> make(As&&... as) {
-        return std::shared_ptr<state>(dynamic_cast<state*>(new T(std::forward<As>(as)...)));
+        std::shared_ptr<state> st(dynamic_cast<state*>(new T(std::forward<As>(as)...)));
+        st->m_type_code = code<T>();
+        return st;
+    }
+
+    /**
+     * @return the code representing the state implementation type
+     */
+    inline virtual std::size_t type_code() const final {
+        return m_type_code;
+    }
+   
+    /**
+     * Determine whether the state implementation type matches the templated type.
+     *
+     * @return true if the unqualified type of T matches the data type of the state implementation, else false
+     */
+    template <typename T>
+    bool is() const {
+        return m_type_code == code<T>();
     }
 
     /**
@@ -889,6 +921,16 @@ struct state {
             }
         }
 
+        /**
+         * @brief Register a state object to be transitioned to when notified of an event
+         *
+         * This is a wrapper for  
+         *`bool register_transition(std::size_t, std::shared_ptr<state>)`
+
+         * @param event an unsigned integer representing an event that has occurred
+         * @param st a pointer to an object which implements abstract class state  
+         * @return true if state was registered, false if state pointer is null or the same event is already registered
+         */
         template <typename ID>
         bool register_transition(ID event_id, std::shared_ptr<state> st) {
             return register_transition(static_cast<std::size_t>(event_id), std::move(st));
@@ -896,29 +938,49 @@ struct state {
 
         /**
          * @brief process_event the state machine an event has occurred 
+         *
+         * If no call to `process_event()` has previously occurred on this state 
+         * machine then no state `exit()` method will be called before the 
+         * new state's `enter()` method is called.
+         *
+         * Otherwise, the current state's `exit()` method will be called first.
+         * If `exit()` returns false, the transition will not occur. Otherwise,
+         * the new state's `enter()` method will be called, and the current 
+         * state will be set to the new state. 
+         *
+         * If `enter()` returns a new valid event message, then the entire 
+         * algorithm will repeat with no new allocated or valid event messages 
+         * are returned by `enter()`.
+         *
          * @param event a message containing the state event id and optional data payload 
          * @return true if the event was processed successfully, else false
          */
         inline bool process_event(std::shared_ptr<message> event) {
             if(event) {
-                auto it = m_transition_table.find(event->id());
+                // process events
+                do {
+                    m_cur_event = event->id();
+                    auto it = m_transition_table.find(m_cur_event);
 
-                if(it != m_transition_table.end()) {
-                    // exit old state 
-                    if(m_cur_state != m_transition_table.end()) {
-                        if(!m_cur_state->second->exit(event)) {
-                            // exit early as transition cannot continue
-                            return true; 
+                    if(it != m_transition_table.end()) {
+                        // exit old state 
+                        if(m_cur_state != m_transition_table.end()) {
+                            if(!m_cur_state->second->exit(event)) {
+                                // exit early as transition cannot continue
+                                return true; 
+                            }
                         }
-                    }
 
-                    // enter new state
-                    it->second->enter(event);
-                    m_cur_state = it;
-                    return true;
-                } else { 
-                    return false;
-                }
+                        // enter new state(s)
+                        event = it->second->enter(event);
+                        m_cur_state = it;
+
+                    } else { 
+                        return false;
+                    }
+                } while(event);
+
+                return true;
             } else {
                 return false;
             }
@@ -926,6 +988,9 @@ struct state {
        
         /**
          * @brief process the event that has occurred, transitioning states if necessary
+         *
+         * This is a wrapper for `bool process_event(std::shared_ptr<message>)`.
+         *
          * @param id an unsigned integer representing which type of message
          * @param t arbitrary typed data to be stored as the message data 
          * @return true if the event was processed successfully, else false
@@ -937,6 +1002,9 @@ struct state {
        
         /**
          * @brief process the event that has occurred, transitioning states if necessary
+         *
+         * This is a wrapper for `bool process_event(std::shared_ptr<message>)`.
+         *
          * @param id an unsigned integer representing which type of message
          * @return true if the event was processed successfully, else false
          */
@@ -951,7 +1019,11 @@ struct state {
         typedef std::unordered_map<std::size_t,std::shared_ptr<state>> transition_table_t;
         transition_table_t m_transition_table;
         transition_table_t::iterator m_cur_state;
+        std::size_t m_cur_event;
     };
+
+private:
+    std::size_t m_type_code;
 };
 
 }

@@ -25,8 +25,8 @@ TEST(simple_thread, message) {
 
         EXPECT_EQ(msg->id(), op::integer);
         EXPECT_NE(msg->id(), op::string);
-        EXPECT_EQ(msg->type(), st::message::code<int>());
-        EXPECT_NE(msg->type(), st::message::code<std::string>());
+        EXPECT_EQ(msg->type_code(), st::code<int>());
+        EXPECT_NE(msg->type_code(), st::code<std::string>());
         EXPECT_TRUE(msg->is<int>());
         EXPECT_FALSE(msg->is<std::string>());
 
@@ -68,8 +68,8 @@ TEST(simple_thread, message) {
 
         EXPECT_EQ(msg->id(), op::string);
         EXPECT_NE(msg->id(), op::integer);
-        EXPECT_EQ(msg->type(), st::message::code<std::string>());
-        EXPECT_NE(msg->type(), st::message::code<int>());
+        EXPECT_EQ(msg->type_code(), st::code<std::string>());
+        EXPECT_NE(msg->type_code(), st::code<int>());
         EXPECT_TRUE(msg->is<std::string>());
         EXPECT_FALSE(msg->is<int>());
 
@@ -717,7 +717,7 @@ TEST(simple_thread, worker_multiple_payload_types) {
                         ADD_FAILURE(); 
                     }
                     
-                    m_ret_ch->send(msg->type());
+                    m_ret_ch->send(msg->type_code());
                     break;
                 }
                 default:
@@ -740,19 +740,19 @@ TEST(simple_thread, worker_multiple_payload_types) {
 
     EXPECT_TRUE(wkr->send(hdl::op::discern_type, is));
     EXPECT_TRUE(ret_ch->recv(msg));
-    EXPECT_EQ(msg->id(), st::message::code<hdl::intstring_t>());
+    EXPECT_EQ(msg->id(), st::code<hdl::intstring_t>());
 
     EXPECT_TRUE(wkr->send(hdl::op::discern_type, s));
     EXPECT_TRUE(ret_ch->recv(msg));
-    EXPECT_EQ(msg->id(), st::message::code<std::string>());
+    EXPECT_EQ(msg->id(), st::code<std::string>());
 
     EXPECT_TRUE(wkr->send(hdl::op::discern_type, i));
     EXPECT_TRUE(ret_ch->recv(msg));
-    EXPECT_EQ(msg->id(), st::message::code<int>());
+    EXPECT_EQ(msg->id(), st::code<int>());
 
     EXPECT_TRUE(wkr->send(hdl::op::discern_type, si));
     EXPECT_TRUE(ret_ch->recv(msg));
-    EXPECT_EQ(msg->id(), st::message::code<hdl::stringint_t>());
+    EXPECT_EQ(msg->id(), st::code<hdl::stringint_t>());
 }
 
 TEST(simple_thread, this_worker) {
@@ -910,6 +910,52 @@ TEST(simple_thread, weight) {
     EXPECT_TRUE(wait_ch->closed());
 }
 
+TEST(simple_thread, state_type_checks) {
+    struct state1 : public st::state { };
+    struct state2 : public st::state { };
+    struct state3 : public st::state { };
+
+    auto st1 = st::state::make<state1>();
+    auto st2 = st::state::make<state2>();
+    auto st3 = st::state::make<state3>();
+
+    EXPECT_EQ(st1->type_code(), st::code<state1>());
+    EXPECT_NE(st1->type_code(), st::code<state2>());
+    EXPECT_NE(st1->type_code(), st::code<state3>());
+
+    EXPECT_NE(st2->type_code(), st::code<state1>());
+    EXPECT_EQ(st2->type_code(), st::code<state2>());
+    EXPECT_NE(st2->type_code(), st::code<state3>());
+
+    EXPECT_NE(st3->type_code(), st::code<state1>());
+    EXPECT_NE(st3->type_code(), st::code<state2>());
+    EXPECT_EQ(st3->type_code(), st::code<state3>());
+
+    EXPECT_EQ(st1->type_code(), st1->type_code());
+    EXPECT_NE(st1->type_code(), st2->type_code());
+    EXPECT_NE(st1->type_code(), st3->type_code());
+
+    EXPECT_NE(st2->type_code(), st1->type_code());
+    EXPECT_EQ(st2->type_code(), st2->type_code());
+    EXPECT_NE(st2->type_code(), st3->type_code());
+
+    EXPECT_NE(st3->type_code(), st1->type_code());
+    EXPECT_NE(st3->type_code(), st2->type_code());
+    EXPECT_EQ(st3->type_code(), st3->type_code());
+
+    EXPECT_TRUE(st1->is<state1>());
+    EXPECT_FALSE(st1->is<state2>());
+    EXPECT_FALSE(st1->is<state3>());
+
+    EXPECT_FALSE(st2->is<state1>());
+    EXPECT_TRUE(st2->is<state2>());
+    EXPECT_FALSE(st2->is<state3>());
+
+    EXPECT_FALSE(st3->is<state1>());
+    EXPECT_FALSE(st3->is<state2>());
+    EXPECT_TRUE(st3->is<state3>());
+}
+
 TEST(simple_thread, state_machine_basic_usage) {
     struct conversation {
         enum event {
@@ -919,14 +965,16 @@ TEST(simple_thread, state_machine_basic_usage) {
     };
 
     struct listening : public st::state {
-        void enter(std::shared_ptr<st::message> event) {
+        std::shared_ptr<st::message> enter(std::shared_ptr<st::message> event) {
             std::cout << "your partner begins speaking and you listen" << std::endl;
+            return std::shared_ptr<st::message>();
         }
     };
 
     struct talking : public st::state {
-        void enter(std::shared_ptr<st::message> event) {
+        std::shared_ptr<st::message> enter(std::shared_ptr<st::message> event) {
             std::cout << "you begin speaking and your partner listens" << std::endl;
+            return std::shared_ptr<st::message>();
         }
     };
 
@@ -955,10 +1003,11 @@ TEST(simple_thread, state_machine_with_guards_and_payload) {
     };
 
     struct listening : public st::state {
-        void enter(std::shared_ptr<st::message> event) {
+        std::shared_ptr<st::message> enter(std::shared_ptr<st::message> event) {
             std::string s;
             event->copy_data_to(s);
             std::cout << "your partner speaks: " << s << std::endl;
+            return std::shared_ptr<st::message>();
         }
 
         bool exit(std::shared_ptr<st::message> event) {
@@ -972,10 +1021,11 @@ TEST(simple_thread, state_machine_with_guards_and_payload) {
     };
 
     struct talking : public st::state {
-        void enter(std::shared_ptr<st::message> event) {
+        std::shared_ptr<st::message> enter(std::shared_ptr<st::message> event) {
             std::string s;
             event->copy_data_to(s);
             std::cout << "you speak: " << s << std::endl;
+            return std::shared_ptr<st::message>();
         }
 
         bool exit(std::shared_ptr<st::message> event) {
@@ -1014,18 +1064,20 @@ TEST(simple_thread, state_machine_on_worker) {
         };
 
         struct listening : public st::state {
-            void enter(std::shared_ptr<st::message> event) {
+            std::shared_ptr<st::message> enter(std::shared_ptr<st::message> event) {
                 std::string s;
                 event->copy_data_to(s);
                 std::cout << "your partner speaks: " << s << std::endl;
+                return std::shared_ptr<st::message>();
             }
         };
 
         struct talking : public st::state {
-            void enter(std::shared_ptr<st::message> event) {
+            std::shared_ptr<st::message> enter(std::shared_ptr<st::message> event) {
                 std::string s;
                 event->copy_data_to(s);
                 std::cout << "you speak: " << s << std::endl;
+                return std::shared_ptr<st::message>();
             }
         };
 
@@ -1054,6 +1106,77 @@ TEST(simple_thread, state_machine_on_worker) {
     wkr->send(conversation_worker::op::you_speak, std::string("hello faa")); 
     wkr->send(conversation_worker::op::partner_speaks, std::string("goodbye foo")); 
     wkr->send(conversation_worker::op::you_speak, std::string("goodbye faa")); 
+}
+
+TEST(simple_thread, state_machine_transitory_state) {
+    struct events {
+        enum op {
+            event1,
+            event2,
+            event3,
+            event4
+        };
+    };
+
+    int i=0;
+    bool reached_state4=false;
+
+    struct state1 : public st::state {
+        state1(int& i) : m_i(i) { }
+
+        std::shared_ptr<st::message> enter(std::shared_ptr<st::message> event) {
+            ++m_i;
+            return st::message::make(events::event2);
+        }
+
+        int& m_i;
+    };
+
+    struct state2 : public st::state {
+        state2(int& i) : m_i(i) { }
+
+        std::shared_ptr<st::message> enter(std::shared_ptr<st::message> event) {
+            ++m_i;
+            return st::message::make(events::event3);
+        }
+
+        int& m_i;
+    };
+
+    struct state3 : public st::state {
+        state3(int& i) : m_i(i) { }
+
+        std::shared_ptr<st::message> enter(std::shared_ptr<st::message> event) {
+            ++m_i;
+            return st::message::make(events::event4);
+        }
+
+        int& m_i;
+    };
+
+    struct state4 : public st::state {
+        state4(int& i, bool& b) : m_i(i), m_b(b) { }
+
+        std::shared_ptr<st::message> enter(std::shared_ptr<st::message> event) {
+            ++m_i;
+            m_b = true;
+            return std::shared_ptr<st::message>();
+        }
+
+        int& m_i;
+        bool& m_b;
+    };
+
+    auto sm = st::state::machine::make();
+    sm->register_transition(events::event1, st::state::make<state1>(i));
+    sm->register_transition(events::event2, st::state::make<state2>(i));
+    sm->register_transition(events::event3, st::state::make<state3>(i));
+    sm->register_transition(events::event4, st::state::make<state4>(i, reached_state4));
+
+    sm->process_event(events::event1);
+
+    EXPECT_EQ(4,i);
+    EXPECT_TRUE(reached_state4);
 }
 
 // README EXAMPLES 
