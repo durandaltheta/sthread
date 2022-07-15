@@ -443,7 +443,7 @@ int main() {
     struct listening : public st::state {
         std::shared_ptr<st::message> enter(std::shared_ptr<st::message> event) {
             std::cout << "your partner begins speaking and you listen" << std::endl;
-            // a default (null) pointer returned from enter() causes transition to continue normally
+            // a default (null) shared pointer returned from enter() causes transition to continue normally
             return std::shared_ptr<st::message>(); 
         }
     };
