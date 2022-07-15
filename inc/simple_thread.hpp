@@ -882,7 +882,19 @@ struct state {
         bool process_event(As&&... as) {
             return internal_process_event(st::message::make(std::forward<As>(as)...));
         }
-       
+
+        /**
+         * @brief retrieve the current state information of the machine 
+         * @return a pair containing the most recently processed event and current state
+         */
+        inline std::pair<std::size_t,std::shared_ptr<state>> get_current_state() {
+            if(m_cur_state != m_transition_table.end()) {
+                return { m_cur_state->first, m_cur_state->second };
+            } else {
+                return { 0, std::shared_ptr<state>() };
+            }
+        }
+
     private:
         machine() : m_cur_state(m_transition_table.end()) { }
 
@@ -890,8 +902,7 @@ struct state {
             if(event) {
                 // process events
                 do {
-                    m_cur_event = event->id();
-                    auto it = m_transition_table.find(m_cur_event);
+                    auto it = m_transition_table.find(event->id());
 
                     if(it != m_transition_table.end()) {
                         // exit old state 
@@ -920,7 +931,6 @@ struct state {
         typedef std::unordered_map<std::size_t,std::shared_ptr<state>> transition_table_t;
         transition_table_t m_transition_table;
         transition_table_t::iterator m_cur_state;
-        std::size_t m_cur_event;
     };
 
 private:
