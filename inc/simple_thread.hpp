@@ -744,7 +744,8 @@ private:
  * somewhat infamous for being difficult to parse, too unwieldy, or otherwise 
  * opaque. As with everything else in this library, the aim of this object's 
  * design is to make sure the necessary features are kept simple without overly 
- * limiting the user so some care has been attempted to mitigate those concerns.
+ * limiting the user. Therefore some care has been attempted to mitigate those 
+ * concerns.
  *
  * The toplevel class for this feature is actually the inheritable `state` 
  * object. The user should implement classes which publicly inherit `st::state`, 
