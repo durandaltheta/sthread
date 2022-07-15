@@ -1113,70 +1113,60 @@ TEST(simple_thread, state_machine_transitory_state) {
         enum op {
             event1,
             event2,
-            event3,
-            event4
+            event3
         };
     };
 
-    int i=0;
-    bool reached_state4=false;
+    bool reached_state1=false;
+    bool reached_state2=false;
+    bool reached_state3=false;
 
     struct state1 : public st::state {
-        state1(int& i) : m_i(i) { }
+        state1(bool& b) : m_b(b) { }
 
         std::shared_ptr<st::message> enter(std::shared_ptr<st::message> event) {
-            ++m_i;
+            m_b = true;
+            std::cout << "state1" << std::endl;
             return st::message::make(events::event2);
         }
 
-        int& m_i;
+        bool& m_b;
     };
 
     struct state2 : public st::state {
-        state2(int& i) : m_i(i) { }
+        state2(bool& b) : m_b(b) { }
 
         std::shared_ptr<st::message> enter(std::shared_ptr<st::message> event) {
-            ++m_i;
+            m_b = true;
+            std::cout << "state2" << std::endl;
             return st::message::make(events::event3);
         }
 
-        int& m_i;
+        bool& m_b;
     };
 
     struct state3 : public st::state {
-        state3(int& i) : m_i(i) { }
+        state3(bool& b) : m_b(b) { }
 
         std::shared_ptr<st::message> enter(std::shared_ptr<st::message> event) {
-            ++m_i;
-            return st::message::make(events::event4);
-        }
-
-        int& m_i;
-    };
-
-    struct state4 : public st::state {
-        state4(int& i, bool& b) : m_i(i), m_b(b) { }
-
-        std::shared_ptr<st::message> enter(std::shared_ptr<st::message> event) {
-            ++m_i;
             m_b = true;
+            std::cout << "state3" << std::endl;
             return std::shared_ptr<st::message>();
         }
 
-        int& m_i;
         bool& m_b;
     };
 
     auto sm = st::state::machine::make();
-    sm->register_transition(events::event1, st::state::make<state1>(i));
-    sm->register_transition(events::event2, st::state::make<state2>(i));
-    sm->register_transition(events::event3, st::state::make<state3>(i));
-    sm->register_transition(events::event4, st::state::make<state4>(i, reached_state4));
+    sm->register_transition(events::event1, st::state::make<state1>(reached_state1));
+    sm->register_transition(events::event2, st::state::make<state2>(reached_state2));
+    sm->register_transition(events::event3, st::state::make<state3>(reached_state3));
 
     sm->process_event(events::event1);
 
-    EXPECT_EQ(4,i);
-    EXPECT_TRUE(reached_state4);
+    EXPECT_TRUE(reached_state1);
+    EXPECT_TRUE(reached_state2);
+    EXPECT_TRUE(reached_state3);
 }
 
 // README EXAMPLES 

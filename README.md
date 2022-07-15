@@ -441,14 +441,17 @@ int main() {
     };
 
     struct listening : public st::state {
-        void enter(std::shared_ptr<st::message> event) {
+        std::shared_ptr<st::message> enter(std::shared_ptr<st::message> event) {
             std::cout << "your partner begins speaking and you listen" << std::endl;
+            // a default (null) pointer returned from enter() causes transition to continue normally
+            return std::shared_ptr<st::message>(); 
         }
     };
 
     struct talking : public st::state {
-        void enter(std::shared_ptr<st::message> event) {
+        std::shared_ptr<st::message> enter(std::shared_ptr<st::message> event) {
             std::cout << "you begin speaking and your partner listens" << std::endl;
+            return std::shared_ptr<st::message>();
         }
     };
 
@@ -492,18 +495,20 @@ int main() {
         };
 
         struct listening : public st::state {
-            void enter(std::shared_ptr<st::message> event) {
+            std::shared_ptr<st::message> enter(std::shared_ptr<st::message> event) {
                 std::string s;
                 event->copy_data_to(s);
                 std::cout << "your partner speaks: " << s << std::endl;
+                return std::shared_ptr<st::message>();
             }
         };
 
         struct talking : public st::state {
-            void enter(std::shared_ptr<st::message> event) {
+            std::shared_ptr<st::message> enter(std::shared_ptr<st::message> event) {
                 std::string s;
                 event->copy_data_to(s);
                 std::cout << "you speak: " << s << std::endl;
+                return std::shared_ptr<st::message>();
             }
         };
 
@@ -559,10 +564,11 @@ int main() {
     };
 
     struct listening : public st::state {
-        void enter(std::shared_ptr<st::message> event) {
+        std::shared_ptr<st::message> enter(std::shared_ptr<st::message> event) {
             std::string s;
             event->copy_data_to(s);
             std::cout << "your partner speaks: " << s << std::endl;
+            return std::shared_ptr<st::message>();
         }
 
         bool exit(std::shared_ptr<st::message> event) {
@@ -576,10 +582,11 @@ int main() {
     };
 
     struct talking : public st::state {
-        void enter(std::shared_ptr<st::message> event) {
+        std::shared_ptr<st::message> enter(std::shared_ptr<st::message> event) {
             std::string s;
             event->copy_data_to(s);
             std::cout << "you speak: " << s << std::endl;
+            return std::shared_ptr<st::message>();
         }
 
         bool exit(std::shared_ptr<st::message> event) {
@@ -617,4 +624,57 @@ Terminal output might be:
 $./a.out 
 your partner speaks: hello foo
 you speak: hello faa
+```
+
+If an implementation of `st::state::enter()` returns a non-null `std::shared_ptr<st::message>` 
+that message will be handled as if `st::state::machine::process_event()` had been 
+called with that message as its argument. This allows states to directly 
+transition to other states if necessary:
+```
+int main() {
+    struct events {
+        enum op {
+            event1,
+            event2,
+            event3
+        };
+    };
+
+    struct state1 : public st::state {
+        std::shared_ptr<st::message> enter(std::shared_ptr<st::message> event) {
+            std::cout << "state1" << std::endl;
+            return st::message::make(events::event2);
+        }
+    };
+
+    struct state2 : public st::state {
+        std::shared_ptr<st::message> enter(std::shared_ptr<st::message> event) {
+            std::cout << "state2" << std::endl;
+            return st::message::make(events::event3);
+        }
+    };
+
+    struct state3 : public st::state {
+        std::shared_ptr<st::message> enter(std::shared_ptr<st::message> event) {
+            std::cout << "state3" << std::endl;
+            return std::shared_ptr<st::message>();
+        }
+    };
+
+    auto sm = st::state::machine::make();
+    sm->register_transition(events::event1, st::state::make<state1>(reached_state1));
+    sm->register_transition(events::event2, st::state::make<state2>(reached_state2));
+    sm->register_transition(events::event3, st::state::make<state3>(reached_state3));
+
+    sm->process_event(events::event1);
+    return 0;
+}
+```
+
+Terminal output might be:
+```
+$./a.out 
+state1
+state2
+state3
 ```
