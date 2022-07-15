@@ -769,7 +769,8 @@ struct state {
      *
      * The returned value from this function can contain a further event to
      * process. Thus, this function can be used to implement transitory states 
-     * where logic must occur before the next state is known.
+     * where logic must occur before the next state is known. If the returned 
+     * value is a null pointer, the transition will be considered complete.
      *
      * @param event a message containing the event id and an optional data payload
      * @return optional shared_ptr<message> containing the next event to process (if pointer is null, no futher event will be processed)
@@ -845,29 +846,16 @@ struct state {
          * @param st a pointer to an object which implements abstract class state  
          * @return true if state was registered, false if state pointer is null or the same event is already registered
          */
-        inline bool register_transition(std::size_t event_id, std::shared_ptr<state> st) {
-            auto it = m_transition_table.find(event_id);
+        template <typename ID>
+        bool register_transition(ID event_id, std::shared_ptr<state> st) {
+            std::size_t eid = static_cast<std::size_t>(event_id);
+            auto it = m_transition_table.find(eid);
             if(st && it == m_transition_table.end()) {
-                m_transition_table[event_id] = st;
+                m_transition_table[eid] = st;
                 return true;
             } else {
                 return false;
             }
-        }
-
-        /**
-         * @brief Register a state object to be transitioned to when notified of an event
-         *
-         * This is a wrapper for  
-         *`bool register_transition(std::size_t, std::shared_ptr<state>)`
-
-         * @param event an unsigned integer representing an event that has occurred
-         * @param st a pointer to an object which implements abstract class state  
-         * @return true if state was registered, false if state pointer is null or the same event is already registered
-         */
-        template <typename ID>
-        bool register_transition(ID event_id, std::shared_ptr<state> st) {
-            return register_transition(static_cast<std::size_t>(event_id), std::move(st));
         }
 
         /**
@@ -886,10 +874,18 @@ struct state {
          * algorithm will repeat until no allocated or valid event messages 
          * are returned by `enter()`.
          *
-         * @param event a message containing the state event id and optional data payload 
+         * @param as argument(s) to `st::message::make()`
          * @return true if the event was processed successfully, else false
          */
-        inline bool process_event(std::shared_ptr<message> event) {
+        template <typename... As>
+        bool process_event(As&&... as) {
+            return internal_process_event(st::message::make(std::forward<As>(as)...));
+        }
+       
+    private:
+        machine() : m_cur_state(m_transition_table.end()) { }
+
+        inline bool internal_process_event(std::shared_ptr<message> event) {
             if(event) {
                 // process events
                 do {
@@ -919,36 +915,6 @@ struct state {
                 return false;
             }
         }
-       
-        /**
-         * @brief process the event that has occurred, transitioning states if necessary
-         *
-         * This is a wrapper for `bool process_event(std::shared_ptr<message>)`.
-         *
-         * @param id an unsigned integer representing which type of message
-         * @param t arbitrary typed data to be stored as the message data 
-         * @return true if the event was processed successfully, else false
-         */
-        template <typename ID, typename T>
-        bool process_event(ID id, T&& t) {
-            return process_event(st::message::make(id, std::forward<T>(t)));
-        }
-       
-        /**
-         * @brief process the event that has occurred, transitioning states if necessary
-         *
-         * This is a wrapper for `bool process_event(std::shared_ptr<message>)`.
-         *
-         * @param id an unsigned integer representing which type of message
-         * @return true if the event was processed successfully, else false
-         */
-        template <typename ID>
-        bool process_event(ID id) {
-            return process_event(st::message::make(id));
-        }
-
-    private:
-        machine() : m_cur_state(m_transition_table.end()) { }
 
         typedef std::unordered_map<std::size_t,std::shared_ptr<state>> transition_table_t;
         transition_table_t m_transition_table;
