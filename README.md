@@ -481,7 +481,8 @@ you begin speaking and your partner listens
 your partner begins speaking and you listen
 ```
 
-Since function signatures `void st::state::enter(std::shared_ptr<st::message>)` 
+#### Replacing switch statements with state machines
+Since function signatures `std::shared_ptr<st::message> st::state::enter(std::shared_ptr<st::message>)` 
 and  `bool st::state::exit(std::shared_ptr<st::message>)` accept a message 
 object as their arguments, the user can directly replace `switch` statements 
 from within `st::worker` instances with calls to 
@@ -550,6 +551,7 @@ your partner speaks: goodbye foo
 you speak: goodbye faa
 ```
 
+#### Implementing state transition guards
 The user can implement transition guards and prevent transitioning away 
 from a state by overriding the 
 `bool st::state::exit(std::shared_ptr<st::message>)` method, where the state 
@@ -626,6 +628,7 @@ your partner speaks: hello foo
 you speak: hello faa
 ```
 
+#### Processing subsequent events directly from the result of a state transition
 If an implementation of `st::state::enter()` returns a non-null `std::shared_ptr<st::message>` 
 that message will be handled as if `st::state::machine::process_event()` had been 
 called with that message as its argument. This allows states to directly 
