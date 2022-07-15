@@ -188,9 +188,9 @@ struct result {
      * Enumeration representing the status of the associated operation
      */
     enum eStatus {
-        success,
-        full,
-        closed
+        success, ///< operation succeeded
+        full, ///< operation failed due to full buffer
+        closed ///< operation failed due to object being closed
     };
 
     /**
