@@ -441,14 +441,17 @@ States and Finite State Machine</h2>
 <div class="line">    };</div>
 <div class="line"> </div>
 <div class="line">    struct listening : public st::state {</div>
-<div class="line">        void enter(std::shared_ptr&lt;st::message&gt; event) {</div>
+<div class="line">        std::shared_ptr&lt;st::message&gt; enter(std::shared_ptr&lt;st::message&gt; event) {</div>
 <div class="line">            std::cout &lt;&lt; &quot;your partner begins speaking and you listen&quot; &lt;&lt; std::endl;</div>
+<div class="line">            // a default (null) pointer returned from enter() causes transition to continue normally</div>
+<div class="line">            return std::shared_ptr&lt;st::message&gt;(); </div>
 <div class="line">        }</div>
 <div class="line">    };</div>
 <div class="line"> </div>
 <div class="line">    struct talking : public st::state {</div>
-<div class="line">        void enter(std::shared_ptr&lt;st::message&gt; event) {</div>
+<div class="line">        std::shared_ptr&lt;st::message&gt; enter(std::shared_ptr&lt;st::message&gt; event) {</div>
 <div class="line">            std::cout &lt;&lt; &quot;you begin speaking and your partner listens&quot; &lt;&lt; std::endl;</div>
+<div class="line">            return std::shared_ptr&lt;st::message&gt;();</div>
 <div class="line">        }</div>
 <div class="line">    };</div>
 <div class="line"> </div>
@@ -480,18 +483,20 @@ States and Finite State Machine</h2>
 <div class="line">        };</div>
 <div class="line"> </div>
 <div class="line">        struct listening : public st::state {</div>
-<div class="line">            void enter(std::shared_ptr&lt;st::message&gt; event) {</div>
+<div class="line">            std::shared_ptr&lt;st::message&gt; enter(std::shared_ptr&lt;st::message&gt; event) {</div>
 <div class="line">                std::string s;</div>
 <div class="line">                event-&gt;copy_data_to(s);</div>
 <div class="line">                std::cout &lt;&lt; &quot;your partner speaks: &quot; &lt;&lt; s &lt;&lt; std::endl;</div>
+<div class="line">                return std::shared_ptr&lt;st::message&gt;();</div>
 <div class="line">            }</div>
 <div class="line">        };</div>
 <div class="line"> </div>
 <div class="line">        struct talking : public st::state {</div>
-<div class="line">            void enter(std::shared_ptr&lt;st::message&gt; event) {</div>
+<div class="line">            std::shared_ptr&lt;st::message&gt; enter(std::shared_ptr&lt;st::message&gt; event) {</div>
 <div class="line">                std::string s;</div>
 <div class="line">                event-&gt;copy_data_to(s);</div>
 <div class="line">                std::cout &lt;&lt; &quot;you speak: &quot; &lt;&lt; s &lt;&lt; std::endl;</div>
+<div class="line">                return std::shared_ptr&lt;st::message&gt;();</div>
 <div class="line">            }</div>
 <div class="line">        };</div>
 <div class="line"> </div>
@@ -536,10 +541,11 @@ States and Finite State Machine</h2>
 <div class="line">    };</div>
 <div class="line"> </div>
 <div class="line">    struct listening : public st::state {</div>
-<div class="line">        void enter(std::shared_ptr&lt;st::message&gt; event) {</div>
+<div class="line">        std::shared_ptr&lt;st::message&gt; enter(std::shared_ptr&lt;st::message&gt; event) {</div>
 <div class="line">            std::string s;</div>
 <div class="line">            event-&gt;copy_data_to(s);</div>
 <div class="line">            std::cout &lt;&lt; &quot;your partner speaks: &quot; &lt;&lt; s &lt;&lt; std::endl;</div>
+<div class="line">            return std::shared_ptr&lt;st::message&gt;();</div>
 <div class="line">        }</div>
 <div class="line"> </div>
 <div class="line">        bool exit(std::shared_ptr&lt;st::message&gt; event) {</div>
@@ -553,10 +559,11 @@ States and Finite State Machine</h2>
 <div class="line">    };</div>
 <div class="line"> </div>
 <div class="line">    struct talking : public st::state {</div>
-<div class="line">        void enter(std::shared_ptr&lt;st::message&gt; event) {</div>
+<div class="line">        std::shared_ptr&lt;st::message&gt; enter(std::shared_ptr&lt;st::message&gt; event) {</div>
 <div class="line">            std::string s;</div>
 <div class="line">            event-&gt;copy_data_to(s);</div>
 <div class="line">            std::cout &lt;&lt; &quot;you speak: &quot; &lt;&lt; s &lt;&lt; std::endl;</div>
+<div class="line">            return std::shared_ptr&lt;st::message&gt;();</div>
 <div class="line">        }</div>
 <div class="line"> </div>
 <div class="line">        bool exit(std::shared_ptr&lt;st::message&gt; event) {</div>
@@ -590,6 +597,48 @@ States and Finite State Machine</h2>
 </div><!-- fragment --><p>Terminal output might be: </p><div class="fragment"><div class="line">$./a.out </div>
 <div class="line">your partner speaks: hello foo</div>
 <div class="line">you speak: hello faa</div>
+</div><!-- fragment --><p>If an implementation of <code><a class="el" href="structst_1_1state.html#a740834a32ddfdf58105f00d6d9bccacf" title="called during a transition when a state is entered">st::state::enter()</a></code> returns a non-null <code>std::shared_ptr&lt;<a class="el" href="structst_1_1message.html" title="Interthread type erased message container.">st::message</a>&gt;</code> that message will be handled as if <code><a class="el" href="structst_1_1state_1_1machine.html#aab2fcf9b00f8f7b7aad31ec7e60c4199" title="process_event the state machine an event has occurred">st::state::machine::process_event()</a></code> had been called with that message as its argument. This allows states to directly transition to other states if necessary: </p><div class="fragment"><div class="line">int main() {</div>
+<div class="line">    struct events {</div>
+<div class="line">        enum op {</div>
+<div class="line">            event1,</div>
+<div class="line">            event2,</div>
+<div class="line">            event3</div>
+<div class="line">        };</div>
+<div class="line">    };</div>
+<div class="line"> </div>
+<div class="line">    struct state1 : public st::state {</div>
+<div class="line">        std::shared_ptr&lt;st::message&gt; enter(std::shared_ptr&lt;st::message&gt; event) {</div>
+<div class="line">            std::cout &lt;&lt; &quot;state1&quot; &lt;&lt; std::endl;</div>
+<div class="line">            return st::message::make(events::event2);</div>
+<div class="line">        }</div>
+<div class="line">    };</div>
+<div class="line"> </div>
+<div class="line">    struct state2 : public st::state {</div>
+<div class="line">        std::shared_ptr&lt;st::message&gt; enter(std::shared_ptr&lt;st::message&gt; event) {</div>
+<div class="line">            std::cout &lt;&lt; &quot;state2&quot; &lt;&lt; std::endl;</div>
+<div class="line">            return st::message::make(events::event3);</div>
+<div class="line">        }</div>
+<div class="line">    };</div>
+<div class="line"> </div>
+<div class="line">    struct state3 : public st::state {</div>
+<div class="line">        std::shared_ptr&lt;st::message&gt; enter(std::shared_ptr&lt;st::message&gt; event) {</div>
+<div class="line">            std::cout &lt;&lt; &quot;state3&quot; &lt;&lt; std::endl;</div>
+<div class="line">            return std::shared_ptr&lt;st::message&gt;();</div>
+<div class="line">        }</div>
+<div class="line">    };</div>
+<div class="line"> </div>
+<div class="line">    auto sm = st::state::machine::make();</div>
+<div class="line">    sm-&gt;register_transition(events::event1, st::state::make&lt;state1&gt;(reached_state1));</div>
+<div class="line">    sm-&gt;register_transition(events::event2, st::state::make&lt;state2&gt;(reached_state2));</div>
+<div class="line">    sm-&gt;register_transition(events::event3, st::state::make&lt;state3&gt;(reached_state3));</div>
+<div class="line"> </div>
+<div class="line">    sm-&gt;process_event(events::event1);</div>
+<div class="line">    return 0;</div>
+<div class="line">}</div>
+</div><!-- fragment --><p>Terminal output might be: </p><div class="fragment"><div class="line">$./a.out </div>
+<div class="line">state1</div>
+<div class="line">state2</div>
+<div class="line">state3</div>
 </div><!-- fragment --> </div></div><!-- contents -->
 </div><!-- PageDoc -->
 <!-- start footer part -->
