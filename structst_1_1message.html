@@ -97,15 +97,21 @@ Public Member Functions</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-static-methods"></a>
 Static Public Member Functions</h2></td></tr>
+<tr class="memitem:af3bfc649bfad36dca05f901fe31c5066"><td class="memItemLeft" align="right" valign="top">static std::shared_ptr&lt; <a class="el" href="structst_1_1message.html">message</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structst_1_1message.html#af3bfc649bfad36dca05f901fe31c5066">make</a> (std::shared_ptr&lt; <a class="el" href="structst_1_1message.html">message</a> &gt; msg)</td></tr>
+<tr class="memdesc:af3bfc649bfad36dca05f901fe31c5066"><td class="mdescLeft">&#160;</td><td class="mdescRight">convenience function for templating  <a href="structst_1_1message.html#af3bfc649bfad36dca05f901fe31c5066">More...</a><br /></td></tr>
+<tr class="separator:af3bfc649bfad36dca05f901fe31c5066"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7acb0cfda5d8f1b0d237517ccfcabcab"><td class="memTemplParams" colspan="2">template&lt;typename ID , typename T &gt; </td></tr>
 <tr class="memitem:a7acb0cfda5d8f1b0d237517ccfcabcab"><td class="memTemplItemLeft" align="right" valign="top">static std::shared_ptr&lt; <a class="el" href="structst_1_1message.html">message</a> &gt;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="structst_1_1message.html#a7acb0cfda5d8f1b0d237517ccfcabcab">make</a> (ID <a class="el" href="structst_1_1message.html#abfd004b90e13b7eb6e46ffc75f4d26b9">id</a>, T &amp;&amp;t)</td></tr>
+<tr class="memdesc:a7acb0cfda5d8f1b0d237517ccfcabcab"><td class="mdescLeft">&#160;</td><td class="mdescRight">construct a message  <a href="structst_1_1message.html#a7acb0cfda5d8f1b0d237517ccfcabcab">More...</a><br /></td></tr>
 <tr class="separator:a7acb0cfda5d8f1b0d237517ccfcabcab"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a9c33612b000c9816bc01eb414078f334"><td class="memTemplParams" colspan="2">template&lt;typename ID &gt; </td></tr>
 <tr class="memitem:a9c33612b000c9816bc01eb414078f334"><td class="memTemplItemLeft" align="right" valign="top">static std::shared_ptr&lt; <a class="el" href="structst_1_1message.html">message</a> &gt;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="structst_1_1message.html#a9c33612b000c9816bc01eb414078f334">make</a> (ID <a class="el" href="structst_1_1message.html#abfd004b90e13b7eb6e46ffc75f4d26b9">id</a>)</td></tr>
+<tr class="memdesc:a9c33612b000c9816bc01eb414078f334"><td class="mdescLeft">&#160;</td><td class="mdescRight">construct a message  <a href="structst_1_1message.html#a9c33612b000c9816bc01eb414078f334">More...</a><br /></td></tr>
 <tr class="separator:a9c33612b000c9816bc01eb414078f334"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Interthread type erased message container. </p>
+<p>This object is <em>not</em> mutex locked beyond what is included in the <code>std::shared_ptr</code> implementation. </p>
 </div><h2 class="groupheader">Member Function Documentation</h2>
 <a id="a712cfd7aa3954f29645561f4e29a4af3"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a712cfd7aa3954f29645561f4e29a4af3">&#9670;&nbsp;</a></span>copy_data_to()</h2>
@@ -200,7 +206,7 @@ template&lt;typename T &gt; </div>
 </div>
 </div>
 <a id="a9c33612b000c9816bc01eb414078f334"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a9c33612b000c9816bc01eb414078f334">&#9670;&nbsp;</a></span>make() <span class="overload">[1/2]</span></h2>
+<h2 class="memtitle"><span class="permalink"><a href="#a9c33612b000c9816bc01eb414078f334">&#9670;&nbsp;</a></span>make() <span class="overload">[1/3]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -224,7 +230,8 @@ template&lt;typename ID &gt; </div>
   </tr>
 </table>
 </div><div class="memdoc">
-<p>Construct a message</p>
+
+<p>construct a message </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">id</td><td>an unsigned integer representing which type of message </td></tr>
@@ -236,7 +243,7 @@ template&lt;typename ID &gt; </div>
 </div>
 </div>
 <a id="a7acb0cfda5d8f1b0d237517ccfcabcab"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a7acb0cfda5d8f1b0d237517ccfcabcab">&#9670;&nbsp;</a></span>make() <span class="overload">[2/2]</span></h2>
+<h2 class="memtitle"><span class="permalink"><a href="#a7acb0cfda5d8f1b0d237517ccfcabcab">&#9670;&nbsp;</a></span>make() <span class="overload">[2/3]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -270,7 +277,8 @@ template&lt;typename ID , typename T &gt; </div>
   </tr>
 </table>
 </div><div class="memdoc">
-<p>Construct a message</p>
+
+<p>construct a message </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">id</td><td>an unsigned integer representing which type of message </td></tr>
@@ -279,6 +287,41 @@ template&lt;typename ID , typename T &gt; </div>
   </dd>
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>an allocated message </dd></dl>
+
+</div>
+</div>
+<a id="af3bfc649bfad36dca05f901fe31c5066"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af3bfc649bfad36dca05f901fe31c5066">&#9670;&nbsp;</a></span>make() <span class="overload">[3/3]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">static std::shared_ptr&lt;<a class="el" href="structst_1_1message.html">message</a>&gt; st::message::make </td>
+          <td>(</td>
+          <td class="paramtype">std::shared_ptr&lt; <a class="el" href="structst_1_1message.html">message</a> &gt;&#160;</td>
+          <td class="paramname"><em>msg</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span><span class="mlabel">static</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>convenience function for templating </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">msg</td><td>message object to immediately return </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>message object passed as argument </dd></dl>
 
 </div>
 </div>
