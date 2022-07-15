@@ -38,6 +38,9 @@ static constexpr std::size_t code() {
 
 /**
  * @brief Interthread type erased message container
+ *
+ * This object is *not* mutex locked beyond what is included in the 
+ * `std::shared_ptr` implementation.
  */
 struct message {
 private:
@@ -45,9 +48,17 @@ private:
     typedef std::unique_ptr<void,deleter_t> data_pointer_t;
 
 public:
+    /** 
+     * @brief convenience function for templating 
+     * @param msg message object to immediately return 
+     * @return message object passed as argument
+     */
+    static inline std::shared_ptr<message> make(std::shared_ptr<message> msg) {
+        return std::move(msg);
+    }
 
     /**
-     * Construct a message
+     * @brief construct a message
      *
      * @param id an unsigned integer representing which type of message
      * @param t arbitrary typed data to be stored as the message data 
@@ -64,7 +75,7 @@ public:
     }
 
     /**
-     * Construct a message
+     * @brief construct a message
      *
      * @param id an unsigned integer representing which type of message
      * @return an allocated message
@@ -199,7 +210,8 @@ struct result {
  *
  * The internal mechanism used by this library to communicate between managed 
  * system threads. Provided here as a convenience for communicating from managed 
- * system threads to other user threads.
+ * system threads to other user threads. All methods in this object are mutex 
+ * locked and threadsafe.
  */
 struct channel { 
     /**
@@ -315,106 +327,18 @@ struct channel {
             m_sender_cv.notify_all();
         }
     }
-
-    /**
-     * @brief Attempt to send a message over the channel
-     *
-     * This is a blocking operation. 
-     *
-     * @param m interprocess message object
-     * @return result.status==result::eStatus::success on success, result.status==result::eStatus::closed if closed
-     */
-    inline result send(std::shared_ptr<message> m) {
-        bool notify = false;
-
-        {
-            std::unique_lock<std::mutex> lk(m_mtx);
-            if(internal_full()) {
-                m_senders_count++;
-
-                do {
-                    m_sender_cv.wait(lk);
-                } while(internal_full());
-
-                m_senders_count--;
-            }
-
-            if(m_closed) {
-                return result{ result::eStatus::closed };
-            }
-
-            m_msg_q.push_back(std::move(m));
-
-            if(m_receivers_count) {
-                notify = true;
-            }
-        }
-
-        if(notify) {
-            m_receiver_cv.notify_one();
-        }
-
-        return result{ result::eStatus::success };
-    }
-
-    /**
-     * Send a message over the channel with given @parameters 
-     *
-     * This is a blocking operation.
-     *
-     * @param id an unsigned integer representing which type of message 
-     * @param t template variable to package as the message payload
-     * @return result.status==result::eStatus::success on success, result.status==result::eStatus::closed if closed
-     */
-    template <typename ID, typename T>
-    result send(ID id, T&& t) {
-        return send(message::make(id, std::forward<T>(t)));
-    }
     
     /**
      * Send a message over the channel with given @parameter
      *
      * This is a non-blocking operation.
      *
-     * @param id an unsigned integer representing which type of message 
+     * @param as arguments passed to `message::make()`
      * @return result.status==result::eStatus::success on success, result.status==result::eStatus::closed if closed
      */
-    template <typename ID>
-    result send(ID id) {
-        return send(message::make(id));
-    }
-
-    /**
-     * @brief Attempt to send a message over the channel
-     *
-     * This is a non-blocking operation. If queue is full, operation will fail early.
-     *
-     * @param m interprocess message object
-     * @return result.status==result::eStatus::success on success, result.status==result::eStatus::closed if closed, result.status==result::eStatus::full if full
-     */
-    inline result try_send(std::shared_ptr<message> m) {
-        bool notify = false;
-
-        {
-            std::lock_guard<std::mutex> lk(m_mtx);
-            if(m_closed) {
-                return result{ result::eStatus::closed };
-            } else if(internal_full()) {
-                return result{ result::eStatus::full };
-            }
-
-            m_msg_q.push_back(std::move(m));
-
-            if(m_receivers_count) {
-                notify = true;
-            }
-        }
-
-        if(notify) {
-            m_receiver_cv.notify_one();
-        }
-
-        return result{ result::eStatus::success };
+    template <typename... As>
+    result send(As&&... as) {
+        return internal_send(message::make(std::forward<As>(as)...));
     }
 
     /**
@@ -422,26 +346,12 @@ struct channel {
      *
      * This is a non-blocking operation. If queue is full, operation will fail early.
      *
-     * @param id an unsigned integer representing which type of message 
-     * @param t template variable to package as the message payload
+     * @param as arguments passed to `message::make()`
      * @return result.status==result::eStatus::success on success, result.status==result::eStatus::closed if closed, result.status==result::eStatus::full if full
      */
-    template <typename ID, typename T>
-    result try_send(ID id, T&& t) {
-        return try_send(message::make(id, std::forward<T>(t)));
-    }
-    
-    /**
-     * Send a message over the channel with given @parameter
-     *
-     * This is a non-blocking operation. If queue is full, operation will fail early.
-     *
-     * @param id an unsigned integer representing which type of message 
-     * @return result.status==result::eStatus::success on success, result.status==result::eStatus::closed if closed, result.status==result::eStatus::full if full
-     */
-    template <typename ID>
-    result try_send(ID id) {
-        return try_send(message::make(id));
+    template <typename... As>
+    result try_send(As&&... as) {
+        return internal_try_send(message::make(std::forward<As>(as)...));
     }
 
     /**
@@ -452,7 +362,7 @@ struct channel {
      * @param m interprocess message object reference to contain the received message 
      * @return true on success, false if channel is closed
      */
-    result recv(std::shared_ptr<message>& m) {
+    inline result recv(std::shared_ptr<message>& m) {
         result r;
         bool notify = false;
 
@@ -505,6 +415,64 @@ private:
         return !m_closed && m_max_q_size && m_msg_q.size() >= m_max_q_size;
     }
 
+    inline result internal_send(std::shared_ptr<message>&& m) {
+        bool notify = false;
+
+        {
+            std::unique_lock<std::mutex> lk(m_mtx);
+            if(internal_full()) {
+                m_senders_count++;
+
+                do {
+                    m_sender_cv.wait(lk);
+                } while(internal_full());
+
+                m_senders_count--;
+            }
+
+            if(m_closed) {
+                return result{ result::eStatus::closed };
+            }
+
+            m_msg_q.push_back(std::move(m));
+
+            if(m_receivers_count) {
+                notify = true;
+            }
+        }
+
+        if(notify) {
+            m_receiver_cv.notify_one();
+        }
+
+        return result{ result::eStatus::success };
+    }
+    
+    inline result internal_try_send(std::shared_ptr<message>&& m) {
+        bool notify = false;
+
+        {
+            std::lock_guard<std::mutex> lk(m_mtx);
+            if(m_closed) {
+                return result{ result::eStatus::closed };
+            } else if(internal_full()) {
+                return result{ result::eStatus::full };
+            }
+
+            m_msg_q.push_back(std::move(m));
+
+            if(m_receivers_count) {
+                notify = true;
+            }
+        }
+
+        if(notify) {
+            m_receiver_cv.notify_one();
+        }
+
+        return result{ result::eStatus::success };
+    }
+
     bool m_closed;
     const std::size_t m_max_q_size;
     std::size_t m_receivers_count; // heuristic to limit condition_variable signals
@@ -520,8 +488,8 @@ private:
  */
 struct worker {
     /**
-     * Launch a worker with argument handler FUNCTOR to be scheduled whenever a 
-     * message is received by the worker's channel. 
+     * Launch a worker thread with argument handler FUNCTOR to be called
+     * whenever a message is received by the worker's channel. 
      *
      * Type FUNCTOR should be a functor class. A functor is a class with call 
      * operator overload which accepts an std::shared_ptr<message>, ex:
@@ -560,7 +528,7 @@ struct worker {
     worker(worker&&) = delete;
 
     ~worker() { 
-        inner_shutdown();
+        internal_shutdown();
     }
 
     /**
@@ -579,7 +547,7 @@ struct worker {
      */
     inline void shutdown(bool process_remaining_messages=true) {
         std::lock_guard<std::mutex> lk(m_mtx);
-        inner_shutdown(process_remaining_messages);
+        internal_shutdown(process_remaining_messages);
     }
 
     /**
@@ -591,7 +559,7 @@ struct worker {
      */
     inline void restart(bool process_remaining_messages=true) {
         std::unique_lock<std::mutex> lk(m_mtx);
-        inner_shutdown(process_remaining_messages);
+        internal_shutdown(process_remaining_messages);
         m_ch = channel::make(m_ch_queue_max_size);
         m_thread_started_flag = false;
         m_thd = std::thread([&]{
@@ -672,75 +640,30 @@ struct worker {
     }
 
     /**
-     * @brief Send a message over the channel
-     * @param m interprocess message object
-     * @return true on success, false if channel is closed
-     */
-    inline result send(std::shared_ptr<message> m) {
-        return m_ch->send(std::move(m));
-    }
-
-    /**
-     * Send a message over the channel with given @parameters 
+     * @brief Send a message over the channel with given @parameters 
      *
      * This is a blocking operation.
      *
-     * @param id an unsigned integer representing which type of message 
-     * @param t template variable to package as the message payload
+     * @param as argument(s) to `st::message::make()`
      * @return result.status==result::eStatus::success on success, result.status==result::eStatus::closed if closed
      */
-    template <typename ID, typename T>
-    result send(ID id, T&& t) {
-        return m_ch->send(id, std::forward<T>(t));
-    }
-    
-    /**
-     * Send a message over the channel with given @parameter
-     *
-     * This is a non-blocking operation.
-     *
-     * @param id an unsigned integer representing which type of message 
-     * @return result.status==result::eStatus::success on success, result.status==result::eStatus::closed if closed
-     */
-    template <typename ID>
-    result send(ID id) {
-        return m_ch->send(id);
+    template <typename... As>
+    result send(As&&... as) {
+        return m_ch->send(message::make(std::forward<As>(as)...));
     }
 
     /**
-     * @brief Send a message over the channel
-     * @param m interprocess message object
-     * @return true on success, false if channel is closed
-     */
-    inline result try_send(std::shared_ptr<message> m) {
-        return m_ch->try_send(std::move(m));
-    }
-
-    /**
-     * Send a message over the channel with given @parameters 
+     * @brief Send a message over the channel with given parameters 
      *
      * This is a non-blocking operation. If queue is full, operation will fail early.
      *
      * @param id an unsigned integer representing which type of message 
-     * @param t template variable to package as the message payload
+     * @param as additional argument(s) to `st::message::make()`
      * @return result.status==result::eStatus::success on success, result.status==result::eStatus::closed if closed, result.status==result::eStatus::full if full
      */
-    template <typename ID, typename T>
-    result try_send(ID id, T&& t) {
-        return m_ch->try_send(id, std::forward<T>(t));
-    }
-    
-    /**
-     * Send a message over the channel with given @parameter
-     *
-     * This is a non-blocking operation. If queue is full, operation will fail early.
-     *
-     * @param id an unsigned integer representing which type of message 
-     * @return result.status==result::eStatus::success on success, result.status==result::eStatus::closed if closed, result.status==result::eStatus::full if full
-     */
-    template <typename ID>
-    result try_send(ID id) {
-        return m_ch->try_send(id);
+    template <typename... As>
+    result try_send(As&&... as) {
+        return m_ch->try_send(message::make(std::forward<As>(as)...));
     }
 
     /**
@@ -750,7 +673,9 @@ struct worker {
      * when the worker pointer is needed from within the FUNCTOR handler.
      *
      * Provided as a weak_ptr to avoid preventing the worker from going out of 
-     * scope unless the user explicitly acquires a shared_ptr from it.
+     * scope unless the user explicitly acquires a shared_ptr from it. All 
+     * responsibility for preventing memory leaks of worker objects is delegated 
+     * to the user after making this call.
      *
      * @return a weak_ptr to calling thread's worker
      */
@@ -793,7 +718,7 @@ private:
     }
 
     // close the worker channel and join the thread if necessary
-    inline void inner_shutdown(bool proc_rem_msgs=true) {
+    inline void internal_shutdown(bool proc_rem_msgs=true) {
         if(m_thd.joinable()) {
             if(m_ch && !m_ch->closed()) {
                 m_ch->close(proc_rem_msgs);
@@ -815,21 +740,240 @@ private:
 };
 
 /**
+ * @brief a class managing one or more identical worker threads 
+ *
+ * The `executor` object implements a constant time algorithm which attempts to 
+ * intelligently schedule tasks on the least busy worker thread.
+ *
+ * The `executor` object is useful for scheduling operations which benefit from 
+ * high CPU throughput and are not reliant on the specific thread upon which 
+ * they run. 
+ *
+ * Highest CPU throughput is typically reached by an executor whose worker count 
+ * matches the CPU core count of the executing machine. This optimal number of 
+ * cores may be discoverable by the return value of 
+ * `std::thread::hardware_concurrency()` (used as the default worker count in 
+ * `executor::make<T>()`), but the correctness of this value is not guaranteed 
+ * by the standard.
+ */
+struct executor {
+    /**
+     * @brief convenience class definition for average executor worker usecases 
+     *
+     * A simple functor which can be used as templated type in
+     * `executor::make<T>()`. This class is designed to receive and execute 
+     * arbitrary wrapped function calls (std::function<void()> can hold 
+     * a lambda, functor or function pointer) stored inside the `st::message` 
+     * sent to the worker thread.
+     *
+     * The message id returned by `st::message::id()` is always ignored, only 
+     * the type of the payload is checked before execution.
+     */
+    struct processor {
+        /**
+         * @brief convenience typedef for wrapped functions which can be executed on this worker
+         */
+        typedef std::function<void()> task;
+
+        inline void operator()(std::shared_ptr<st::message> msg) { 
+            task t;
+            if(msg->move_data_to(t)) {
+                t();
+            }
+        }
+    };
+
+    template <typename FUNCTOR, typename... As>
+    static std::shared_ptr<executor> make(
+            std::size_t worker_count = std::thread::hardware_concurrency() 
+            ? std::thread::hardware_concurrency() 
+            : 1,
+            As&&... as) {
+        return std::shared_ptr<executor>(new executor(
+                    worker_count,
+                    [=]() mutable -> std::shared_ptr<worker> {
+                        return worker::make<FUNCTOR>(std::forward<As>(as)...); 
+                    }));
+    }
+
+    ~executor() {
+        shutdown();
+    }
+    
+    inline bool running() const {
+        std::lock_guard<std::mutex> lk(m_mtx);
+        return m_workers.size() ? true : false;
+    }
+
+    inline void shutdown(bool soft_shutdown=true) {
+        std::lock_guard<std::mutex> lk(m_mtx);
+        internal_shutdown(soft_shutdown);
+    }
+
+    inline void restart(bool soft_shutdown=true) {
+        std::lock_guard<std::mutex> lk(m_mtx);
+        internal_shutdown(soft_shutdown);
+        m_inner_restart();
+    }
+
+    inline std::size_t worker_count() const {
+        return m_worker_count;
+    }
+
+    template <typename... As>
+    bool send(As&&... as) {
+        return internal_send(message::make(std::forward<As>(as)...));
+    }
+
+    template <typename... As>
+    bool try_send(As&&... as) {
+        return internal_try_send(message::make(std::forward<As>(as)...));
+    }
+
+private:
+    typedef std::vector<std::shared_ptr<worker>> worker_vector_t;
+    typedef worker_vector_t::iterator worker_iter_t;
+
+    executor(const std::size_t worker_count, std::function<std::shared_ptr<worker>()> make_worker) :
+        m_worker_count(worker_count),
+        m_schedule_fptr(worker_count > 2 
+                ? schedule_3
+                : worker_count > 1
+                    ? schedule_2
+                    : schedule_1),
+        m_make_worker(std::move(make_worker)),
+        m_inner_restart([&]{
+            m_workers = worker_vector_t(worker_count),
+            m_cur_it = m_workers.begin();
+            for(auto& w : m_workers) {
+                w = m_make_worker();
+            }
+        }){
+        restart(); // start workers
+    }
+
+    executor(const executor& rhs) = delete;
+    executor(executor&& rhs) = delete;
+
+    inline void internal_shutdown(bool soft_shutdown) {
+        for(auto& w : m_workers) {
+            w->shutdown(soft_shutdown);
+        }
+
+        m_workers.clear();
+    }
+
+    inline bool internal_send(std::shared_ptr<message>&& m) {
+        std::lock_guard<std::mutex> lk(m_mtx);
+        if(m_workers.size() ? true : false) {
+            m_schedule_fptr(*this, std::move(m), true);
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    inline bool internal_try_send(std::shared_ptr<message> m) {
+        std::lock_guard<std::mutex> lk(m_mtx);
+        if(m_workers.size() ? true : false) {
+            m_schedule_fptr(*this, std::move(m), false);
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    // return the next worker 
+    inline worker_iter_t rotate(worker_iter_t it) {
+        ++it;
+
+        // if at the end of the vector return the first entry
+        if(it == m_workers.end()) {
+            it = m_workers.begin();
+        } 
+
+        return it;
+    }
+
+    static inline void do_send(std::shared_ptr<worker>& selected_worker, 
+                               std::shared_ptr<message>&& msg,
+                               bool blocking_send) {
+        if(blocking_send) {
+            selected_worker->send(std::move(msg));
+        } else {
+            selected_worker->try_send(std::move(msg));
+        }
+    }
+
+    // schedule a task on a executor with 1 worker thread
+    static inline void schedule_1(executor& ex, std::shared_ptr<message>&& msg, bool blocking_send) {
+        executor::do_send((*(ex.m_cur_it)), std::move(msg), blocking_send);
+    }
+
+    // schedule a task on a executor with 2 worker threads
+    static inline void schedule_2(executor& ex, std::shared_ptr<message>&& msg, bool blocking_send) {
+        auto& prev_worker = *(ex.m_cur_it);
+        ex.m_cur_it = ex.rotate(ex.m_cur_it);
+
+        auto& cur_worker = *(ex.m_cur_it);
+
+        if(prev_worker->get_weight() < cur_worker->get_weight()) {
+            executor::do_send(prev_worker, std::move(msg), blocking_send);
+        } else {
+            executor::do_send(cur_worker, std::move(msg), blocking_send);
+        }
+    }
+
+    // schedule a task on a executor with 3 or more worker threads
+    static inline void schedule_3(executor& ex, std::shared_ptr<message>&& msg, bool blocking_send) {
+        auto& prev_worker = *(ex.m_cur_it);
+        ex.m_cur_it = ex.rotate(ex.m_cur_it);
+
+        auto& cur_worker = *(ex.m_cur_it);
+        auto cur_weight = cur_worker->get_weight();
+
+        if(prev_worker->get_weight() < cur_weight) {
+            executor::do_send(prev_worker, std::move(msg), blocking_send);
+        } else {
+            auto& next_worker = *(ex.rotate(ex.m_cur_it));
+
+            if(cur_weight < next_worker->get_weight()) {
+                executor::do_send(cur_worker, std::move(msg), blocking_send);
+            } else {
+                executor::do_send(next_worker, std::move(msg), blocking_send);
+            }
+        }
+    }
+
+    mutable std::mutex m_mtx;
+    const std::size_t m_worker_count;
+
+    // pointer to constant time scheduling function which attempts to allocate 
+    // tasks in a fair manner across workers.
+    void(*m_schedule_fptr)(executor&, std::shared_ptr<message>&&, bool);
+    worker_vector_t m_workers;
+    worker_iter_t m_cur_it;
+    std::function<std::shared_ptr<worker>()> m_make_worker;
+    std::function<void()> m_inner_restart;
+};
+
+/**
  * A fairly simple finite state machine mechanism (FSM). FSMs are
  * somewhat infamous for being difficult to parse, too unwieldy, or otherwise 
  * opaque. As with everything else in this library, the aim of this object's 
  * design is to make sure the necessary features are kept simple without overly 
- * limiting the user.
+ * limiting the user so some care has been attempted to mitigate those concerns.
  *
- * The toplevel class for this feature is actually the `state` object. The user 
- * should implement classes which inherit `st::state`, overriding its `enter()` 
- * and `exit()` methods as desired. A static `state::make()` function is 
- * included as convenience for the user so they do not have to manually typecast 
- * allocated pointers. 
+ * The toplevel class for this feature is actually the inheritable `state` 
+ * object. The user should implement classes which publicly inherit `st::state`, 
+ * overriding its `enter()` and `exit()` methods as desired. A static 
+ * `state::make()` function is included as convenience for the user so they do 
+ * not have to manually typecast allocated pointers when constructing state 
+ * objects.
  *
- * User must create a state machine (`std::shared_ptr<st::state::machine>`) 
+ * The user must create a state machine (`std::shared_ptr<st::state::machine>`) 
  * using static function `st:;state::machine::make()` to register their states
- * and triggering events. The state machine can then be notified of new events 
+ * and trigger events. The state machine can then be notified of new events 
  * with a call to 
  * `st::state::machine::process_event(std::shared_ptr<st::message>)`.
  */
@@ -840,9 +984,9 @@ struct state {
     /**
      * @brief called during a transition when a state is entered 
      *
-     * The returned value from this function can contain further events to
-     * process, this function can be used to implement transitory states where 
-     * logic must occur before the next state is known.
+     * The returned value from this function can contain a further event to
+     * process. Thus, this function can be used to implement transitory states 
+     * where logic must occur before the next state is known.
      *
      * @param event a message containing the event id and an optional data payload
      * @return optional shared_ptr<message> containing the next event to process (if pointer is null, no futher event will be processed)
@@ -878,6 +1022,10 @@ struct state {
     }
 
     /**
+     * This function returns the a type code representing the *derived* type of
+     * the state object. Therefore, this value can be used to compare the types 
+     * of two arbitrary `std::shared_ptr<st::state>` pointer objects.
+     *
      * @return the code representing the state implementation type
      */
     inline virtual std::size_t type_code() const final {
@@ -901,6 +1049,9 @@ struct state {
      * in an asynchronous manner. 
      */
     struct machine {
+        /**
+         * @return an allocated state machine
+         */
         static inline std::shared_ptr<machine> make() {
             return std::shared_ptr<machine>(new machine);
         }
