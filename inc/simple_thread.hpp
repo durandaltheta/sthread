@@ -762,7 +762,7 @@ private:
  * `st::state::machine::process_event(std::shared_ptr<st::message>)`.
  */
 struct state {
-    // explicit destructor definition to allow for proper delete behavior
+    // explicit destructor definition to allow for proper virtual delete behavior
     virtual ~state(){} 
 
     /**
