@@ -9,7 +9,7 @@ This header only library seeks to easily setup useful worker threads using a
 simple API.
 
 Instead of functions worker threads execute c++ functors. A functor is a class 
-which has a function call overload allowing you to execute the functor like a 
+which has a function call overload allowing you to execute the object like a 
 function, IE:
 ```
 struct MyClass {
