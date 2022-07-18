@@ -844,7 +844,7 @@ struct state {
         /**
          * @brief Register a state object to be transitioned to when notified of an event
          * @param event an unsigned integer representing an event that has occurred
-         * @param st a pointer to an object which implements abstract class state  
+         * @param st a pointer to an object which implements class state  
          * @return true if state was registered, false if state pointer is null or the same event is already registered
          */
         template <typename ID>
