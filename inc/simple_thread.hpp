@@ -880,18 +880,61 @@ struct state {
          */
         template <typename... As>
         bool process_event(As&&... as) {
-            return internal_process_event(st::message::make(std::forward<As>(as)...));
+            return internal_process_event(message::make(std::forward<As>(as)...));
         }
 
         /**
-         * @brief retrieve the current state information of the machine 
-         * @return a pair containing the most recently processed event and current state
+         * @brief a utility object to report information about the machine's current status
          */
-        inline std::pair<std::size_t,std::shared_ptr<state>> get_current_state() {
+        struct status {
+            status() : m_event(0) { }
+            status(const status& rhs) : m_event(rhs.m_event), m_state(rhs.m_state) { }
+            status(status&& rhs) : m_event(rhs.m_event), m_state(std::move(rhs.m_state)) { }
+
+            status(std::size_t inp_event, std::shared_ptr<st::state> inp_state) : 
+                m_event(inp_event), 
+                m_state(inp_state) 
+            { }
+
+            /**
+             * @return the last event processed by the machine
+             */
+            std::size_t event() {
+                return m_event;
+            }
+
+            /**
+             * @return the current state held by the machine
+             */
+            std::shared_ptr<st::state> state() {
+                return m_state;
+            }
+
+            /**
+             * @return true if the status is valid, else return false
+             */
+            inline operator bool() {
+                return m_event && m_state;
+            }
+
+        private:
+            std::size_t m_event;
+            std::shared_ptr<st::state> m_state;
+        };
+
+        /**
+         * @brief retrieve the current event and state information of the machine 
+         *
+         * If the returned `status` object is invalid, machine has not yet 
+         * successfully processed any events.
+         *
+         * @return an object containing the most recently processed event and current state
+         */
+        inline status current_status() {
             if(m_cur_state != m_transition_table.end()) {
-                return { m_cur_state->first, m_cur_state->second };
+                return status(m_cur_state->first, m_cur_state->second); 
             } else {
-                return { 0, std::shared_ptr<state>() };
+                return status(0, std::shared_ptr<state>());
             }
         }
 

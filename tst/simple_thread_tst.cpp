@@ -993,9 +993,9 @@ TEST(simple_thread, state_machine_basic_usage) {
     conversation_machine->process_event(conversation::event::you_speak); 
     conversation_machine->process_event(conversation::event::partner_speaks); 
 
-    auto cur_st = conversation_machine->get_current_state();
-    EXPECT_EQ(conversation::event::partner_speaks, cur_st.first);
-    EXPECT_EQ(listening_st, cur_st.second);
+    auto cur_st = conversation_machine->current_status();
+    EXPECT_EQ(conversation::event::partner_speaks, cur_st.event());
+    EXPECT_EQ(listening_st, cur_st.state());
 }
 
 TEST(simple_thread, state_machine_with_guards_and_payload) {
@@ -1059,9 +1059,9 @@ TEST(simple_thread, state_machine_with_guards_and_payload) {
     conversation_machine->process_event(conversation::event::you_speak, std::string("hello faa2")); 
     conversation_machine->process_event(conversation::event::you_speak, std::string("hello faa3")); 
 
-    auto cur_st = conversation_machine->get_current_state();
-    EXPECT_EQ(conversation::event::you_speak, cur_st.first);
-    EXPECT_EQ(talking_st, cur_st.second);
+    auto cur_st = conversation_machine->current_status();
+    EXPECT_EQ(conversation::event::you_speak, cur_st.event());
+    EXPECT_EQ(talking_st, cur_st.state());
 }
 
 TEST(simple_thread, state_machine_on_worker) {
@@ -1100,8 +1100,8 @@ TEST(simple_thread, state_machine_on_worker) {
         }
 
         ~conversation_worker() {
-            auto cur_st = m_machine->get_current_state();
-            EXPECT_EQ(conversation_worker::op::you_speak, cur_st.first);
+            auto cur_st = m_machine->current_status();
+            EXPECT_EQ(conversation_worker::op::you_speak, cur_st.event());
         }
 
         inline void operator()(std::shared_ptr<st::message> msg) {
@@ -1181,8 +1181,8 @@ TEST(simple_thread, state_machine_transitory_state) {
     EXPECT_TRUE(reached_state2);
     EXPECT_TRUE(reached_state3);
 
-    auto cur_st = sm->get_current_state();
-    EXPECT_EQ(events::event3, cur_st.first);
+    auto cur_st = sm->current_status();
+    EXPECT_EQ(events::event3, cur_st.event());
 }
 
 // README EXAMPLES 
