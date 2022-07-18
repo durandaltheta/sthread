@@ -26,10 +26,10 @@ template <typename T>
 using base = typename std::remove_reference<typename std::remove_cv<T>::type>::type;
 
 /**
- * @return an unsigned integer representing a data type.
- *
  * The data type value is acquired by removing const and volatile 
  * qualifiers and then by acquiring the type_info::hash_code().
+ *
+ * @return an unsigned integer representing a data type.
  */
 template <typename T>
 static constexpr std::size_t code() {
