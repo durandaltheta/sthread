@@ -756,7 +756,7 @@ private:
  * objects.
  *
  * The user must create a state machine (`std::shared_ptr<st::state::machine>`) 
- * using static function `st:;state::machine::make()` to register their states
+ * using static function `st::state::machine::make()` to register their states
  * and trigger events. The state machine can then be notified of new events 
  * with a call to 
  * `st::state::machine::process_event(std::shared_ptr<st::message>)`.
