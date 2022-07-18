@@ -1,8 +1,9 @@
 var searchData=
 [
-  ['empty_8',['empty',['../structst_1_1channel.html#a43b258375b98b1298172f67259afbc34',1,'st::channel::empty()'],['../structst_1_1worker_1_1weight.html#a9e4654f9c34c01857aec9de8c8b8178d',1,'st::worker::weight::empty()']]],
-  ['enter_9',['enter',['../structst_1_1state.html#a740834a32ddfdf58105f00d6d9bccacf',1,'st::state']]],
-  ['estatus_10',['eStatus',['../structst_1_1result.html#ad03e6cce1b301db4ff97841535487951',1,'st::result']]],
-  ['executing_11',['executing',['../structst_1_1worker_1_1weight.html#a49abef17f2e69695cd3b9ee61e278a09',1,'st::worker::weight']]],
-  ['exit_12',['exit',['../structst_1_1state.html#a450771b125b1a1ba9b3ccc2dc07b959c',1,'st::state']]]
+  ['empty_9',['empty',['../structst_1_1channel.html#a43b258375b98b1298172f67259afbc34',1,'st::channel::empty()'],['../structst_1_1worker_1_1weight.html#a9e4654f9c34c01857aec9de8c8b8178d',1,'st::worker::weight::empty()']]],
+  ['enter_10',['enter',['../structst_1_1state.html#a740834a32ddfdf58105f00d6d9bccacf',1,'st::state']]],
+  ['estatus_11',['eStatus',['../structst_1_1result.html#ad03e6cce1b301db4ff97841535487951',1,'st::result']]],
+  ['event_12',['event',['../structst_1_1state_1_1machine_1_1status.html#ad058ca912efb52d36a5104ecf3cd257c',1,'st::state::machine::status']]],
+  ['executing_13',['executing',['../structst_1_1worker_1_1weight.html#a49abef17f2e69695cd3b9ee61e278a09',1,'st::worker::weight']]],
+  ['exit_14',['exit',['../structst_1_1state.html#a450771b125b1a1ba9b3ccc2dc07b959c',1,'st::state']]]
 ];
