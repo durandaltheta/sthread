@@ -67,6 +67,7 @@ $(function() {
 <div class="header">
   <div class="summary">
 <a href="#pub-methods">Public Member Functions</a> &#124;
+<a href="#pub-attribs">Public Attributes</a> &#124;
 <a href="structst_1_1state_1_1machine_1_1status-members.html">List of all members</a>  </div>
   <div class="headertitle">
 <div class="title">st::state::machine::status Struct Reference</div>  </div>
@@ -80,51 +81,22 @@ $(function() {
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:a40b90bd2756dfbd1871a6c5b3237c7c1"><td class="memItemLeft" align="right" valign="top"><a id="a40b90bd2756dfbd1871a6c5b3237c7c1"></a>
-&#160;</td><td class="memItemRight" valign="bottom"><b>status</b> (const <a class="el" href="structst_1_1state_1_1machine_1_1status.html">status</a> &amp;rhs)</td></tr>
-<tr class="separator:a40b90bd2756dfbd1871a6c5b3237c7c1"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a6e00f2a6e50e7c7c6d6e28bb283732c4"><td class="memItemLeft" align="right" valign="top"><a id="a6e00f2a6e50e7c7c6d6e28bb283732c4"></a>
-&#160;</td><td class="memItemRight" valign="bottom"><b>status</b> (<a class="el" href="structst_1_1state_1_1machine_1_1status.html">status</a> &amp;&amp;rhs)</td></tr>
-<tr class="separator:a6e00f2a6e50e7c7c6d6e28bb283732c4"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:af6b8d93e77070f9c190b66111c14f263"><td class="memItemLeft" align="right" valign="top"><a id="af6b8d93e77070f9c190b66111c14f263"></a>
-&#160;</td><td class="memItemRight" valign="bottom"><b>status</b> (std::size_t inp_event, std::shared_ptr&lt; <a class="el" href="structst_1_1state.html">st::state</a> &gt; inp_state)</td></tr>
-<tr class="separator:af6b8d93e77070f9c190b66111c14f263"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad058ca912efb52d36a5104ecf3cd257c"><td class="memItemLeft" align="right" valign="top">std::size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structst_1_1state_1_1machine_1_1status.html#ad058ca912efb52d36a5104ecf3cd257c">event</a> ()</td></tr>
-<tr class="separator:ad058ca912efb52d36a5104ecf3cd257c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a164ec5081ba705f0643a554ced568f6b"><td class="memItemLeft" align="right" valign="top">std::shared_ptr&lt; <a class="el" href="structst_1_1state.html">st::state</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structst_1_1state_1_1machine_1_1status.html#a164ec5081ba705f0643a554ced568f6b">state</a> ()</td></tr>
-<tr class="separator:a164ec5081ba705f0643a554ced568f6b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a053209581db8188f2bd8db371928b005"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structst_1_1state_1_1machine_1_1status.html#a053209581db8188f2bd8db371928b005">operator bool</a> ()</td></tr>
 <tr class="separator:a053209581db8188f2bd8db371928b005"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-attribs"></a>
+Public Attributes</h2></td></tr>
+<tr class="memitem:a8fe2d078da9406b1bc720702bc2e9b27"><td class="memItemLeft" align="right" valign="top"><a id="a8fe2d078da9406b1bc720702bc2e9b27"></a>
+std::size_t&#160;</td><td class="memItemRight" valign="bottom"><b>event</b></td></tr>
+<tr class="separator:a8fe2d078da9406b1bc720702bc2e9b27"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1110cc91bc05469974d9b59c1877de8e"><td class="memItemLeft" align="right" valign="top"><a id="a1110cc91bc05469974d9b59c1877de8e"></a>
+std::shared_ptr&lt; <a class="el" href="structst_1_1state.html">st::state</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structst_1_1state_1_1machine_1_1status.html#a1110cc91bc05469974d9b59c1877de8e">state</a></td></tr>
+<tr class="memdesc:a1110cc91bc05469974d9b59c1877de8e"><td class="mdescLeft">&#160;</td><td class="mdescRight">the last event processed by the machine <br /></td></tr>
+<tr class="separator:a1110cc91bc05469974d9b59c1877de8e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>a utility object to report information about the machine's current status </p>
 </div><h2 class="groupheader">Member Function Documentation</h2>
-<a id="ad058ca912efb52d36a5104ecf3cd257c"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ad058ca912efb52d36a5104ecf3cd257c">&#9670;&nbsp;</a></span>event()</h2>
-
-<div class="memitem">
-<div class="memproto">
-<table class="mlabels">
-  <tr>
-  <td class="mlabels-left">
-      <table class="memname">
-        <tr>
-          <td class="memname">std::size_t st::state::machine::status::event </td>
-          <td>(</td>
-          <td class="paramname"></td><td>)</td>
-          <td></td>
-        </tr>
-      </table>
-  </td>
-  <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
-  </tr>
-</table>
-</div><div class="memdoc">
-<dl class="section return"><dt>Returns</dt><dd>the last event processed by the machine </dd></dl>
-
-</div>
-</div>
 <a id="a053209581db8188f2bd8db371928b005"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a053209581db8188f2bd8db371928b005">&#9670;&nbsp;</a></span>operator bool()</h2>
 
@@ -148,32 +120,6 @@ Public Member Functions</h2></td></tr>
 </table>
 </div><div class="memdoc">
 <dl class="section return"><dt>Returns</dt><dd>true if the status is valid, else return false </dd></dl>
-
-</div>
-</div>
-<a id="a164ec5081ba705f0643a554ced568f6b"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a164ec5081ba705f0643a554ced568f6b">&#9670;&nbsp;</a></span>state()</h2>
-
-<div class="memitem">
-<div class="memproto">
-<table class="mlabels">
-  <tr>
-  <td class="mlabels-left">
-      <table class="memname">
-        <tr>
-          <td class="memname">std::shared_ptr&lt;<a class="el" href="structst_1_1state.html">st::state</a>&gt; st::state::machine::status::state </td>
-          <td>(</td>
-          <td class="paramname"></td><td>)</td>
-          <td></td>
-        </tr>
-      </table>
-  </td>
-  <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
-  </tr>
-</table>
-</div><div class="memdoc">
-<dl class="section return"><dt>Returns</dt><dd>the current state held by the machine </dd></dl>
 
 </div>
 </div>

@@ -133,7 +133,12 @@ Static Public Member Functions</h2></td></tr>
 </div><div class="memdoc">
 
 <p>called during a transition when a state is entered </p>
-<p>The returned value from this function can contain a further event to process. Thus, this function can be used to implement transitory states where logic must occur before the next state is known. If the returned value is a null pointer, the transition will be considered complete.</p>
+<p>The returned value from this function can contain a further event to process.</p>
+<p>That is, if the return value:</p><ul>
+<li>is null: operation is complete</li>
+<li>is non-null: the result as treated like the argument of an additional <code>process_event()</code> call</li>
+</ul>
+<p>Thus, this function can be used to implement transitory states where logic must occur before the next state is known.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">event</td><td>a message containing the event id and an optional data payload </td></tr>
@@ -268,7 +273,7 @@ template&lt;typename T , typename... As&gt; </div>
   </tr>
 </table>
 </div><div class="memdoc">
-<p>This function returns the a type code representing the <em>derived</em> type of the state object. Therefore, this value can be used to compare the types of two arbitrary <code>std::shared_ptr&lt;<a class="el" href="structst_1_1state.html">st::state</a>&gt;</code> pointer objects.</p>
+<p>This function returns the a type code representing the <em>derived</em> compiler type of the state object. Therefore, this value can be used to compare the types of two arbitrary <code>std::shared_ptr&lt;<a class="el" href="structst_1_1state.html">st::state</a>&gt;</code> pointer objects.</p>
 <dl class="section return"><dt>Returns</dt><dd>the code representing the state implementation type </dd></dl>
 
 </div>

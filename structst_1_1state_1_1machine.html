@@ -67,6 +67,7 @@ $(function() {
 <div class="header">
   <div class="summary">
 <a href="#nested-classes">Classes</a> &#124;
+<a href="#pub-types">Public Types</a> &#124;
 <a href="#pub-methods">Public Member Functions</a> &#124;
 <a href="#pub-static-methods">Static Public Member Functions</a> &#124;
 <a href="structst_1_1state_1_1machine-members.html">List of all members</a>  </div>
@@ -83,12 +84,22 @@ Classes</h2></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">a utility object to report information about the machine's current status  <a href="structst_1_1state_1_1machine_1_1status.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-types"></a>
+Public Types</h2></td></tr>
+<tr class="memitem:a0f3b7e1fac308b9ad6be97ac2caf1bf6"><td class="memItemLeft" align="right" valign="top"><a id="a0f3b7e1fac308b9ad6be97ac2caf1bf6"></a>
+typedef std::function&lt; std::shared_ptr&lt; <a class="el" href="structst_1_1message.html">message</a> &gt;std::shared_ptr&lt; <a class="el" href="structst_1_1message.html">message</a> &gt;)&gt;&#160;</td><td class="memItemRight" valign="bottom"><b>callback</b></td></tr>
+<tr class="separator:a0f3b7e1fac308b9ad6be97ac2caf1bf6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
 <tr class="memitem:aee4bae16a32dd34957e770901f541014"><td class="memTemplParams" colspan="2">template&lt;typename ID &gt; </td></tr>
 <tr class="memitem:aee4bae16a32dd34957e770901f541014"><td class="memTemplItemLeft" align="right" valign="top">bool&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="structst_1_1state_1_1machine.html#aee4bae16a32dd34957e770901f541014">register_transition</a> (ID event_id, std::shared_ptr&lt; <a class="el" href="structst_1_1state.html">state</a> &gt; st)</td></tr>
 <tr class="memdesc:aee4bae16a32dd34957e770901f541014"><td class="mdescLeft">&#160;</td><td class="mdescRight">Register a state object to be transitioned to when notified of an event.  <a href="structst_1_1state_1_1machine.html#aee4bae16a32dd34957e770901f541014">More...</a><br /></td></tr>
 <tr class="separator:aee4bae16a32dd34957e770901f541014"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a04280c721ad2cf53a56858354dafebdb"><td class="memTemplParams" colspan="2">template&lt;typename ID &gt; </td></tr>
+<tr class="memitem:a04280c721ad2cf53a56858354dafebdb"><td class="memTemplItemLeft" align="right" valign="top">bool&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="structst_1_1state_1_1machine.html#a04280c721ad2cf53a56858354dafebdb">register_callback</a> (ID event_id, callback cb)</td></tr>
+<tr class="memdesc:a04280c721ad2cf53a56858354dafebdb"><td class="mdescLeft">&#160;</td><td class="mdescRight">Register a state object to be triggered as a callback when notified as an event.  <a href="structst_1_1state_1_1machine.html#a04280c721ad2cf53a56858354dafebdb">More...</a><br /></td></tr>
+<tr class="separator:a04280c721ad2cf53a56858354dafebdb"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:afe52547025c774ee4d64bf260089cc90"><td class="memTemplParams" colspan="2">template&lt;typename... As&gt; </td></tr>
 <tr class="memitem:afe52547025c774ee4d64bf260089cc90"><td class="memTemplItemLeft" align="right" valign="top">bool&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="structst_1_1state_1_1machine.html#afe52547025c774ee4d64bf260089cc90">process_event</a> (As &amp;&amp;... as)</td></tr>
 <tr class="memdesc:afe52547025c774ee4d64bf260089cc90"><td class="mdescLeft">&#160;</td><td class="mdescRight">process_event the state machine an event has occurred  <a href="structst_1_1state_1_1machine.html#afe52547025c774ee4d64bf260089cc90">More...</a><br /></td></tr>
@@ -198,6 +209,59 @@ template&lt;typename... As&gt; </div>
   </dd>
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>true if the event was processed successfully, else false </dd></dl>
+
+</div>
+</div>
+<a id="a04280c721ad2cf53a56858354dafebdb"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a04280c721ad2cf53a56858354dafebdb">&#9670;&nbsp;</a></span>register_callback()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;typename ID &gt; </div>
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool st::state::machine::register_callback </td>
+          <td>(</td>
+          <td class="paramtype">ID&#160;</td>
+          <td class="paramname"><em>event_id</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">callback&#160;</td>
+          <td class="paramname"><em>cb</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Register a state object to be triggered as a callback when notified as an event. </p>
+<p>When the corresponding event is processed for this callback <em>only</em> this function will be processed, as no state is exitted or entered.</p>
+<p>The return value of the callback is treated exactly like that of <code>std::shared_ptr&lt;<a class="el" href="structst_1_1message.html" title="Interthread type erased message container.">st::message</a>&gt; <a class="el" href="structst_1_1state.html#a740834a32ddfdf58105f00d6d9bccacf" title="called during a transition when a state is entered">st::state::enter</a>(std::shared_ptr&lt;<a class="el" href="structst_1_1message.html" title="Interthread type erased message container.">st::message</a>&gt;)</code>. That is, if the return value:</p><ul>
+<li>is null: operation is complete</li>
+<li>is non-null: the result as treated like the argument of an additional <code><a class="el" href="structst_1_1state_1_1machine.html#afe52547025c774ee4d64bf260089cc90" title="process_event the state machine an event has occurred">process_event()</a></code> call</li>
+</ul>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">event</td><td>an unsigned integer representing an event that has occurred </td></tr>
+    <tr><td class="paramname">cb</td><td>a callback function </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>true if state was registered, false if state pointer is null or the same event is already registered </dd></dl>
 
 </div>
 </div>
