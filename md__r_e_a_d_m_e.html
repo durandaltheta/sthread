@@ -118,6 +118,7 @@ Usage</h1>
 <li>Create a class or struct with <code>void operator()(std::shared_ptr&lt;<a class="el" href="structst_1_1message.html" title="Interthread type erased message container.">st::message</a>&gt;)</code> to handle received messages (also called a 'functor')</li>
 <li>Define some enum to distinguish different messages</li>
 <li>Launch your thread with <code><a class="el" href="structst_1_1worker.html#a4ab1891f3a52bc05871caa1e4f0b55af">st::worker::make</a>&lt;YourClassNameHere&gt;()</code></li>
+<li>Trigger user class <code>void operator()(std::shared&lt;<a class="el" href="structst_1_1message.html" title="Interthread type erased message container.">st::message</a>&gt;)</code> via <code><a class="el" href="structst_1_1worker.html#ab39d120e79c2a64a4f0fd5b71fd64760" title="Send a message over the channel with given @parameters.">st::worker::send</a>(std::shared&lt;<a class="el" href="structst_1_1message.html" title="Interthread type erased message container.">st::message</a>&gt;)</code> or <code><a class="el" href="structst_1_1worker.html#a0fda1a895fc2ed37febec526c44c61f2" title="Send a message over the channel with given parameters.">st::worker::try_send</a>(std::shared&lt;<a class="el" href="structst_1_1message.html" title="Interthread type erased message container.">st::message</a>&gt;)</code></li>
 </ul>
 <h2><a class="anchor" id="autotoc_md8"></a>
 Basic Usage</h2>
