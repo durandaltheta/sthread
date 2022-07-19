@@ -98,7 +98,7 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:aee4bae16a32dd34957e770901f541014"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a04280c721ad2cf53a56858354dafebdb"><td class="memTemplParams" colspan="2">template&lt;typename ID &gt; </td></tr>
 <tr class="memitem:a04280c721ad2cf53a56858354dafebdb"><td class="memTemplItemLeft" align="right" valign="top">bool&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="structst_1_1state_1_1machine.html#a04280c721ad2cf53a56858354dafebdb">register_callback</a> (ID event_id, callback cb)</td></tr>
-<tr class="memdesc:a04280c721ad2cf53a56858354dafebdb"><td class="mdescLeft">&#160;</td><td class="mdescRight">Register a state object to be triggered as a callback when notified as an event.  <a href="structst_1_1state_1_1machine.html#a04280c721ad2cf53a56858354dafebdb">More...</a><br /></td></tr>
+<tr class="memdesc:a04280c721ad2cf53a56858354dafebdb"><td class="mdescLeft">&#160;</td><td class="mdescRight">Register a callback to be triggered when its associated event is processed.  <a href="structst_1_1state_1_1machine.html#a04280c721ad2cf53a56858354dafebdb">More...</a><br /></td></tr>
 <tr class="separator:a04280c721ad2cf53a56858354dafebdb"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:afe52547025c774ee4d64bf260089cc90"><td class="memTemplParams" colspan="2">template&lt;typename... As&gt; </td></tr>
 <tr class="memitem:afe52547025c774ee4d64bf260089cc90"><td class="memTemplItemLeft" align="right" valign="top">bool&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="structst_1_1state_1_1machine.html#afe52547025c774ee4d64bf260089cc90">process_event</a> (As &amp;&amp;... as)</td></tr>
@@ -248,7 +248,7 @@ template&lt;typename ID &gt; </div>
 </table>
 </div><div class="memdoc">
 
-<p>Register a state object to be triggered as a callback when notified as an event. </p>
+<p>Register a callback to be triggered when its associated event is processed. </p>
 <p>When the corresponding event is processed for this callback <em>only</em> this function will be processed, as no state is exitted or entered.</p>
 <p>The return value of the callback is treated exactly like that of <code>std::shared_ptr&lt;<a class="el" href="structst_1_1message.html" title="Interthread type erased message container.">st::message</a>&gt; <a class="el" href="structst_1_1state.html#a740834a32ddfdf58105f00d6d9bccacf" title="called during a transition when a state is entered">st::state::enter</a>(std::shared_ptr&lt;<a class="el" href="structst_1_1message.html" title="Interthread type erased message container.">st::message</a>&gt;)</code>. That is, if the return value:</p><ul>
 <li>is null: operation is complete</li>
