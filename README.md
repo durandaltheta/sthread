@@ -692,7 +692,8 @@ state3
 ```
 
 #### Registering non-transitioning callbacks to a state machine 
-The user can register callbacks to be executed when an associated event with 
+The user can register callbacks to be executed when an associated event is 
+processed with 
 `st::state::machine::register_callback(ID event, st::state::machine::callback cb)`. 
 This allows some events to be processed without attempting to transition the 
 machine state.
