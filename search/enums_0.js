@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['estatus_93',['eStatus',['../structst_1_1result.html#ad03e6cce1b301db4ff97841535487951',1,'st::result']]]
+  ['estatus_95',['eStatus',['../structst_1_1result.html#ad03e6cce1b301db4ff97841535487951',1,'st::result']]]
 ];
