@@ -57,6 +57,7 @@ simple_thread_tst binary will be placed in tst/
 handle received messages (also called a 'functor')
 - Define some enum to distinguish different messages 
 - Launch your thread with `st::worker::make<YourClassNameHere>()`
+- Trigger user class `void operator()(std::shared<st::message>)` via `st::worker::send(std::shared<st::message>)` or  `st::worker::try_send(std::shared<st::message>)`
 
 ### Basic Usage
 
