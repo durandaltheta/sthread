@@ -59,6 +59,9 @@ handle received messages (also called a 'functor')
 - Launch your thread with `st::worker::make<YourClassNameHere>()`
 
 ### Basic Usage
+
+[Back To Top](#simple-threading-and-communication)
+
 #### Example 1:
 ```
 #include <iostream>
@@ -420,6 +423,9 @@ thread done
 
 
 ### Advanced Usage  
+
+[Back To Top](#simple-threading-and-communication)
+
 #### States and Finite State Machine
 This library provides a fairly simple finite state machine (FSM) implementation 
 as a design tool. 
