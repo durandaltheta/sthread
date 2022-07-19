@@ -647,9 +647,9 @@ Example 11:</h4>
 <div class="line">    };</div>
 <div class="line"> </div>
 <div class="line">    auto sm = st::state::machine::make();</div>
-<div class="line">    sm-&gt;register_transition(events::event1, st::state::make&lt;state1&gt;(reached_state1));</div>
-<div class="line">    sm-&gt;register_transition(events::event2, st::state::make&lt;state2&gt;(reached_state2));</div>
-<div class="line">    sm-&gt;register_transition(events::event3, st::state::make&lt;state3&gt;(reached_state3));</div>
+<div class="line">    sm-&gt;register_transition(events::event1, st::state::make&lt;state1&gt;());</div>
+<div class="line">    sm-&gt;register_transition(events::event2, st::state::make&lt;state2&gt;());</div>
+<div class="line">    sm-&gt;register_transition(events::event3, st::state::make&lt;state3&gt;());</div>
 <div class="line"> </div>
 <div class="line">    sm-&gt;process_event(events::event1);</div>
 <div class="line">    return 0;</div>
