@@ -65,9 +65,13 @@ $(function() {
 <div class="title">Simple Threading and Communication </div>  </div>
 </div><!--header-->
 <div class="contents">
-<div class="textblock"><p><a href="https://durandaltheta.github.io/sthread/">Documentation</a></p>
+<div class="textblock"><h1><a class="anchor" id="autotoc_md1"></a>
+Quick Links</h1>
+<p><a href="https://durandaltheta.github.io/sthread/">Documentation</a></p>
 <p><a href="tst/simple_thread_tst.cpp">Unit Test and Example Code</a></p>
-<h1><a class="anchor" id="autotoc_md1"></a>
+<p><a href="#basic-usage">Basic Usage</a></p>
+<p><a href="#advanced-usage">Advanced Usage</a></p>
+<h1><a class="anchor" id="autotoc_md2"></a>
 Purpose</h1>
 <p>This header only library seeks to easily setup useful worker threads using a simple API.</p>
 <p>Instead of functions worker threads execute c++ functors. A functor is a class which has a function call overload allowing you to execute the object like a function, IE: </p><div class="fragment"><div class="line">struct MyClass {</div>
@@ -82,17 +86,17 @@ Purpose</h1>
 <li>Functors allow for class method definitions, instead of forcing the user to rely on lambdas, local objects or global namespace functions if further function calls are desired.</li>
 <li>Initialization (constructor), runtime execution (<code>void operator()(std::shared_ptr&lt;<a class="el" href="structst_1_1message.html" title="Interthread type erased message container.">st::message</a>&gt;</code>), and deinitialization (destructor) are broken in to separate functions, which I think makes them more readable. A thread running only a raw function requires everything be managed within that function.</li>
 </ul>
-<h1><a class="anchor" id="autotoc_md2"></a>
+<h1><a class="anchor" id="autotoc_md3"></a>
 Requirements</h1>
 <ul>
 <li>C++11</li>
 </ul>
-<h1><a class="anchor" id="autotoc_md3"></a>
+<h1><a class="anchor" id="autotoc_md4"></a>
 Git Submodules</h1>
 <p>This project uses Googletest as a submodule to build unit tests. If unit tests are needed try cloning this project with submodules:</p><ul>
 <li>git clone &ndash;recurse-submodules <a href="https://github.com/durandaltheta/sthread">https://github.com/durandaltheta/sthread</a></li>
 </ul>
-<h1><a class="anchor" id="autotoc_md4"></a>
+<h1><a class="anchor" id="autotoc_md5"></a>
 Installation</h1>
 <ul>
 <li>cmake .</li>
@@ -100,14 +104,14 @@ Installation</h1>
 </li>
 </ul>
 <p>Alternatively just copy the .h files in inc/ folder to your local project headers and include as normal.</p>
-<h1><a class="anchor" id="autotoc_md5"></a>
+<h1><a class="anchor" id="autotoc_md6"></a>
 Build Unit Tests</h1>
 <ul>
 <li>cmake .</li>
 <li>make simple_thread_tst</li>
 </ul>
 <p>simple_thread_tst binary will be placed in tst/</p>
-<h1><a class="anchor" id="autotoc_md6"></a>
+<h1><a class="anchor" id="autotoc_md7"></a>
 Usage</h1>
 <ul>
 <li>Install the library and include the header <code>sthread</code> or <code><a class="el" href="simple__thread_8hpp.html" title="Simple interprocess threading and messaging.">simple_thread.hpp</a></code></li>
@@ -115,9 +119,9 @@ Usage</h1>
 <li>Define some enum to distinguish different messages</li>
 <li>Launch your thread with <code><a class="el" href="structst_1_1worker.html#a4ab1891f3a52bc05871caa1e4f0b55af">st::worker::make</a>&lt;YourClassNameHere&gt;()</code></li>
 </ul>
-<h2><a class="anchor" id="autotoc_md7"></a>
+<h2><a class="anchor" id="autotoc_md8"></a>
 Basic Usage</h2>
-<h3><a class="anchor" id="autotoc_md8"></a>
+<h3><a class="anchor" id="autotoc_md9"></a>
 Example 1:</h3>
 <div class="fragment"><div class="line">#include &lt;iostream&gt;</div>
 <div class="line">#include &lt;sthread&gt;</div>
@@ -148,11 +152,11 @@ Example 1:</h3>
 <div class="line">}</div>
 </div><!-- fragment --><p>Terminal output might be: </p><div class="fragment"><div class="line">$./a.out</div>
 <div class="line">hello world</div>
-</div><!-- fragment --><h2><a class="anchor" id="autotoc_md9"></a>
+</div><!-- fragment --><h2><a class="anchor" id="autotoc_md10"></a>
 Message Payload Data</h2>
 <p>Message data payloads can be of any type and can be copied to argument <code>T t</code> with <code><a class="el" href="structst_1_1message.html#a712cfd7aa3954f29645561f4e29a4af3">st::message::copy_data_to</a>&lt;T&gt;(T&amp;&amp; t)</code> or rvalue swapped with <code><a class="el" href="structst_1_1message.html#a8cfc67f035589432aefcb8d5a8da7b83">st::message::move_data_to</a>&lt;T&gt;(T&amp;&amp; t)</code>.</p>
 <p><code><a class="el" href="structst_1_1message.html#a712cfd7aa3954f29645561f4e29a4af3">st::message::copy_data_to</a>&lt;T&gt;(T&amp;&amp; t)</code> and <code><a class="el" href="structst_1_1message.html#a8cfc67f035589432aefcb8d5a8da7b83">st::message::move_data_to</a>&lt;T&gt;(T&amp;&amp; t)</code> will return <code>true</code> only if the stored payload type matches type <code>T</code>, otherwise it returns <code>false</code>. </p>
-<h3><a class="anchor" id="autotoc_md10"></a>
+<h3><a class="anchor" id="autotoc_md11"></a>
 Example 2:</h3>
 <div class="fragment"><div class="line">#include &lt;iostream&gt;</div>
 <div class="line">#include &lt;string&gt;</div>
@@ -185,10 +189,10 @@ Example 2:</h3>
 <div class="line">}</div>
 </div><!-- fragment --><p>Terminal output might be: </p><div class="fragment"><div class="line">$./a.out</div>
 <div class="line">hello again</div>
-</div><!-- fragment --><h2><a class="anchor" id="autotoc_md11"></a>
+</div><!-- fragment --><h2><a class="anchor" id="autotoc_md12"></a>
 Payload Type Checking</h2>
 <p>Payload types can also be easily checked with <code><a class="el" href="structst_1_1message.html#a23536bf1bda738b333fc6723c8502eb0">st::message::is</a>&lt;T&gt;()</code> (returns <code>true</code> if types match, else <code>false</code>) which is useful if a message might contain several different potential types.</p>
-<h3><a class="anchor" id="autotoc_md12"></a>
+<h3><a class="anchor" id="autotoc_md13"></a>
 Example 3:</h3>
 <div class="fragment"><div class="line">#include &lt;iostream&gt;</div>
 <div class="line">#include &lt;string&gt;</div>
@@ -229,7 +233,7 @@ Example 3:</h3>
 </div><!-- fragment --><p>Terminal output might be: </p><div class="fragment"><div class="line">$./a.out</div>
 <div class="line">hello 1 more time</div>
 </div><!-- fragment --><p><code><a class="el" href="structst_1_1worker.html" title="Managed system worker thread.">st::worker</a></code>s will automatically shutdown and join when they are destructed. This can be done early with <code><a class="el" href="structst_1_1worker.html#a3f98d0479ad642ed572fd723caeb893d" title="Shutdown the worker thread.">st::worker::shutdown()</a></code>. <code><a class="el" href="structst_1_1worker.html" title="Managed system worker thread.">st::worker</a></code>s can also be restarted at any time with <code><a class="el" href="structst_1_1worker.html#a2e3f89739083c6d6779712081d30d459" title="Restart the worker thread.">st::worker::restart()</a></code>. See <a href="https://durandaltheta.github.io/sthread/">documentation</a> for more info.</p>
-<h2><a class="anchor" id="autotoc_md13"></a>
+<h2><a class="anchor" id="autotoc_md14"></a>
 Worker Constructor Arguments and Lifecycle</h2>
 <p><code><a class="el" href="structst_1_1worker.html" title="Managed system worker thread.">st::worker</a></code>s can be passed constructor arguments in <code><a class="el" href="structst_1_1worker.html#a4ab1891f3a52bc05871caa1e4f0b55af">st::worker::make</a>&lt;FUNCTOR&gt;(As&amp;&amp;...)</code>. The <code>FUNCTOR</code> class will be created on the new thread and destroyed before said thread ends.</p>
 <p>An <code><a class="el" href="structst_1_1worker.html" title="Managed system worker thread.">st::worker</a></code>'s <code>std::thread</code> will be shutdown and joined when any of the following happens:</p><ul>
@@ -237,7 +241,7 @@ Worker Constructor Arguments and Lifecycle</h2>
 <li><code><a class="el" href="structst_1_1worker.html#a3f98d0479ad642ed572fd723caeb893d" title="Shutdown the worker thread.">st::worker::shutdown()</a></code> is called on a worker</li>
 <li><code><a class="el" href="structst_1_1worker.html#a2e3f89739083c6d6779712081d30d459" title="Restart the worker thread.">st::worker::restart()</a></code> is called on a worker (and a new <code>std::thread</code> and <code>FUNCTOR</code> will be created before <code>restart()</code> returns)</li>
 </ul>
-<h3><a class="anchor" id="autotoc_md14"></a>
+<h3><a class="anchor" id="autotoc_md15"></a>
 Example 4</h3>
 <div class="fragment"><div class="line">#include &lt;iostream&gt;</div>
 <div class="line">#include &lt;string&gt;</div>
@@ -267,10 +271,10 @@ Example 4</h3>
 <div class="line">0x800018040:parent thread started</div>
 <div class="line">0x800098150:hello</div>
 <div class="line">0x800098150:goodbye</div>
-</div><!-- fragment --><h2><a class="anchor" id="autotoc_md15"></a>
+</div><!-- fragment --><h2><a class="anchor" id="autotoc_md16"></a>
 Abstracting Message Passing Details</h2>
 <p>One useful advanced design pattern is abstracting all of the operation details for message passing into some API, freeing the user from having to interact directly with the thread details.</p>
-<h3><a class="anchor" id="autotoc_md16"></a>
+<h3><a class="anchor" id="autotoc_md17"></a>
 Example 5:</h3>
 <div class="fragment"><div class="line">#include &lt;iostream&gt;</div>
 <div class="line">#include &lt;string&gt;</div>
@@ -336,10 +340,10 @@ Example 5:</h3>
 </div><!-- fragment --><p>Terminal output might be: </p><div class="fragment"><div class="line">$./a.out</div>
 <div class="line">hello</div>
 <div class="line">hello hello</div>
-</div><!-- fragment --><h2><a class="anchor" id="autotoc_md17"></a>
+</div><!-- fragment --><h2><a class="anchor" id="autotoc_md18"></a>
 Channels</h2>
 <p>The object that <code><a class="el" href="structst_1_1worker.html" title="Managed system worker thread.">st::worker</a></code>s use for communication in their <code>send()</code> methods is called <code><a class="el" href="structst_1_1channel.html" title="Interthread message passing queue.">st::channel</a></code>. <code><a class="el" href="structst_1_1channel.html" title="Interthread message passing queue.">st::channel</a></code>s can be created and used outside of <code><a class="el" href="structst_1_1worker.html" title="Managed system worker thread.">st::worker</a></code> objects if desired.</p>
-<h3><a class="anchor" id="autotoc_md18"></a>
+<h3><a class="anchor" id="autotoc_md19"></a>
 Example 6:</h3>
 <div class="fragment"><div class="line">#include &lt;iostream&gt;</div>
 <div class="line">#include &lt;thread&gt;</div>
@@ -379,7 +383,7 @@ Example 6:</h3>
 <div class="line">}</div>
 </div><!-- fragment --><p>Terminal output might be: </p><div class="fragment"><div class="line">$./a.out </div>
 <div class="line">forward this string</div>
-</div><!-- fragment --><h2><a class="anchor" id="autotoc_md19"></a>
+</div><!-- fragment --><h2><a class="anchor" id="autotoc_md20"></a>
 Close, Shutdown, and Restart</h2>
 <p>In looping <code><a class="el" href="structst_1_1channel.html#a789de5ce12c798c90d6773085e275f35" title="Receive a message over the channel.">st::channel::recv()</a></code> operations <code><a class="el" href="structst_1_1channel.html#ae2a319160262483ed2e290d81390c456" title="Close the channel.">st::channel::close()</a></code> can be manually called to force all operations to cease on the <code><a class="el" href="structst_1_1channel.html" title="Interthread message passing queue.">st::channel</a></code> (operations will return <code>false</code>). The default behavior for <code><a class="el" href="structst_1_1channel.html#ae2a319160262483ed2e290d81390c456" title="Close the channel.">st::channel::close()</a></code> is to cause all current and future all <code><a class="el" href="structst_1_1channel.html#a2acf1a19224571f235913014841b0684">st::channel::send()</a></code> operations to fail early but to allow <code><a class="el" href="structst_1_1channel.html#a789de5ce12c798c90d6773085e275f35" title="Receive a message over the channel.">st::channel::recv()</a></code> to continue succeeding until the internal message queue is empty.</p>
 <p>This is the default behavior of several functions:</p><ul>
@@ -392,7 +396,7 @@ Close, Shutdown, and Restart</h2>
 <li><code>st::worker::shutdown(false)</code></li>
 <li><code>st::worker::restart(false)</code></li>
 </ul>
-<h3><a class="anchor" id="autotoc_md20"></a>
+<h3><a class="anchor" id="autotoc_md21"></a>
 Example 7:</h3>
 <div class="fragment"><div class="line">#include &lt;iostream&gt;</div>
 <div class="line">#include &lt;thread&gt;</div>
@@ -426,15 +430,15 @@ Example 7:</h3>
 <div class="line">You say goodbye</div>
 <div class="line">And I say hello</div>
 <div class="line">thread done </div>
-</div><!-- fragment --><h2><a class="anchor" id="autotoc_md21"></a>
-Advanced Usage - States and Finite State Machine</h2>
-<h3><a class="anchor" id="autotoc_md22"></a>
-Basic FSM Usage</h3>
+</div><!-- fragment --><h2><a class="anchor" id="autotoc_md22"></a>
+Advanced Usage</h2>
+<h3><a class="anchor" id="autotoc_md23"></a>
+States and Finite State Machine</h3>
 <p>This library provides a fairly simple finite state machine (FSM) implementation as a design tool.</p>
 <p>The reasoning for including this feature in the library is that asynchronous programming can have complex state management. Simplifying designs with a state machine can <em>sometimes</em> be advantagous, when used intelligently and judiciously.</p>
 <p>The state machine object type is <code><a class="el" href="structst_1_1state_1_1machine.html">st::state::machine</a></code>, which can register new state transitions with calls to <code><a class="el" href="structst_1_1state_1_1machine.html#aee4bae16a32dd34957e770901f541014" title="Register a state object to be transitioned to when notified of an event.">st::state::machine::register_transition()</a></code> and process events with <code><a class="el" href="structst_1_1state_1_1machine.html#afe52547025c774ee4d64bf260089cc90" title="process_event the state machine an event has occurred">st::state::machine::process_event()</a></code>.</p>
 <p>The user can create states by defining classes which inherit <code><a class="el" href="structst_1_1state.html">st::state</a></code>, optionally overriding methods and passing an allocated <code>shared_ptr&lt;<a class="el" href="structst_1_1state.html">st::state</a>&gt;</code> of that class to <code><a class="el" href="structst_1_1state_1_1machine.html#aee4bae16a32dd34957e770901f541014" title="Register a state object to be transitioned to when notified of an event.">st::state::machine::register_transition()</a></code>. The function <code><a class="el" href="structst_1_1state.html#ae4ee7ee1d9035c37b4ed5f875c90fad8" title="a convenience function for generating shared_ptr&#39;s to state objects">st::state::make</a>&lt;YourStateType&gt;(/* YourStateType constructor args */)</code> is provided as a convenience for this process.</p>
-<h4><a class="anchor" id="autotoc_md23"></a>
+<h4><a class="anchor" id="autotoc_md24"></a>
 Example 8:</h4>
 <div class="fragment"><div class="line">int main() {</div>
 <div class="line">    struct conversation {</div>
@@ -479,10 +483,10 @@ Example 8:</h4>
 <div class="line">your partner begins speaking and you listen</div>
 <div class="line">you begin speaking and your partner listens</div>
 <div class="line">your partner begins speaking and you listen</div>
-</div><!-- fragment --><h3><a class="anchor" id="autotoc_md24"></a>
+</div><!-- fragment --><h3><a class="anchor" id="autotoc_md25"></a>
 Replacing switch statements with state machines</h3>
 <p>Since function signatures <code>std::shared_ptr&lt;<a class="el" href="structst_1_1message.html" title="Interthread type erased message container.">st::message</a>&gt; <a class="el" href="structst_1_1state.html#a740834a32ddfdf58105f00d6d9bccacf" title="called during a transition when a state is entered">st::state::enter</a>(std::shared_ptr&lt;<a class="el" href="structst_1_1message.html" title="Interthread type erased message container.">st::message</a>&gt;)</code> and <code>bool <a class="el" href="structst_1_1state.html#a450771b125b1a1ba9b3ccc2dc07b959c" title="called during a transition when a state is exitted">st::state::exit</a>(std::shared_ptr&lt;<a class="el" href="structst_1_1message.html" title="Interthread type erased message container.">st::message</a>&gt;)</code> accept a message object as their arguments, the user can directly replace <code>switch</code> statements from within <code><a class="el" href="structst_1_1worker.html" title="Managed system worker thread.">st::worker</a></code> instances with calls to <code><a class="el" href="structst_1_1state_1_1machine.html#afe52547025c774ee4d64bf260089cc90" title="process_event the state machine an event has occurred">st::state::machine::process_event()</a></code> if desired.</p>
-<h4><a class="anchor" id="autotoc_md25"></a>
+<h4><a class="anchor" id="autotoc_md26"></a>
 Example 9:</h4>
 <div class="fragment"><div class="line">int main() {</div>
 <div class="line">    struct conversation_worker {</div>
@@ -541,10 +545,10 @@ Example 9:</h4>
 <div class="line">you speak: hello faa</div>
 <div class="line">your partner speaks: goodbye foo</div>
 <div class="line">you speak: goodbye faa</div>
-</div><!-- fragment --><h3><a class="anchor" id="autotoc_md26"></a>
+</div><!-- fragment --><h3><a class="anchor" id="autotoc_md27"></a>
 Implementing state transition guards</h3>
 <p>The user can implement transition guards and prevent transitioning away from a state by overriding the <code>bool <a class="el" href="structst_1_1state.html#a450771b125b1a1ba9b3ccc2dc07b959c" title="called during a transition when a state is exitted">st::state::exit</a>(std::shared_ptr&lt;<a class="el" href="structst_1_1message.html" title="Interthread type erased message container.">st::message</a>&gt;)</code> method, where the state will only transition if that function returns <code>true</code>.</p>
-<h4><a class="anchor" id="autotoc_md27"></a>
+<h4><a class="anchor" id="autotoc_md28"></a>
 Example 10:</h4>
 <div class="fragment"><div class="line">int main() {</div>
 <div class="line">    struct conversation {</div>
@@ -611,10 +615,10 @@ Example 10:</h4>
 </div><!-- fragment --><p>Terminal output might be: </p><div class="fragment"><div class="line">$./a.out </div>
 <div class="line">your partner speaks: hello foo</div>
 <div class="line">you speak: hello faa</div>
-</div><!-- fragment --><h3><a class="anchor" id="autotoc_md28"></a>
+</div><!-- fragment --><h3><a class="anchor" id="autotoc_md29"></a>
 Processing subsequent events directly from the result of a state transition</h3>
 <p>If an implementation of <code><a class="el" href="structst_1_1state.html#a740834a32ddfdf58105f00d6d9bccacf" title="called during a transition when a state is entered">st::state::enter()</a></code> returns a non-null <code>std::shared_ptr&lt;<a class="el" href="structst_1_1message.html" title="Interthread type erased message container.">st::message</a>&gt;</code> that message will be handled as if <code><a class="el" href="structst_1_1state_1_1machine.html#afe52547025c774ee4d64bf260089cc90" title="process_event the state machine an event has occurred">st::state::machine::process_event()</a></code> had been called with that message as its argument. This allows states to directly transition to other states if necessary:</p>
-<h4><a class="anchor" id="autotoc_md29"></a>
+<h4><a class="anchor" id="autotoc_md30"></a>
 Example 11:</h4>
 <div class="fragment"><div class="line">int main() {</div>
 <div class="line">    struct events {</div>
@@ -658,7 +662,7 @@ Example 11:</h4>
 <div class="line">state1</div>
 <div class="line">state2</div>
 <div class="line">state3</div>
-</div><!-- fragment --><h3><a class="anchor" id="autotoc_md30"></a>
+</div><!-- fragment --><h3><a class="anchor" id="autotoc_md31"></a>
 Registering non-transitioning callbacks to a state machine</h3>
 <p>The user can register callbacks to be executed when an associated event is processed with <code><a class="el" href="structst_1_1state_1_1machine.html#a04280c721ad2cf53a56858354dafebdb" title="Register a callback to be triggered when its associated event is processed.">st::state::machine::register_callback(ID event, st::state::machine::callback cb)</a></code>. This allows some events to be processed without attempting to transition the machine state.</p>
 <p>The type <code>st::state::machine::callback</code> is a typedef of <code>std::function&lt;std::shared_ptr&lt;<a class="el" href="structst_1_1message.html" title="Interthread type erased message container.">st::message</a>&gt;(std::shared_ptr&lt;<a class="el" href="structst_1_1message.html" title="Interthread type erased message container.">st::message</a>&gt;)&gt;</code> (which, as usual, can hold a functor, lambda, or function pointer).</p>
@@ -666,7 +670,7 @@ Registering non-transitioning callbacks to a state machine</h3>
 <li>is null: operation is complete</li>
 <li>is non-null: the result as treated like the argument of an additional <code>process_event()</code> call</li>
 </ul>
-<h4><a class="anchor" id="autotoc_md31"></a>
+<h4><a class="anchor" id="autotoc_md32"></a>
 Example 12:</h4>
 <div class="fragment"><div class="line">int main() {</div>
 <div class="line">    enum class op {</div>
@@ -705,7 +709,8 @@ Example 12:</h4>
 <div class="line">We</div>
 <div class="line">made</div>
 <div class="line">it!</div>
-</div><!-- fragment --> </div></div><!-- contents -->
+</div><!-- fragment --><p><a href="#simple-threading-and-communication">Back To Top</a> </p>
+</div></div><!-- contents -->
 </div><!-- PageDoc -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
