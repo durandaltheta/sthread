@@ -674,9 +674,9 @@ int main() {
     };
 
     auto sm = st::state::machine::make();
-    sm->register_transition(events::event1, st::state::make<state1>(reached_state1));
-    sm->register_transition(events::event2, st::state::make<state2>(reached_state2));
-    sm->register_transition(events::event3, st::state::make<state3>(reached_state3));
+    sm->register_transition(events::event1, st::state::make<state1>());
+    sm->register_transition(events::event2, st::state::make<state2>());
+    sm->register_transition(events::event3, st::state::make<state3>());
 
     sm->process_event(events::event1);
     return 0;
