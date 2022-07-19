@@ -413,7 +413,9 @@ And I say hello
 thread done 
 ```
 
-### States and Finite State Machine 
+
+### Advanced Usage - States and Finite State Machine  
+#### Basic FSM Usage
 This library provides a fairly simple finite state machine (FSM) implementation 
 as a design tool. 
 
@@ -431,6 +433,7 @@ of that class to `st::state::machine::register_transition()`. The function
 `st::state::make<YourStateType>(/* YourStateType constructor args */)` is 
 provided as a convenience for this process. 
 
+##### Example 8:
 ```
 int main() {
     struct conversation {
@@ -487,6 +490,8 @@ and  `bool st::state::exit(std::shared_ptr<st::message>)` accept a message
 object as their arguments, the user can directly replace `switch` statements 
 from within `st::worker` instances with calls to 
 `st::state::machine::process_event()` if desired.
+
+##### Example 9:
 ```
 int main() {
     struct conversation_worker {
@@ -556,6 +561,8 @@ The user can implement transition guards and prevent transitioning away
 from a state by overriding the 
 `bool st::state::exit(std::shared_ptr<st::message>)` method, where the state 
 will only transition if that function returns `true`.
+
+##### Example 10:
 ```
 int main() {
     struct conversation {
@@ -633,6 +640,8 @@ If an implementation of `st::state::enter()` returns a non-null `std::shared_ptr
 that message will be handled as if `st::state::machine::process_event()` had been 
 called with that message as its argument. This allows states to directly 
 transition to other states if necessary:
+
+##### Example 11:
 ```
 int main() {
     struct events {
@@ -680,4 +689,66 @@ $./a.out
 state1
 state2
 state3
+```
+
+#### Registering non-transitioning callbacks to a state machine 
+One helpful feature that this library's state machine object provides is to 
+register callbacks to be executed when an associated event is processed with
+`st::state::machine::register_callback(ID event, callback cb)`. This allows 
+some events to be processed without attempting to transition the machine state.
+
+This `st::state::machine::callback` is a typedef of
+`std::function<std::shared_ptr<st::message>(std::shared_ptr<st::message>)>` 
+as its argument (which, as usual, can hold a functor, lambda, or function 
+pointer).
+
+The return value of the callback is treated exactly like that of 
+`std::shared_ptr<st::message> st::state::enter(std::shared_ptr<st::message>)`.
+That is, if the return value:
+- is null: operation is complete 
+- is non-null: the result as treated like the argument of an additional `process_event()` call 
+
+##### Example 12:
+```
+int main() {
+    enum class op {
+        trigger_cb1,
+        trigger_cb2,
+        trigger_final_state
+    };
+
+    auto callback1 = [&](std::shared_ptr<st::message> event) {
+        std::cout << "We " << std::endl;
+        return st::message::make(op::trigger_cb2);
+    };
+
+    auto callback2 = [&](std::shared_ptr<st::message> event) {
+        std::cout << "made " << std::endl;
+        return st::message::make(op::trigger_final_state);
+    };
+
+    struct final_state : public st::state { 
+        inline std::shared_ptr<st::message> enter(std::shared_ptr<st::message> event) {
+            std::cout << "it!" << std::endl;
+            return std::shared_ptr<st::message>();
+        }
+    };
+
+    auto sm = st::state::machine::make();
+
+    sm->register_callback(op::trigger_cb1, callback1);
+    sm->register_callback(op::trigger_cb2, callback2);
+    sm->register_transition(op::trigger_final_state, st::state::make<final_state>());
+
+    sm->process_event(op::trigger_cb1);
+    return 0;
+}
+```
+
+Terminal output might be:
+```
+$./a.out 
+We
+made
+it!
 ```

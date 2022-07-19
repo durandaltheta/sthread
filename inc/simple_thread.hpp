@@ -769,14 +769,19 @@ struct state {
      * @brief called during a transition when a state is entered 
      *
      * The returned value from this function can contain a further event to
-     * process. Thus, this function can be used to implement transitory states 
-     * where logic must occur before the next state is known. If the returned 
-     * value is a null pointer, the transition will be considered complete.
+     * process. 
+     *
+     * That is, if the return value:
+     * - is null: operation is complete 
+     * - is non-null: the result as treated like the argument of an additional `process_event()` call
+     *
+     * Thus, this function can be used to implement transitory states where 
+     * logic must occur before the next state is known. 
      *
      * @param event a message containing the event id and an optional data payload
      * @return optional shared_ptr<message> containing the next event to process (if pointer is null, no futher event will be processed)
      */
-    virtual std::shared_ptr<message> enter(std::shared_ptr<message> event) { 
+    inline virtual std::shared_ptr<message> enter(std::shared_ptr<message> event) { 
         return std::shared_ptr<message>();
     }
 
@@ -807,9 +812,9 @@ struct state {
     }
 
     /**
-     * This function returns the a type code representing the *derived* type of
-     * the state object. Therefore, this value can be used to compare the types 
-     * of two arbitrary `std::shared_ptr<st::state>` pointer objects.
+     * This function returns the a type code representing the *derived*
+     * compiler type of the state object. Therefore, this value can be used to 
+     * compare the types of two arbitrary `std::shared_ptr<st::state>` pointer objects.
      *
      * @return the code representing the state implementation type
      */
@@ -849,14 +854,47 @@ struct state {
          */
         template <typename ID>
         bool register_transition(ID event_id, std::shared_ptr<state> st) {
-            std::size_t eid = static_cast<std::size_t>(event_id);
-            auto it = m_transition_table.find(eid);
-            if(st && it == m_transition_table.end()) {
-                m_transition_table[eid] = st;
-                return true;
-            } else {
-                return false;
-            }
+            return register_state(static_cast<std::size_t>(event_id), 
+                                  registered_type::transitional_state, 
+                                  st);
+        }
+
+        /**
+         * 
+         */
+        typedef std::function<std::shared_ptr<message>(std::shared_ptr<message>)> callback;
+
+        /**
+         * @brief Register a state object to be triggered as a callback when notified as an event
+         *
+         * When the corresponding event is processed for this callback *only* 
+         * this function will be processed, as no state is exitted or entered. 
+         *
+         * The return value of the callback is treated exactly like that of 
+         * `std::shared_ptr<st::message> st::state::enter(std::shared_ptr<st::message>)`.
+         * That is, if the return value:
+         * - is null: operation is complete 
+         * - is non-null: the result as treated like the argument of an additional `process_event()` call
+         *
+         * @param event an unsigned integer representing an event that has occurred
+         * @param cb a callback function
+         * @return true if state was registered, false if state pointer is null or the same event is already registered
+         */
+        template <typename ID>
+        bool register_callback(ID event_id, callback cb) {
+            struct callback_state : public state {
+                callback_state(callback&& cb) : m_cb(std::move(cb)) { }
+                
+                inline std::shared_ptr<message> enter(std::shared_ptr<message> event) { 
+                    return m_cb(std::move(event));
+                }
+
+                callback m_cb;
+            };
+
+            return register_state(static_cast<std::size_t>(event_id), 
+                                  registered_type::callback_state, 
+                                  st::state::make<callback_state>(std::move(cb)));
         }
 
         /**
@@ -887,39 +925,15 @@ struct state {
          * @brief a utility object to report information about the machine's current status
          */
         struct status {
-            status() : m_event(0) { }
-            status(const status& rhs) : m_event(rhs.m_event), m_state(rhs.m_state) { }
-            status(status&& rhs) : m_event(rhs.m_event), m_state(std::move(rhs.m_state)) { }
-
-            status(std::size_t inp_event, std::shared_ptr<st::state> inp_state) : 
-                m_event(inp_event), 
-                m_state(inp_state) 
-            { }
-
-            /**
-             * @return the last event processed by the machine
-             */
-            std::size_t event() {
-                return m_event;
-            }
-
-            /**
-             * @return the current state held by the machine
-             */
-            std::shared_ptr<st::state> state() {
-                return m_state;
-            }
-
             /**
              * @return true if the status is valid, else return false
              */
             inline operator bool() {
-                return m_event && m_state;
+                return event && state;
             }
 
-        private:
-            std::size_t m_event;
-            std::shared_ptr<st::state> m_state;
+            std::size_t event; /// the last event processed by the machine
+            std::shared_ptr<st::state> state; /// the current state held by the machine
         };
 
         /**
@@ -932,14 +946,32 @@ struct state {
          */
         inline status current_status() {
             if(m_cur_state != m_transition_table.end()) {
-                return status(m_cur_state->first, m_cur_state->second); 
+                return status{m_cur_state->first, m_cur_state->second.second}; 
             } else {
-                return status(0, std::shared_ptr<state>());
+                return status{0, std::shared_ptr<state>()};
             }
         }
 
     private:
+        enum registered_type {
+            transitional_state, // indicates state can be transitioned to
+            callback_state // indicates state represents a callback and will not be transitioned to
+        };
+
+        typedef std::pair<registered_type,std::shared_ptr<state>> state_info;
+        typedef std::unordered_map<std::size_t,state_info> transition_table_t;
+
         machine() : m_cur_state(m_transition_table.end()) { }
+
+        bool register_state(std::size_t event_id, registered_type tp, std::shared_ptr<state> st) {
+            auto it = m_transition_table.find(event_id);
+            if(st && it == m_transition_table.end()) {
+                m_transition_table[event_id] = state_info(tp, st);
+                return true;
+            } else {
+                return false;
+            }
+        }
 
         inline bool internal_process_event(std::shared_ptr<message> event) {
             if(event) {
@@ -948,18 +980,28 @@ struct state {
                     auto it = m_transition_table.find(event->id());
 
                     if(it != m_transition_table.end()) {
-                        // exit old state 
-                        if(m_cur_state != m_transition_table.end()) {
-                            if(!m_cur_state->second->exit(event)) {
-                                // exit early as transition cannot continue
-                                return true; 
-                            }
+                        switch(it->second.first) {
+                            case registered_type::transitional_state: 
+                                // exit old state 
+                                if(m_cur_state != m_transition_table.end()) {
+                                    if(!m_cur_state->second.second->exit(event)) {
+                                        // exit early as transition cannot continue
+                                        return true; 
+                                    }
+                                }
+
+                                // enter new state(s)
+                                event = it->second.second->enter(event);
+                                m_cur_state = it;
+                                break;
+                            case registered_type::callback_state:
+                                // execute callback
+                                event = it->second.second->enter(event);
+                                break;
+                            default:
+                                event.reset();
+                                break;
                         }
-
-                        // enter new state(s)
-                        event = it->second->enter(event);
-                        m_cur_state = it;
-
                     } else { 
                         return false;
                     }
@@ -971,12 +1013,12 @@ struct state {
             }
         }
 
-        typedef std::unordered_map<std::size_t,std::shared_ptr<state>> transition_table_t;
         transition_table_t m_transition_table;
         transition_table_t::iterator m_cur_state;
     };
 
 private:
+    // number representing compiler type of the derived state object
     std::size_t m_type_code;
 };
 
