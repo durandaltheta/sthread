@@ -932,8 +932,11 @@ struct state {
                 return event && state;
             }
 
-            std::size_t event; /// the last event processed by the machine
-            std::shared_ptr<st::state> state; /// the current state held by the machine
+            /// the last event processed by the machine
+            std::size_t event; 
+
+            /// the current state held by the machine
+            std::shared_ptr<st::state> state; 
         };
 
         /**
