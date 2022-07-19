@@ -52,16 +52,16 @@ Alternatively just copy the .h files in inc/ folder to your local project header
 simple_thread_tst binary will be placed in tst/ 
 
 ## Usage
+### Basic Usage
+
+[Back To Top](#simple-threading-and-communication)
+
 - Install the library and include the header `sthread` or `simple_thread.hpp`
 - Create a class or struct with `void operator()(std::shared_ptr<st::message>)` to 
 handle received messages (also called a 'functor')
 - Define some enum to distinguish different messages 
 - Launch your thread with `st::worker::make<YourClassNameHere>()`
 - Trigger user class `void operator()(std::shared<st::message>)` via `st::worker::send(std::shared<st::message>)` or  `st::worker::try_send(std::shared<st::message>)`
-
-### Basic Usage
-
-[Back To Top](#simple-threading-and-communication)
 
 #### Example 1:
 ```
