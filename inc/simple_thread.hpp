@@ -865,7 +865,7 @@ struct state {
         typedef std::function<std::shared_ptr<message>(std::shared_ptr<message>)> callback;
 
         /**
-         * @brief Register a state object to be triggered as a callback when notified as an event
+         * @brief Register a callback to be triggered when its associated event is processed.
          *
          * When the corresponding event is processed for this callback *only* 
          * this function will be processed, as no state is exitted or entered. 
