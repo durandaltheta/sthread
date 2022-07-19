@@ -1,8 +1,13 @@
 # Simple Threading and Communication
+## Quick Links
 
 [Documentation](https://durandaltheta.github.io/sthread/)
 
 [Unit Test and Example Code](tst/simple_thread_tst.cpp)
+
+[Basic Usage](#basic-usage)
+
+[Advanced Usage](#advanced-usage)
 
 ## Purpose 
 This header only library seeks to easily setup useful worker threads using a 
@@ -414,8 +419,8 @@ thread done
 ```
 
 
-### Advanced Usage - States and Finite State Machine  
-#### Basic FSM Usage
+### Advanced Usage  
+#### States and Finite State Machine
 This library provides a fairly simple finite state machine (FSM) implementation 
 as a design tool. 
 
@@ -753,3 +758,5 @@ We
 made
 it!
 ```
+
+[Back To Top](#simple-threading-and-communication)
