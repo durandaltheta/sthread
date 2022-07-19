@@ -692,14 +692,14 @@ state3
 ```
 
 #### Registering non-transitioning callbacks to a state machine 
-One helpful feature that this library's state machine object provides is to 
-register callbacks to be executed when an associated event is processed with
-`st::state::machine::register_callback(ID event, callback cb)`. This allows 
-some events to be processed without attempting to transition the machine state.
+The user can register callbacks to be executed when an associated event with 
+`st::state::machine::register_callback(ID event, st::state::machine::callback cb)`. 
+This allows some events to be processed without attempting to transition the 
+machine state.
 
-This `st::state::machine::callback` is a typedef of
+The type `st::state::machine::callback` is a typedef of
 `std::function<std::shared_ptr<st::message>(std::shared_ptr<st::message>)>` 
-as its argument (which, as usual, can hold a functor, lambda, or function 
+(which, as usual, can hold a functor, lambda, or function 
 pointer).
 
 The return value of the callback is treated exactly like that of 
