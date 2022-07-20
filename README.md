@@ -103,6 +103,12 @@ hello world
 Message data payloads can be of any type and can be copied to argument `T t` with `st::message::copy_data_to<T>(T&& t)` or rvalue swapped with `st::message::move_data_to<T>(T&& t)`. 
 
 `st::message::copy_data_to<T>(T&& t)` and `st::message::move_data_to<T>(T&& t)` will return `true` only if the stored payload type matches type `T`, otherwise it returns `false`. 
+
+NOTE: Arguments passed to `st::worker::send(/* ... */)` or  `st::worker::try_send(/* ... */)` are subsequently passed to `st::message::make(/* ... */)` before the resulting std::shared_ptr<st::message> is passed to its destination thread and functor. The summary of the 3 basic overloads of `st::message::make(/* ... */)` are:
+- `std::shared_ptr<st::message> st::message::make(std::shared_ptr<st::message>)`: Returns its argument immediately with no changes
+- `std::shared_ptr<st::message> st::message::make(ID id)`: Returns a constructed message which returns argument unsigned integer `id` when `std::size_t st::message::id()` is called
+- `template <typename T> std::shared_ptr<st::message> st::message::make(ID id, T&& t)`: Same as the previous invocation but additionally accepts and stores a payload `t` of any type (compiler deduced) `T` which can later be copied with `template <typename T> bool st::message::copy_data_to(T& t)` or moved out of the message with `template <typename T> bool st::message::move_data_to(T& t)`.
+
 #### Example 2:
 ```
 #include <iostream>
