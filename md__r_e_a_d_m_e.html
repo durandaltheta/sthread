@@ -401,6 +401,7 @@ Close, Shutdown, and Restart</h2>
 <li><code>st::worker::shutdown(false)</code></li>
 <li><code>st::worker::restart(false)</code></li>
 </ul>
+<p>NOTE: When an <code><a class="el" href="structst_1_1worker.html" title="Managed system worker thread.">st::worker</a></code> or <code><a class="el" href="structst_1_1channel.html" title="Interthread message passing queue.">st::channel</a></code> goes out of scope (no more <code>std::shared_ptr</code> for that object instance exists), the object will be shutdown/closed with default behavior (if the object is not already shutdown/closed).</p>
 <h3><a class="anchor" id="autotoc_md20"></a>
 Example 7:</h3>
 <div class="fragment"><div class="line">#include &lt;iostream&gt;</div>
