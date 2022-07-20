@@ -7,7 +7,7 @@
 
 [Basic Usage](#basic-usage)
 
-[Advanced Usage](#advanced-usage)
+[Extended Usage](#extended-usage)
 
 ## Purpose 
 This header only library seeks to easily setup useful worker threads using a 
@@ -51,8 +51,7 @@ Alternatively just copy the .h files in inc/ folder to your local project header
 
 simple_thread_tst binary will be placed in tst/ 
 
-## Usage
-### Basic Usage
+## Basic Usage
 
 [Back To Top](#simple-threading-and-communication)
 
@@ -423,9 +422,11 @@ thread done
 ```
 
 
-### Advanced Usage  
+### Extended Usage  
 
 [Back To Top](#simple-threading-and-communication)
+
+The following documentation is for extended features of this library. They are not required to fulfill the purpose of this library (simple threading and communication), but they may be useful in more advanced applications.
 
 #### States and Finite State Machine
 This library provides a fairly simple finite state machine (FSM) implementation 
