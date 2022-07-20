@@ -387,6 +387,8 @@ Alternatively, the user can call said functions with explicit `false` to immedia
 - `st::worker::shutdown(false)`
 - `st::worker::restart(false)`
 
+NOTE: When an `st::worker` or `st::channel` goes out of scope (no more `std::shared_ptr` for that object instance exists), the object will be shutdown/closed with default behavior (if the object is not already shutdown/closed).
+
 #### Example 7:
 ```
 #include <iostream>
