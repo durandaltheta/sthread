@@ -7,6 +7,8 @@
 
 [Basic Usage](#basic-usage)
 
+[Extended Usage - Generic Asynchronous Code Execution](#generic-asynchronous-code-execution)
+
 [Extended Usage - Multiple Thread Executor](#multiple-thread-executor)
 
 [Extended Usage - States and Finite State Machine](#states-and-finite-state-machine)
@@ -436,6 +438,50 @@ thread done
 
 The following documentation is for extended features of this library. They are not required to fulfill the primary purpose of this library (simple threading and communication), but they may be useful for simplifying advanced threading applications. 
 
+#### Generic Asynchronous Code Execution
+
+[Back To Top](#simple-threading-and-communication) 
+
+`st::processor` is a simple functor implementation which will attempt to execute 
+any `st::processor::task` (a type alias of `std::function<void()>`) object passed 
+to it as the payload of its message (all message id's are ignored).
+
+##### Example 8:
+```
+#include <iostream>
+#include <string>
+#include <sthread>
+
+int main() {
+    std::shared_ptr<st::worker> proc = st::worker::make<st::processor>();
+
+    std::cout << std::this_thread::get_id() << ": main thread\n";
+
+    auto greet = [] {
+        std::stringstream ss;
+        ss << std::this_thread::get_id() << ": hello\n";
+        std::cout << ss.str().c_str();
+    };
+
+    for(std::size_t c=0; c<5; ++c) {
+        proc->send(0, st::processor::task(greet));
+    }
+
+    return 0;
+}
+```
+
+Terminal output might be:
+```
+$./a.out 
+0x800018040: main thread
+0x8000990f0: hello
+0x8000990f0: hello
+0x8000990f0: hello
+0x8000990f0: hello
+0x8000990f0: hello
+```
+
 #### Multiple Thread Executor
 
 [Back To Top](#simple-threading-and-communication) 
@@ -450,7 +496,7 @@ executor represents multiple threads instead of one thread.
 The API of `st::executor` is extremely similar to `st::worker`, see 
 [documentation](https://durandaltheta.github.io/sthread/) for more info.
 
-The `executor` object implements a constant time algorithm which attempts to 
+The `st::executor` object implements a constant time algorithm which attempts to 
 efficiently distribute tasks among worker threads. This object is especially 
 useful for scheduling operations which benefit from high CPU throughput and are 
 not reliant on the specific thread upon which they run. 
@@ -460,11 +506,11 @@ matches the CPU core count of the executing machine. This optimal number of
 cores may be discoverable by the return value of a call to 
 `st::executor::default_worker_count()`, though this is not guaranteed.
 
-Because `executor` manages a limited number of workers, any message whose 
+Because `st::executor` manages a limited number of workers, any message whose 
 processing blocks a worker indefinitely can cause all sorts of bad effects, 
 including deadlock. 
 
-##### Example 8:
+##### Example 9:
 ```
 #include <iostream>
 #include <sstream>
@@ -474,7 +520,7 @@ int main() {
     std::size_t wkr_cnt = st::executor::default_worker_count();
     std::shared_ptr<st::executor> exec = st::executor::make<st::processor>(wkr_cnt);
 
-    std::cout << "worker count: " << exec->worker_count() << std::endl;
+    std::cout << std::this_thread::get_id() << ": worker count: " << exec->worker_count() << std::endl;
 
     auto greet = [] {
         std::stringstream ss;
@@ -493,12 +539,12 @@ int main() {
 Terminal output might be:
 ```
 $./a.out 
-worker count: 16
-0x8000998e0: hello
-0x80009b260: hello
-0x80009a9e0: hello
-0x80009a160: hello
-0x80009bae0: hello
+0x800018040: worker count: 16
+0x80009abf0: hello
+0x80009b470: hello
+0x80009a370: hello
+0x800099af0: hello
+0x80009bcf0: hello
 ```
 
 #### States and Finite State Machine
@@ -522,7 +568,7 @@ of that class to `st::ex::state::machine::register_transition()`. The function
 `st::ex::state::make<YourStateType>(/* YourStateType constructor args */)` is 
 provided as a convenience for this process. 
 
-##### Example 9:
+##### Example 10:
 ```
 #include <iostream>
 #include <string>
@@ -584,7 +630,7 @@ object as their arguments, the user can directly replace `switch` statements
 from within `st::worker` instances with calls to 
 `st::ex::state::machine::process_event()` if desired.
 
-##### Example 10:
+##### Example 11:
 ```
 #include <iostream>
 #include <string>
@@ -659,7 +705,7 @@ from a state by overriding the
 `bool st::ex::state::exit(std::shared_ptr<st::message>)` method, where the state 
 will only transition if that function returns `true`.
 
-##### Example 11:
+##### Example 12:
 ```
 #include <iostream>
 #include <string>
@@ -742,7 +788,7 @@ that message will be handled as if `st::ex::state::machine::process_event()` had
 called with that message as its argument. This allows states to directly 
 transition to other states if necessary:
 
-##### Example 12:
+##### Example 13:
 ```
 #include <iostream>
 #include <string>
@@ -814,7 +860,7 @@ That is, if the return value:
 - is null: operation is complete 
 - is non-null: the result as treated like the argument of an additional `process_event()` call 
 
-##### Example 13:
+##### Example 14:
 ```
 #include <iostream>
 #include <string>

@@ -1510,10 +1510,26 @@ TEST(simple_thread, readme_example7) {
 }
 
 TEST(simple_thread, readme_example8) {
+    std::shared_ptr<st::worker> proc = st::worker::make<st::processor>();
+
+    std::cout << std::this_thread::get_id() << ": main thread\n";
+
+    auto greet = [] {
+        std::stringstream ss;
+        ss << std::this_thread::get_id() << ": hello\n";
+        std::cout << ss.str().c_str();
+    };
+
+    for(std::size_t c=0; c<5; ++c) {
+        proc->send(0, st::processor::task(greet));
+    }
+}
+
+TEST(simple_thread, readme_example9) {
     std::size_t wkr_cnt = st::executor::default_worker_count();
     std::shared_ptr<st::executor> exec = st::executor::make<st::processor>(wkr_cnt);
 
-    std::cout << "worker count: " << exec->worker_count() << std::endl;
+    std::cout << std::this_thread::get_id() << ": worker count: " << exec->worker_count() << std::endl;
 
     auto greet = [] {
         std::stringstream ss;
@@ -1526,7 +1542,7 @@ TEST(simple_thread, readme_example8) {
     }
 }
 
-TEST(simple_thread, readme_example9) {
+TEST(simple_thread, readme_example10) {
     struct conversation {
         enum event {
             partner_speaks,
@@ -1565,7 +1581,7 @@ TEST(simple_thread, readme_example9) {
     conversation_machine->process_event(conversation::event::partner_speaks); 
 }
 
-TEST(simple_thread, readme_example10) {
+TEST(simple_thread, readme_example11) {
     struct conversation_worker {
         enum op {
             partner_speaks,
@@ -1617,7 +1633,7 @@ TEST(simple_thread, readme_example10) {
     wkr->send(conversation_worker::op::you_speak, std::string("goodbye faa")); 
 }
 
-TEST(simple_thread, readme_example11) {
+TEST(simple_thread, readme_example12) {
     struct conversation {
         enum event {
             partner_speaks,
@@ -1679,7 +1695,7 @@ TEST(simple_thread, readme_example11) {
     conversation_machine->process_event(conversation::event::you_speak, std::string("hello faa3")); 
 }
 
-TEST(simple_thread, readme_example12) {
+TEST(simple_thread, readme_example13) {
     struct events {
         enum op {
             event1,
@@ -1717,7 +1733,7 @@ TEST(simple_thread, readme_example12) {
     sm->process_event(events::event1);
 }
 
-TEST(simple_thread, readme_example13) {
+TEST(simple_thread, readme_example14) {
     enum class op {
         trigger_cb1,
         trigger_cb2,
