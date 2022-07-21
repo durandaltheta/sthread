@@ -504,7 +504,8 @@ not reliant on the specific thread upon which they run.
 Highest CPU throughput is typically reached by an executor whose worker count 
 matches the CPU core count of the executing machine. This optimal number of 
 cores may be discoverable by the return value of a call to 
-`st::executor::default_worker_count()`, though this is not guaranteed.
+`st::executor::default_worker_count()`, though this is not guaranteed by the
+c++ standard.
 
 Because `st::executor` manages a limited number of workers, any message whose 
 processing blocks a worker indefinitely can cause all sorts of bad effects, 
