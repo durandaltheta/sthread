@@ -409,6 +409,7 @@ private:
         m_receivers_count(0) 
     { }
 
+    channel() = delete;
     channel(const channel& rhs) = delete;
     channel(channel&& rhs) = delete;
 
@@ -524,9 +525,6 @@ struct worker {
         wp->restart(); // launch thread
         return wp;
     }
-
-    worker(const worker& rhs) = delete;
-    worker(worker&&) = delete;
 
     ~worker() { 
         internal_shutdown();
@@ -708,6 +706,10 @@ private:
         };
     }
 
+    worker() = delete;
+    worker(const worker& rhs) = delete;
+    worker(worker&& rhs) = delete;
+
     inline void set_self(std::weak_ptr<worker> self) {
         m_self = self;
     }
@@ -738,6 +740,252 @@ private:
     std::function<handler()> m_generate_handler;
     std::shared_ptr<channel> m_ch;
     std::thread m_thd;
+};
+
+/**
+ * @brief convenience functor class definition for generic asynchronous code execution
+ *
+ * This functor can be used as the template type for `st::worker::make<T>()`.
+ *
+ * This class is designed to receive and execute arbitrary wrapped function 
+ * calls (std::function<void()> can hold a lambda, functor or function 
+ * pointer) stored inside the `st::message` sent to the worker thread.
+ *
+ * The message id returned by `st::message::id()` is always ignored, only 
+ * the type of the payload is checked before execution.
+ */
+struct processor {
+    /**
+     * @brief convenience typedef for wrapped functions which can be executed on this worker
+     */
+    typedef std::function<void()> task;
+
+    /**
+     * @brief executes message payload tasks
+     */
+    inline void operator()(std::shared_ptr<st::message> msg) { 
+        task t;
+        if(msg->move_data_to(t)) {
+            t();
+        }
+    }
+};
+
+/**
+ * @brief a class managing one or more identical worker threads 
+ *
+ * The `executor` object implements a constant time algorithm which attempts to 
+ * efficiently distribute tasks among worker threads.
+ *
+ * The `executor` object is especially useful for scheduling operations which 
+ * benefit from high CPU throughput and are not reliant on the specific thread 
+ * upon which they run. 
+ *
+ * Highest CPU throughput is typically reached by an executor whose worker count 
+ * matches the CPU core count of the executing machine. This optimal number of 
+ * cores may be discoverable by the return value of a call to 
+ * `st::executor::default_worker_count()`, though this is not guaranteed.
+ *
+ * Because `executor` manages a limited number of workers, any message whose 
+ * processing blocks a worker indefinitely can cause all sorts of bad effects, 
+ * including deadlock. 
+ */
+struct executor {
+    /**
+     @brief attempt to retrieve a sane executor worker count for maximum CPU throughput
+
+     The standard does not enforce the return value of 
+     `std::thread::hardware_concurrency()`, but it typically represents the 
+     number of cores a computer has, a number which typically represents the 
+     ideal number of threads to allocate for maximum processing throughput.
+
+     @return maximumly efficient count of worker threads for CPU throughput
+     */
+    static inline std::size_t default_worker_count() {
+        return std::thread::hardware_concurrency() 
+               ? std::thread::hardware_concurrency() 
+               : 1;
+    }
+
+    /**
+     * @brief allocate an executor to manage worker threads
+     *
+     * The template type FUNCTOR is the same as used in
+     * `st::worker::make<FUNCTOR>(constructor args...)`, allowing the user to 
+     * design and specify any FUNCTOR they please. However, in many cases the 
+     * user can simply use `st::processor` as the templated type, as that 
+     * functor definition is designed for processing generic operations.
+     *
+     * An intelligent value for worker_count can typically be retrieved from 
+     * `default_worker_count()` if maximum CPU throughput is desired.
+     *
+     * @param worker_count the number of threads this executor should manage
+     * @param as constructor arguments for type FUNCTOR
+     * @return allocated running worker thread shared_ptr
+     */
+    template <typename FUNCTOR, typename... As>
+    static std::shared_ptr<executor> make(
+            std::size_t worker_count,
+            As&&... as) {
+        return std::shared_ptr<executor>(new executor(
+                    worker_count,
+                    [=]() mutable -> std::shared_ptr<worker> {
+                        return worker::make<FUNCTOR>(std::forward<As>(as)...); 
+                    }));
+    }
+
+    ~executor() {
+        shutdown();
+    }
+    
+    /**
+     * @return true if executor's worker threads are running, else false
+     */
+    inline bool running() const {
+        std::lock_guard<std::mutex> lk(m_mtx);
+        return m_workers.size() ? true : false;
+    }
+
+    /** 
+     * @brief Shutdown the worker threads
+     *
+     * @param process_remaining_messages if true allow recv() to succeed until queue empty
+     */
+    inline void shutdown(bool process_remaining_messages=true) {
+        std::lock_guard<std::mutex> lk(m_mtx);
+        internal_shutdown(process_remaining_messages);
+    }
+
+    /**
+     * @brief Restart the worker threads
+     *
+     * Shutdown threads and reset state when necessary. 
+     *
+     * @param process_remaining_messages if true allow recv() to succeed until queue empty
+     */
+    inline void restart(bool process_remaining_messages=true) {
+        std::lock_guard<std::mutex> lk(m_mtx);
+        internal_shutdown(process_remaining_messages);
+        m_inner_restart();
+    }
+
+    /**
+     * @return the count of worker threads managed by this executor
+     */
+    inline std::size_t worker_count() const {
+        return m_worker_count;
+    }
+
+    /**
+     * @brief Send a message over the channel with given @parameters 
+     *
+     * This is a blocking operation.
+     *
+     * @param as argument(s) to `st::message::make()`
+     * @return result.status==result::eStatus::success on success, result.status==result::eStatus::closed if closed
+     */
+    template <typename... As>
+    bool send(As&&... as) {
+        return internal_send(message::make(std::forward<As>(as)...));
+    }
+
+    /**
+     * @brief Send a message over the channel with given parameters 
+     *
+     * This is a non-blocking operation. If queue is full, operation will fail early.
+     *
+     * @param id an unsigned integer representing which type of message 
+     * @param as additional argument(s) to `st::message::make()`
+     * @return result.status==result::eStatus::success on success, result.status==result::eStatus::closed if closed, result.status==result::eStatus::full if full
+     */
+    template <typename... As>
+    bool try_send(As&&... as) {
+        return internal_try_send(message::make(std::forward<As>(as)...));
+    }
+
+private:
+    typedef std::vector<std::shared_ptr<worker>> worker_vector_t;
+    typedef worker_vector_t::iterator worker_iter_t;
+
+    executor(const std::size_t worker_count, std::function<std::shared_ptr<worker>()> make_worker) :
+        m_worker_count(worker_count ? worker_count : 1), // enforce 1 thread
+        m_make_worker(std::move(make_worker)),
+        m_inner_restart([&]{
+            m_workers = worker_vector_t(worker_count),
+            m_cur_it = m_workers.begin();
+            for(auto& w : m_workers) {
+                w = m_make_worker();
+            }
+        }){
+        restart(); // start workers
+    }
+
+    executor() = delete;
+    executor(const executor& rhs) = delete;
+    executor(executor&& rhs) = delete;
+
+    inline void internal_shutdown(bool process_remaining_messages) {
+        for(auto& w : m_workers) {
+            w->shutdown(process_remaining_messages);
+        }
+
+        m_workers.clear();
+    }
+
+    inline bool internal_send(std::shared_ptr<message>&& msg) {
+        std::lock_guard<std::mutex> lk(m_mtx);
+        if(m_workers.size() ? true : false) {
+            return select_worker()->send(std::move(msg));
+        } else {
+            return false;
+        }
+    }
+
+    inline bool internal_try_send(std::shared_ptr<message> msg) {
+        std::lock_guard<std::mutex> lk(m_mtx);
+        if(m_workers.size() ? true : false) {
+            return select_worker()->try_send(std::move(msg));
+        } else {
+            return false;
+        }
+    }
+
+    // return the next worker 
+    inline worker_iter_t rotate(worker_iter_t it) {
+        ++it;
+
+        // if at the end of the vector return the first entry
+        if(it == m_workers.end()) {
+            it = m_workers.begin();
+        } 
+
+        return it;
+    }
+
+    // selected a worker to sechedule task on
+    inline worker* select_worker() {
+        if(m_worker_count > 1) {
+            auto& prev_worker = *(m_cur_it);
+            m_cur_it = rotate(m_cur_it);
+
+            auto& cur_worker = *(m_cur_it);
+
+            if(prev_worker->get_weight() < cur_worker->get_weight()) {
+                return prev_worker.get();
+            } else {
+                return cur_worker.get();
+            }
+        } else {
+            return m_cur_it->get();
+        }
+    }
+
+    mutable std::mutex m_mtx;
+    const std::size_t m_worker_count;
+    worker_vector_t m_workers;
+    worker_iter_t m_cur_it;
+    std::function<std::shared_ptr<worker>()> m_make_worker;
+    std::function<void()> m_inner_restart;
 };
 
 /**
@@ -965,6 +1213,8 @@ struct state {
         typedef std::unordered_map<std::size_t,state_info> transition_table_t;
 
         machine() : m_cur_state(m_transition_table.end()) { }
+        machine(const machine& rhs) = delete;
+        machine(machine&& rhs) = delete;
 
         bool register_state(std::size_t event_id, registered_type tp, std::shared_ptr<state> st) {
             auto it = m_transition_table.find(event_id);
