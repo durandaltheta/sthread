@@ -558,14 +558,14 @@ The reasoning for including this feature in the library is that asynchronous
 programming can have complex state management. Simplifying designs with a state 
 machine can *sometimes* be advantagous, when used intelligently and judiciously. 
 
-The state machine object type is `st::ex::state::machine`, which can register new 
-state transitions with calls to `st::ex::state::machine::register_transition()` and 
-process events with `st::ex::state::machine::process_event()`.
+The state machine object type is `st::state::machine`, which can register new 
+state transitions with calls to `st::state::machine::register_transition()` and 
+process events with `st::state::machine::process_event()`.
 
-The user can create states by defining classes which inherit `st::ex::state`,
-optionally overriding methods and passing an allocated `shared_ptr<st::ex::state>` 
-of that class to `st::ex::state::machine::register_transition()`. The function
-`st::ex::state::make<YourStateType>(/* YourStateType constructor args */)` is 
+The user can create states by defining classes which inherit `st::state`,
+optionally overriding methods and passing an allocated `shared_ptr<st::state>` 
+of that class to `st::state::machine::register_transition()`. The function
+`st::state::make<YourStateType>(/* YourStateType constructor args */)` is 
 provided as a convenience for this process. 
 
 ##### Example 10:
@@ -582,7 +582,7 @@ int main() {
         };
     };
 
-    struct listening : public st::ex::state {
+    struct listening : public st::state {
         std::shared_ptr<st::message> enter(std::shared_ptr<st::message> event) {
             std::cout << "your partner begins speaking and you listen" << std::endl;
             // a default (null) shared pointer returned from enter() causes transition to continue normally
@@ -590,16 +590,16 @@ int main() {
         }
     };
 
-    struct talking : public st::ex::state {
+    struct talking : public st::state {
         std::shared_ptr<st::message> enter(std::shared_ptr<st::message> event) {
             std::cout << "you begin speaking and your partner listens" << std::endl;
             return std::shared_ptr<st::message>();
         }
     };
 
-    auto listening_st = st::ex::state::make<listening>();
-    auto talking_st = st::ex::state::make<talking>();
-    auto conversation_machine = st::ex::state::machine::make();
+    auto listening_st = st::state::make<listening>();
+    auto talking_st = st::state::make<talking>();
+    auto conversation_machine = st::state::machine::make();
 
     // register the state transitions 
     conversation_machine->register_transition(conversation::event::partner_speaks, listening_st);
@@ -624,11 +624,11 @@ your partner begins speaking and you listen
 ```
 
 #### Replacing switch statements with state machines
-Since function signatures `std::shared_ptr<st::message> st::ex::state::enter(std::shared_ptr<st::message>)` 
-and  `bool st::ex::state::exit(std::shared_ptr<st::message>)` accept a message 
+Since function signatures `std::shared_ptr<st::message> st::state::enter(std::shared_ptr<st::message>)` 
+and  `bool st::state::exit(std::shared_ptr<st::message>)` accept a message 
 object as their arguments, the user can directly replace `switch` statements 
 from within `st::worker` instances with calls to 
-`st::ex::state::machine::process_event()` if desired.
+`st::state::machine::process_event()` if desired.
 
 ##### Example 11:
 ```
@@ -643,7 +643,7 @@ int main() {
             you_speak 
         };
 
-        struct listening : public st::ex::state {
+        struct listening : public st::state {
             std::shared_ptr<st::message> enter(std::shared_ptr<st::message> event) {
                 std::string s;
                 event->copy_data_to(s);
@@ -652,7 +652,7 @@ int main() {
             }
         };
 
-        struct talking : public st::ex::state {
+        struct talking : public st::state {
             std::shared_ptr<st::message> enter(std::shared_ptr<st::message> event) {
                 std::string s;
                 event->copy_data_to(s);
@@ -662,9 +662,9 @@ int main() {
         };
 
         conversation_worker() { 
-            auto listening_st = st::ex::state::make<listening>();
-            auto talking_st = st::ex::state::make<talking>();
-            m_machine = st::ex::state::machine::make();
+            auto listening_st = st::state::make<listening>();
+            auto talking_st = st::state::make<talking>();
+            m_machine = st::state::machine::make();
 
             // register the state transitions 
             m_machine->register_transition(conversation_worker::op::partner_speaks, listening_st);
@@ -675,7 +675,7 @@ int main() {
             m_machine->process_event(msg);
         }
 
-        std::shared_ptr<st::ex::state::machine> m_machine;
+        std::shared_ptr<st::state::machine> m_machine;
     };
 
     // launch a worker thread to utilize the state machine
@@ -702,7 +702,7 @@ you speak: goodbye faa
 #### Implementing state transition guards
 The user can implement transition guards and prevent transitioning away 
 from a state by overriding the 
-`bool st::ex::state::exit(std::shared_ptr<st::message>)` method, where the state 
+`bool st::state::exit(std::shared_ptr<st::message>)` method, where the state 
 will only transition if that function returns `true`.
 
 ##### Example 12:
@@ -719,7 +719,7 @@ int main() {
         };
     };
 
-    struct listening : public st::ex::state {
+    struct listening : public st::state {
         std::shared_ptr<st::message> enter(std::shared_ptr<st::message> event) {
             std::string s;
             event->copy_data_to(s);
@@ -737,7 +737,7 @@ int main() {
         }
     };
 
-    struct talking : public st::ex::state {
+    struct talking : public st::state {
         std::shared_ptr<st::message> enter(std::shared_ptr<st::message> event) {
             std::string s;
             event->copy_data_to(s);
@@ -755,9 +755,9 @@ int main() {
         }
     };
 
-    auto listening_st = st::ex::state::make<listening>();
-    auto talking_st = st::ex::state::make<talking>();
-    auto conversation_machine = st::ex::state::machine::make();
+    auto listening_st = st::state::make<listening>();
+    auto talking_st = st::state::make<talking>();
+    auto conversation_machine = st::state::machine::make();
 
     // register the state transitions 
     conversation_machine->register_transition(conversation::event::partner_speaks, listening_st);
@@ -783,8 +783,8 @@ you speak: hello faa
 ```
 
 #### Processing subsequent events directly from the result of a state transition
-If an implementation of `st::ex::state::enter()` returns a non-null `std::shared_ptr<st::message>` 
-that message will be handled as if `st::ex::state::machine::process_event()` had been 
+If an implementation of `st::state::enter()` returns a non-null `std::shared_ptr<st::message>` 
+that message will be handled as if `st::state::machine::process_event()` had been 
 called with that message as its argument. This allows states to directly 
 transition to other states if necessary:
 
@@ -803,31 +803,31 @@ int main() {
         };
     };
 
-    struct state1 : public st::ex::state {
+    struct state1 : public st::state {
         std::shared_ptr<st::message> enter(std::shared_ptr<st::message> event) {
             std::cout << "state1" << std::endl;
             return st::message::make(events::event2);
         }
     };
 
-    struct state2 : public st::ex::state {
+    struct state2 : public st::state {
         std::shared_ptr<st::message> enter(std::shared_ptr<st::message> event) {
             std::cout << "state2" << std::endl;
             return st::message::make(events::event3);
         }
     };
 
-    struct state3 : public st::ex::state {
+    struct state3 : public st::state {
         std::shared_ptr<st::message> enter(std::shared_ptr<st::message> event) {
             std::cout << "state3" << std::endl;
             return std::shared_ptr<st::message>();
         }
     };
 
-    auto sm = st::ex::state::machine::make();
-    sm->register_transition(events::event1, st::ex::state::make<state1>());
-    sm->register_transition(events::event2, st::ex::state::make<state2>());
-    sm->register_transition(events::event3, st::ex::state::make<state3>());
+    auto sm = st::state::machine::make();
+    sm->register_transition(events::event1, st::state::make<state1>());
+    sm->register_transition(events::event2, st::state::make<state2>());
+    sm->register_transition(events::event3, st::state::make<state3>());
 
     sm->process_event(events::event1);
     return 0;
@@ -845,17 +845,17 @@ state3
 #### Registering non-transitioning callbacks to a state machine 
 The user can register callbacks to be executed when an associated event is 
 processed with 
-`st::ex::state::machine::register_callback(ID event, st::ex::state::machine::callback cb)`. 
+`st::state::machine::register_callback(ID event, st::state::machine::callback cb)`. 
 This allows some events to be processed without attempting to transition the 
 machine state.
 
-The type `st::ex::state::machine::callback` is a typedef of
+The type `st::state::machine::callback` is a typedef of
 `std::function<std::shared_ptr<st::message>(std::shared_ptr<st::message>)>` 
 (which, as usual, can hold a functor, lambda, or function 
 pointer).
 
 The return value of the callback is treated exactly like that of 
-`std::shared_ptr<st::message> st::ex::state::enter(std::shared_ptr<st::message>)`.
+`std::shared_ptr<st::message> st::state::enter(std::shared_ptr<st::message>)`.
 That is, if the return value:
 - is null: operation is complete 
 - is non-null: the result as treated like the argument of an additional `process_event()` call 
@@ -883,18 +883,18 @@ int main() {
         return st::message::make(op::trigger_final_state);
     };
 
-    struct final_state : public st::ex::state { 
+    struct final_state : public st::state { 
         inline std::shared_ptr<st::message> enter(std::shared_ptr<st::message> event) {
             std::cout << "it!" << std::endl;
             return std::shared_ptr<st::message>();
         }
     };
 
-    auto sm = st::ex::state::machine::make();
+    auto sm = st::state::machine::make();
 
     sm->register_callback(op::trigger_cb1, callback1);
     sm->register_callback(op::trigger_cb2, callback2);
-    sm->register_transition(op::trigger_final_state, st::ex::state::make<final_state>());
+    sm->register_transition(op::trigger_final_state, st::state::make<final_state>());
 
     sm->process_event(op::trigger_cb1);
     return 0;
