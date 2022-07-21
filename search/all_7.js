@@ -1,5 +1,8 @@
 var searchData=
 [
-  ['operator_20bool_24',['operator bool',['../structst_1_1result.html#a4cb861d4420a826a0f012c3be249ca4c',1,'st::result::operator bool()'],['../structst_1_1state_1_1machine_1_1status.html#a053209581db8188f2bd8db371928b005',1,'st::state::machine::status::operator bool()']]],
-  ['operator_3c_25',['operator&lt;',['../structst_1_1worker_1_1weight.html#af4420017c2a78e925f13717d9c650e3b',1,'st::worker::weight']]]
+  ['machine_21',['machine',['../structst_1_1state_1_1machine.html',1,'st::state']]],
+  ['make_22',['make',['../structst_1_1message.html#af3bfc649bfad36dca05f901fe31c5066',1,'st::message::make(std::shared_ptr&lt; message &gt; msg)'],['../structst_1_1message.html#a7acb0cfda5d8f1b0d237517ccfcabcab',1,'st::message::make(ID id, T &amp;&amp;t)'],['../structst_1_1message.html#a9c33612b000c9816bc01eb414078f334',1,'st::message::make(ID id)'],['../structst_1_1channel.html#a214ecec9501a9a59ea7abc838ccb1375',1,'st::channel::make()'],['../structst_1_1worker.html#a4ab1891f3a52bc05871caa1e4f0b55af',1,'st::worker::make()'],['../structst_1_1executor.html#a1e1352603778c6f81089f8541ff87e7b',1,'st::executor::make()'],['../structst_1_1state.html#ae4ee7ee1d9035c37b4ed5f875c90fad8',1,'st::state::make()'],['../structst_1_1state_1_1machine.html#aac682462827df8851a8941b2084fb757',1,'st::state::machine::make()']]],
+  ['max_5fqueue_5fsize_23',['max_queue_size',['../structst_1_1channel.html#a627f1a43f695fcbb039904ef642842e0',1,'st::channel']]],
+  ['message_24',['message',['../structst_1_1message.html',1,'st']]],
+  ['move_5fdata_5fto_25',['move_data_to',['../structst_1_1message.html#a8cfc67f035589432aefcb8d5a8da7b83',1,'st::message']]]
 ];

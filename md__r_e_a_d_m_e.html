@@ -70,7 +70,8 @@ Quick Links</h1>
 <p><a href="https://durandaltheta.github.io/sthread/">Documentation</a></p>
 <p><a href="tst/simple_thread_tst.cpp">Unit Test and Example Code</a></p>
 <p><a href="#basic-usage">Basic Usage</a></p>
-<p><a href="#extended-usage">Extended Usage</a></p>
+<p><a href="#multiple-thread-executor">Extended Usage - Multiple Thread Executor</a></p>
+<p><a href="#states-and-finite-state-machine">Extended Usage - States and Finite State Machine</a></p>
 <h1><a class="anchor" id="autotoc_md2"></a>
 Purpose</h1>
 <p>This header only library seeks to easily setup useful worker threads using a simple API.</p>
@@ -351,7 +352,7 @@ Channels</h2>
 <h3><a class="anchor" id="autotoc_md18"></a>
 Example 6:</h3>
 <div class="fragment"><div class="line">#include &lt;iostream&gt;</div>
-<div class="line">#include &lt;thread&gt;</div>
+<div class="line">#include &lt;string&gt;</div>
 <div class="line">#include &lt;sthread&gt;</div>
 <div class="line"> </div>
 <div class="line">struct MyClass {</div>
@@ -405,7 +406,7 @@ Close, Shutdown, and Restart</h2>
 <h3><a class="anchor" id="autotoc_md20"></a>
 Example 7:</h3>
 <div class="fragment"><div class="line">#include &lt;iostream&gt;</div>
-<div class="line">#include &lt;thread&gt;</div>
+<div class="line">#include &lt;string&gt;</div>
 <div class="line">#include &lt;sthread&gt;</div>
 <div class="line"> </div>
 <div class="line">void looping_recv(std::shared_ptr&lt;st::channel&gt; ch) {</div>
@@ -438,17 +439,60 @@ Example 7:</h3>
 <div class="line">thread done </div>
 </div><!-- fragment --><h2><a class="anchor" id="autotoc_md21"></a>
 Extended Usage</h2>
-<p><a href="#simple-threading-and-communication">Back To Top</a></p>
-<p>The following documentation is for extended features of this library. They are not required to fulfill the purpose of this library (simple threading and communication), but they may be useful in more advanced applications.</p>
+<p>The following documentation is for extended features of this library. They are not required to fulfill the primary purpose of this library (simple threading and communication), but they may be useful for simplifying advanced threading applications.</p>
 <h3><a class="anchor" id="autotoc_md22"></a>
-States and Finite State Machine</h3>
-<p>This library provides a fairly simple finite state machine (FSM) implementation as a design tool.</p>
-<p>The reasoning for including this feature in the library is that asynchronous programming can have complex state management. Simplifying designs with a state machine can <em>sometimes</em> be advantagous, when used intelligently and judiciously.</p>
-<p>The state machine object type is <code><a class="el" href="structst_1_1state_1_1machine.html">st::state::machine</a></code>, which can register new state transitions with calls to <code><a class="el" href="structst_1_1state_1_1machine.html#aee4bae16a32dd34957e770901f541014" title="Register a state object to be transitioned to when notified of an event.">st::state::machine::register_transition()</a></code> and process events with <code><a class="el" href="structst_1_1state_1_1machine.html#afe52547025c774ee4d64bf260089cc90" title="process_event the state machine an event has occurred">st::state::machine::process_event()</a></code>.</p>
-<p>The user can create states by defining classes which inherit <code><a class="el" href="structst_1_1state.html">st::state</a></code>, optionally overriding methods and passing an allocated <code>shared_ptr&lt;<a class="el" href="structst_1_1state.html">st::state</a>&gt;</code> of that class to <code><a class="el" href="structst_1_1state_1_1machine.html#aee4bae16a32dd34957e770901f541014" title="Register a state object to be transitioned to when notified of an event.">st::state::machine::register_transition()</a></code>. The function <code><a class="el" href="structst_1_1state.html#ae4ee7ee1d9035c37b4ed5f875c90fad8" title="a convenience function for generating shared_ptr&#39;s to state objects">st::state::make</a>&lt;YourStateType&gt;(/* YourStateType constructor args */)</code> is provided as a convenience for this process.</p>
+Multiple Thread Executor</h3>
+<p><a href="#simple-threading-and-communication">Back To Top</a></p>
+<p><code><a class="el" href="structst_1_1executor.html" title="a class managing one or more identical worker threads">st::executor</a></code> is a class managing one or more identical worker threads which can be allocated and started with a call to <code>template &lt;typename FUNCTOR, typename... As&gt; static std::shared_ptr&lt;<a class="el" href="structst_1_1executor.html" title="a class managing one or more identical worker threads">st::executor</a>&gt; make(std::size_t worker_count, As&amp;&amp;... as)</code>. Said function executes in a fashion extremely similar to <code>template &lt;typename FUNCTOR, typename... As&gt; static std::shared_ptr&lt;<a class="el" href="structst_1_1worker.html" title="Managed system worker thread.">st::worker</a>&gt; make(std::size_t worker_count, As&amp;&amp;... as)</code>, except that an executor represents multiple threads instead of one thread.</p>
+<p>The API of <code><a class="el" href="structst_1_1executor.html" title="a class managing one or more identical worker threads">st::executor</a></code> is extremely similar to <code><a class="el" href="structst_1_1worker.html" title="Managed system worker thread.">st::worker</a></code>, see <a href="https://durandaltheta.github.io/sthread/">documentation</a> for more info.</p>
+<p>The <code>executor</code> object implements a constant time algorithm which attempts to efficiently distribute tasks among worker threads. This object is especially useful for scheduling operations which benefit from high CPU throughput and are not reliant on the specific thread upon which they run.</p>
+<p>Highest CPU throughput is typically reached by an executor whose worker count matches the CPU core count of the executing machine. This optimal number of cores may be discoverable by the return value of a call to <code><a class="el" href="structst_1_1executor.html#ab149bc4c67a451ef8ef0dd6953838c52" title="attempt to retrieve a sane executor worker count for maximum CPU throughput">st::executor::default_worker_count()</a></code>, though this is not guaranteed.</p>
+<p>Because <code>executor</code> manages a limited number of workers, any message whose processing blocks a worker indefinitely can cause all sorts of bad effects, including deadlock.</p>
 <h4><a class="anchor" id="autotoc_md23"></a>
 Example 8:</h4>
-<div class="fragment"><div class="line">int main() {</div>
+<div class="fragment"><div class="line">#include &lt;iostream&gt;</div>
+<div class="line">#include &lt;sstream&gt;</div>
+<div class="line">#include &lt;sthread&gt;</div>
+<div class="line"> </div>
+<div class="line">int main() {</div>
+<div class="line">    std::size_t wkr_cnt = st::executor::default_worker_count();</div>
+<div class="line">    std::shared_ptr&lt;st::executor&gt; exec = st::executor::make&lt;st::processor&gt;(wkr_cnt);</div>
+<div class="line"> </div>
+<div class="line">    std::cout &lt;&lt; &quot;worker count: &quot; &lt;&lt; exec-&gt;worker_count() &lt;&lt; std::endl;</div>
+<div class="line"> </div>
+<div class="line">    auto greet = [] {</div>
+<div class="line">        std::stringstream ss;</div>
+<div class="line">        ss &lt;&lt; std::this_thread::get_id() &lt;&lt; &quot;: hello\n&quot;;</div>
+<div class="line">        std::cout &lt;&lt; ss.str().c_str();</div>
+<div class="line">    };</div>
+<div class="line"> </div>
+<div class="line">    for(std::size_t c=0; c&lt;5; ++c) {</div>
+<div class="line">        exec-&gt;send(0, st::processor::task(greet));</div>
+<div class="line">    }</div>
+<div class="line"> </div>
+<div class="line">    return 0;</div>
+<div class="line">}</div>
+</div><!-- fragment --><p>Terminal output might be: </p><div class="fragment"><div class="line">$./a.out </div>
+<div class="line">worker count: 16</div>
+<div class="line">0x8000998e0: hello</div>
+<div class="line">0x80009b260: hello</div>
+<div class="line">0x80009a9e0: hello</div>
+<div class="line">0x80009a160: hello</div>
+<div class="line">0x80009bae0: hello</div>
+</div><!-- fragment --><h3><a class="anchor" id="autotoc_md24"></a>
+States and Finite State Machine</h3>
+<p><a href="#simple-threading-and-communication">Back To Top</a></p>
+<p>This library provides a fairly simple finite state machine (FSM) implementation as a design tool.</p>
+<p>The reasoning for including this feature in the library is that asynchronous programming can have complex state management. Simplifying designs with a state machine can <em>sometimes</em> be advantagous, when used intelligently and judiciously.</p>
+<p>The state machine object type is <code>st::ex::state::machine</code>, which can register new state transitions with calls to <code>st::ex::state::machine::register_transition()</code> and process events with <code>st::ex::state::machine::process_event()</code>.</p>
+<p>The user can create states by defining classes which inherit <code>st::ex::state</code>, optionally overriding methods and passing an allocated <code>shared_ptr&lt;st::ex::state&gt;</code> of that class to <code>st::ex::state::machine::register_transition()</code>. The function <code>st::ex::state::make&lt;YourStateType&gt;(/* YourStateType constructor args */)</code> is provided as a convenience for this process.</p>
+<h4><a class="anchor" id="autotoc_md25"></a>
+Example 9:</h4>
+<div class="fragment"><div class="line">#include &lt;iostream&gt;</div>
+<div class="line">#include &lt;string&gt;</div>
+<div class="line">#include &lt;sthread&gt;</div>
+<div class="line"> </div>
+<div class="line">int main() {</div>
 <div class="line">    struct conversation {</div>
 <div class="line">        enum event {</div>
 <div class="line">            partner_speaks,</div>
@@ -456,7 +500,7 @@ Example 8:</h4>
 <div class="line">        };</div>
 <div class="line">    };</div>
 <div class="line"> </div>
-<div class="line">    struct listening : public st::state {</div>
+<div class="line">    struct listening : public st::ex::state {</div>
 <div class="line">        std::shared_ptr&lt;st::message&gt; enter(std::shared_ptr&lt;st::message&gt; event) {</div>
 <div class="line">            std::cout &lt;&lt; &quot;your partner begins speaking and you listen&quot; &lt;&lt; std::endl;</div>
 <div class="line">            // a default (null) shared pointer returned from enter() causes transition to continue normally</div>
@@ -464,16 +508,16 @@ Example 8:</h4>
 <div class="line">        }</div>
 <div class="line">    };</div>
 <div class="line"> </div>
-<div class="line">    struct talking : public st::state {</div>
+<div class="line">    struct talking : public st::ex::state {</div>
 <div class="line">        std::shared_ptr&lt;st::message&gt; enter(std::shared_ptr&lt;st::message&gt; event) {</div>
 <div class="line">            std::cout &lt;&lt; &quot;you begin speaking and your partner listens&quot; &lt;&lt; std::endl;</div>
 <div class="line">            return std::shared_ptr&lt;st::message&gt;();</div>
 <div class="line">        }</div>
 <div class="line">    };</div>
 <div class="line"> </div>
-<div class="line">    auto listening_st = st::state::make&lt;listening&gt;();</div>
-<div class="line">    auto talking_st = st::state::make&lt;talking&gt;();</div>
-<div class="line">    auto conversation_machine = st::state::machine::make();</div>
+<div class="line">    auto listening_st = st::ex::state::make&lt;listening&gt;();</div>
+<div class="line">    auto talking_st = st::ex::state::make&lt;talking&gt;();</div>
+<div class="line">    auto conversation_machine = st::ex::state::machine::make();</div>
 <div class="line"> </div>
 <div class="line">    // register the state transitions </div>
 <div class="line">    conversation_machine-&gt;register_transition(conversation::event::partner_speaks, listening_st);</div>
@@ -491,19 +535,23 @@ Example 8:</h4>
 <div class="line">your partner begins speaking and you listen</div>
 <div class="line">you begin speaking and your partner listens</div>
 <div class="line">your partner begins speaking and you listen</div>
-</div><!-- fragment --><h3><a class="anchor" id="autotoc_md24"></a>
+</div><!-- fragment --><h3><a class="anchor" id="autotoc_md26"></a>
 Replacing switch statements with state machines</h3>
-<p>Since function signatures <code>std::shared_ptr&lt;<a class="el" href="structst_1_1message.html" title="Interthread type erased message container.">st::message</a>&gt; <a class="el" href="structst_1_1state.html#a740834a32ddfdf58105f00d6d9bccacf" title="called during a transition when a state is entered">st::state::enter</a>(std::shared_ptr&lt;<a class="el" href="structst_1_1message.html" title="Interthread type erased message container.">st::message</a>&gt;)</code> and <code>bool <a class="el" href="structst_1_1state.html#a450771b125b1a1ba9b3ccc2dc07b959c" title="called during a transition when a state is exitted">st::state::exit</a>(std::shared_ptr&lt;<a class="el" href="structst_1_1message.html" title="Interthread type erased message container.">st::message</a>&gt;)</code> accept a message object as their arguments, the user can directly replace <code>switch</code> statements from within <code><a class="el" href="structst_1_1worker.html" title="Managed system worker thread.">st::worker</a></code> instances with calls to <code><a class="el" href="structst_1_1state_1_1machine.html#afe52547025c774ee4d64bf260089cc90" title="process_event the state machine an event has occurred">st::state::machine::process_event()</a></code> if desired.</p>
-<h4><a class="anchor" id="autotoc_md25"></a>
-Example 9:</h4>
-<div class="fragment"><div class="line">int main() {</div>
+<p>Since function signatures <code>std::shared_ptr&lt;<a class="el" href="structst_1_1message.html" title="Interthread type erased message container.">st::message</a>&gt; st::ex::state::enter(std::shared_ptr&lt;<a class="el" href="structst_1_1message.html" title="Interthread type erased message container.">st::message</a>&gt;)</code> and <code>bool st::ex::state::exit(std::shared_ptr&lt;<a class="el" href="structst_1_1message.html" title="Interthread type erased message container.">st::message</a>&gt;)</code> accept a message object as their arguments, the user can directly replace <code>switch</code> statements from within <code><a class="el" href="structst_1_1worker.html" title="Managed system worker thread.">st::worker</a></code> instances with calls to <code>st::ex::state::machine::process_event()</code> if desired.</p>
+<h4><a class="anchor" id="autotoc_md27"></a>
+Example 10:</h4>
+<div class="fragment"><div class="line">#include &lt;iostream&gt;</div>
+<div class="line">#include &lt;string&gt;</div>
+<div class="line">#include &lt;sthread&gt;</div>
+<div class="line"> </div>
+<div class="line">int main() {</div>
 <div class="line">    struct conversation_worker {</div>
 <div class="line">        enum op {</div>
 <div class="line">            partner_speaks,</div>
 <div class="line">            you_speak </div>
 <div class="line">        };</div>
 <div class="line"> </div>
-<div class="line">        struct listening : public st::state {</div>
+<div class="line">        struct listening : public st::ex::state {</div>
 <div class="line">            std::shared_ptr&lt;st::message&gt; enter(std::shared_ptr&lt;st::message&gt; event) {</div>
 <div class="line">                std::string s;</div>
 <div class="line">                event-&gt;copy_data_to(s);</div>
@@ -512,7 +560,7 @@ Example 9:</h4>
 <div class="line">            }</div>
 <div class="line">        };</div>
 <div class="line"> </div>
-<div class="line">        struct talking : public st::state {</div>
+<div class="line">        struct talking : public st::ex::state {</div>
 <div class="line">            std::shared_ptr&lt;st::message&gt; enter(std::shared_ptr&lt;st::message&gt; event) {</div>
 <div class="line">                std::string s;</div>
 <div class="line">                event-&gt;copy_data_to(s);</div>
@@ -522,9 +570,9 @@ Example 9:</h4>
 <div class="line">        };</div>
 <div class="line"> </div>
 <div class="line">        conversation_worker() { </div>
-<div class="line">            auto listening_st = st::state::make&lt;listening&gt;();</div>
-<div class="line">            auto talking_st = st::state::make&lt;talking&gt;();</div>
-<div class="line">            m_machine = st::state::machine::make();</div>
+<div class="line">            auto listening_st = st::ex::state::make&lt;listening&gt;();</div>
+<div class="line">            auto talking_st = st::ex::state::make&lt;talking&gt;();</div>
+<div class="line">            m_machine = st::ex::state::machine::make();</div>
 <div class="line"> </div>
 <div class="line">            // register the state transitions </div>
 <div class="line">            m_machine-&gt;register_transition(conversation_worker::op::partner_speaks, listening_st);</div>
@@ -535,7 +583,7 @@ Example 9:</h4>
 <div class="line">            m_machine-&gt;process_event(msg);</div>
 <div class="line">        }</div>
 <div class="line"> </div>
-<div class="line">        std::shared_ptr&lt;st::state::machine&gt; m_machine;</div>
+<div class="line">        std::shared_ptr&lt;st::ex::state::machine&gt; m_machine;</div>
 <div class="line">    };</div>
 <div class="line"> </div>
 <div class="line">    // launch a worker thread to utilize the state machine</div>
@@ -553,12 +601,16 @@ Example 9:</h4>
 <div class="line">you speak: hello faa</div>
 <div class="line">your partner speaks: goodbye foo</div>
 <div class="line">you speak: goodbye faa</div>
-</div><!-- fragment --><h3><a class="anchor" id="autotoc_md26"></a>
+</div><!-- fragment --><h3><a class="anchor" id="autotoc_md28"></a>
 Implementing state transition guards</h3>
-<p>The user can implement transition guards and prevent transitioning away from a state by overriding the <code>bool <a class="el" href="structst_1_1state.html#a450771b125b1a1ba9b3ccc2dc07b959c" title="called during a transition when a state is exitted">st::state::exit</a>(std::shared_ptr&lt;<a class="el" href="structst_1_1message.html" title="Interthread type erased message container.">st::message</a>&gt;)</code> method, where the state will only transition if that function returns <code>true</code>.</p>
-<h4><a class="anchor" id="autotoc_md27"></a>
-Example 10:</h4>
-<div class="fragment"><div class="line">int main() {</div>
+<p>The user can implement transition guards and prevent transitioning away from a state by overriding the <code>bool st::ex::state::exit(std::shared_ptr&lt;<a class="el" href="structst_1_1message.html" title="Interthread type erased message container.">st::message</a>&gt;)</code> method, where the state will only transition if that function returns <code>true</code>.</p>
+<h4><a class="anchor" id="autotoc_md29"></a>
+Example 11:</h4>
+<div class="fragment"><div class="line">#include &lt;iostream&gt;</div>
+<div class="line">#include &lt;string&gt;</div>
+<div class="line">#include &lt;sthread&gt;</div>
+<div class="line"> </div>
+<div class="line">int main() {</div>
 <div class="line">    struct conversation {</div>
 <div class="line">        enum event {</div>
 <div class="line">            partner_speaks,</div>
@@ -566,7 +618,7 @@ Example 10:</h4>
 <div class="line">        };</div>
 <div class="line">    };</div>
 <div class="line"> </div>
-<div class="line">    struct listening : public st::state {</div>
+<div class="line">    struct listening : public st::ex::state {</div>
 <div class="line">        std::shared_ptr&lt;st::message&gt; enter(std::shared_ptr&lt;st::message&gt; event) {</div>
 <div class="line">            std::string s;</div>
 <div class="line">            event-&gt;copy_data_to(s);</div>
@@ -584,7 +636,7 @@ Example 10:</h4>
 <div class="line">        }</div>
 <div class="line">    };</div>
 <div class="line"> </div>
-<div class="line">    struct talking : public st::state {</div>
+<div class="line">    struct talking : public st::ex::state {</div>
 <div class="line">        std::shared_ptr&lt;st::message&gt; enter(std::shared_ptr&lt;st::message&gt; event) {</div>
 <div class="line">            std::string s;</div>
 <div class="line">            event-&gt;copy_data_to(s);</div>
@@ -602,9 +654,9 @@ Example 10:</h4>
 <div class="line">        }</div>
 <div class="line">    };</div>
 <div class="line"> </div>
-<div class="line">    auto listening_st = st::state::make&lt;listening&gt;();</div>
-<div class="line">    auto talking_st = st::state::make&lt;talking&gt;();</div>
-<div class="line">    auto conversation_machine = st::state::machine::make();</div>
+<div class="line">    auto listening_st = st::ex::state::make&lt;listening&gt;();</div>
+<div class="line">    auto talking_st = st::ex::state::make&lt;talking&gt;();</div>
+<div class="line">    auto conversation_machine = st::ex::state::machine::make();</div>
 <div class="line"> </div>
 <div class="line">    // register the state transitions </div>
 <div class="line">    conversation_machine-&gt;register_transition(conversation::event::partner_speaks, listening_st);</div>
@@ -623,12 +675,16 @@ Example 10:</h4>
 </div><!-- fragment --><p>Terminal output might be: </p><div class="fragment"><div class="line">$./a.out </div>
 <div class="line">your partner speaks: hello foo</div>
 <div class="line">you speak: hello faa</div>
-</div><!-- fragment --><h3><a class="anchor" id="autotoc_md28"></a>
+</div><!-- fragment --><h3><a class="anchor" id="autotoc_md30"></a>
 Processing subsequent events directly from the result of a state transition</h3>
-<p>If an implementation of <code><a class="el" href="structst_1_1state.html#a740834a32ddfdf58105f00d6d9bccacf" title="called during a transition when a state is entered">st::state::enter()</a></code> returns a non-null <code>std::shared_ptr&lt;<a class="el" href="structst_1_1message.html" title="Interthread type erased message container.">st::message</a>&gt;</code> that message will be handled as if <code><a class="el" href="structst_1_1state_1_1machine.html#afe52547025c774ee4d64bf260089cc90" title="process_event the state machine an event has occurred">st::state::machine::process_event()</a></code> had been called with that message as its argument. This allows states to directly transition to other states if necessary:</p>
-<h4><a class="anchor" id="autotoc_md29"></a>
-Example 11:</h4>
-<div class="fragment"><div class="line">int main() {</div>
+<p>If an implementation of <code>st::ex::state::enter()</code> returns a non-null <code>std::shared_ptr&lt;<a class="el" href="structst_1_1message.html" title="Interthread type erased message container.">st::message</a>&gt;</code> that message will be handled as if <code>st::ex::state::machine::process_event()</code> had been called with that message as its argument. This allows states to directly transition to other states if necessary:</p>
+<h4><a class="anchor" id="autotoc_md31"></a>
+Example 12:</h4>
+<div class="fragment"><div class="line">#include &lt;iostream&gt;</div>
+<div class="line">#include &lt;string&gt;</div>
+<div class="line">#include &lt;sthread&gt;</div>
+<div class="line"> </div>
+<div class="line">int main() {</div>
 <div class="line">    struct events {</div>
 <div class="line">        enum op {</div>
 <div class="line">            event1,</div>
@@ -637,31 +693,31 @@ Example 11:</h4>
 <div class="line">        };</div>
 <div class="line">    };</div>
 <div class="line"> </div>
-<div class="line">    struct state1 : public st::state {</div>
+<div class="line">    struct state1 : public st::ex::state {</div>
 <div class="line">        std::shared_ptr&lt;st::message&gt; enter(std::shared_ptr&lt;st::message&gt; event) {</div>
 <div class="line">            std::cout &lt;&lt; &quot;state1&quot; &lt;&lt; std::endl;</div>
 <div class="line">            return st::message::make(events::event2);</div>
 <div class="line">        }</div>
 <div class="line">    };</div>
 <div class="line"> </div>
-<div class="line">    struct state2 : public st::state {</div>
+<div class="line">    struct state2 : public st::ex::state {</div>
 <div class="line">        std::shared_ptr&lt;st::message&gt; enter(std::shared_ptr&lt;st::message&gt; event) {</div>
 <div class="line">            std::cout &lt;&lt; &quot;state2&quot; &lt;&lt; std::endl;</div>
 <div class="line">            return st::message::make(events::event3);</div>
 <div class="line">        }</div>
 <div class="line">    };</div>
 <div class="line"> </div>
-<div class="line">    struct state3 : public st::state {</div>
+<div class="line">    struct state3 : public st::ex::state {</div>
 <div class="line">        std::shared_ptr&lt;st::message&gt; enter(std::shared_ptr&lt;st::message&gt; event) {</div>
 <div class="line">            std::cout &lt;&lt; &quot;state3&quot; &lt;&lt; std::endl;</div>
 <div class="line">            return std::shared_ptr&lt;st::message&gt;();</div>
 <div class="line">        }</div>
 <div class="line">    };</div>
 <div class="line"> </div>
-<div class="line">    auto sm = st::state::machine::make();</div>
-<div class="line">    sm-&gt;register_transition(events::event1, st::state::make&lt;state1&gt;());</div>
-<div class="line">    sm-&gt;register_transition(events::event2, st::state::make&lt;state2&gt;());</div>
-<div class="line">    sm-&gt;register_transition(events::event3, st::state::make&lt;state3&gt;());</div>
+<div class="line">    auto sm = st::ex::state::machine::make();</div>
+<div class="line">    sm-&gt;register_transition(events::event1, st::ex::state::make&lt;state1&gt;());</div>
+<div class="line">    sm-&gt;register_transition(events::event2, st::ex::state::make&lt;state2&gt;());</div>
+<div class="line">    sm-&gt;register_transition(events::event3, st::ex::state::make&lt;state3&gt;());</div>
 <div class="line"> </div>
 <div class="line">    sm-&gt;process_event(events::event1);</div>
 <div class="line">    return 0;</div>
@@ -670,17 +726,21 @@ Example 11:</h4>
 <div class="line">state1</div>
 <div class="line">state2</div>
 <div class="line">state3</div>
-</div><!-- fragment --><h3><a class="anchor" id="autotoc_md30"></a>
+</div><!-- fragment --><h3><a class="anchor" id="autotoc_md32"></a>
 Registering non-transitioning callbacks to a state machine</h3>
-<p>The user can register callbacks to be executed when an associated event is processed with <code><a class="el" href="structst_1_1state_1_1machine.html#a04280c721ad2cf53a56858354dafebdb" title="Register a callback to be triggered when its associated event is processed.">st::state::machine::register_callback(ID event, st::state::machine::callback cb)</a></code>. This allows some events to be processed without attempting to transition the machine state.</p>
-<p>The type <code>st::state::machine::callback</code> is a typedef of <code>std::function&lt;std::shared_ptr&lt;<a class="el" href="structst_1_1message.html" title="Interthread type erased message container.">st::message</a>&gt;(std::shared_ptr&lt;<a class="el" href="structst_1_1message.html" title="Interthread type erased message container.">st::message</a>&gt;)&gt;</code> (which, as usual, can hold a functor, lambda, or function pointer).</p>
-<p>The return value of the callback is treated exactly like that of <code>std::shared_ptr&lt;<a class="el" href="structst_1_1message.html" title="Interthread type erased message container.">st::message</a>&gt; <a class="el" href="structst_1_1state.html#a740834a32ddfdf58105f00d6d9bccacf" title="called during a transition when a state is entered">st::state::enter</a>(std::shared_ptr&lt;<a class="el" href="structst_1_1message.html" title="Interthread type erased message container.">st::message</a>&gt;)</code>. That is, if the return value:</p><ul>
+<p>The user can register callbacks to be executed when an associated event is processed with <code>st::ex::state::machine::register_callback(ID event, st::ex::state::machine::callback cb)</code>. This allows some events to be processed without attempting to transition the machine state.</p>
+<p>The type <code>st::ex::state::machine::callback</code> is a typedef of <code>std::function&lt;std::shared_ptr&lt;<a class="el" href="structst_1_1message.html" title="Interthread type erased message container.">st::message</a>&gt;(std::shared_ptr&lt;<a class="el" href="structst_1_1message.html" title="Interthread type erased message container.">st::message</a>&gt;)&gt;</code> (which, as usual, can hold a functor, lambda, or function pointer).</p>
+<p>The return value of the callback is treated exactly like that of <code>std::shared_ptr&lt;<a class="el" href="structst_1_1message.html" title="Interthread type erased message container.">st::message</a>&gt; st::ex::state::enter(std::shared_ptr&lt;<a class="el" href="structst_1_1message.html" title="Interthread type erased message container.">st::message</a>&gt;)</code>. That is, if the return value:</p><ul>
 <li>is null: operation is complete</li>
 <li>is non-null: the result as treated like the argument of an additional <code>process_event()</code> call</li>
 </ul>
-<h4><a class="anchor" id="autotoc_md31"></a>
-Example 12:</h4>
-<div class="fragment"><div class="line">int main() {</div>
+<h4><a class="anchor" id="autotoc_md33"></a>
+Example 13:</h4>
+<div class="fragment"><div class="line">#include &lt;iostream&gt;</div>
+<div class="line">#include &lt;string&gt;</div>
+<div class="line">#include &lt;sthread&gt;</div>
+<div class="line"> </div>
+<div class="line">int main() {</div>
 <div class="line">    enum class op {</div>
 <div class="line">        trigger_cb1,</div>
 <div class="line">        trigger_cb2,</div>
@@ -697,18 +757,18 @@ Example 12:</h4>
 <div class="line">        return st::message::make(op::trigger_final_state);</div>
 <div class="line">    };</div>
 <div class="line"> </div>
-<div class="line">    struct final_state : public st::state { </div>
+<div class="line">    struct final_state : public st::ex::state { </div>
 <div class="line">        inline std::shared_ptr&lt;st::message&gt; enter(std::shared_ptr&lt;st::message&gt; event) {</div>
 <div class="line">            std::cout &lt;&lt; &quot;it!&quot; &lt;&lt; std::endl;</div>
 <div class="line">            return std::shared_ptr&lt;st::message&gt;();</div>
 <div class="line">        }</div>
 <div class="line">    };</div>
 <div class="line"> </div>
-<div class="line">    auto sm = st::state::machine::make();</div>
+<div class="line">    auto sm = st::ex::state::machine::make();</div>
 <div class="line"> </div>
 <div class="line">    sm-&gt;register_callback(op::trigger_cb1, callback1);</div>
 <div class="line">    sm-&gt;register_callback(op::trigger_cb2, callback2);</div>
-<div class="line">    sm-&gt;register_transition(op::trigger_final_state, st::state::make&lt;final_state&gt;());</div>
+<div class="line">    sm-&gt;register_transition(op::trigger_final_state, st::ex::state::make&lt;final_state&gt;());</div>
 <div class="line"> </div>
 <div class="line">    sm-&gt;process_event(op::trigger_cb1);</div>
 <div class="line">    return 0;</div>

@@ -90,6 +90,13 @@ $(function() {
 </ul>
 
 
+<h3><a id="index_d"></a>- d -</h3><ul>
+<li>default_worker_count()
+: <a class="el" href="structst_1_1executor.html#ab149bc4c67a451ef8ef0dd6953838c52">st::executor</a>
+</li>
+</ul>
+
+
 <h3><a id="index_e"></a>- e -</h3><ul>
 <li>empty()
 : <a class="el" href="structst_1_1channel.html#a43b258375b98b1298172f67259afbc34">st::channel</a>
@@ -142,7 +149,8 @@ $(function() {
 <h3><a id="index_m"></a>- m -</h3><ul>
 <li>make()
 : <a class="el" href="structst_1_1channel.html#a214ecec9501a9a59ea7abc838ccb1375">st::channel</a>
-, <a class="el" href="structst_1_1message.html#af3bfc649bfad36dca05f901fe31c5066">st::message</a>
+, <a class="el" href="structst_1_1executor.html#a1e1352603778c6f81089f8541ff87e7b">st::executor</a>
+, <a class="el" href="structst_1_1message.html#a9c33612b000c9816bc01eb414078f334">st::message</a>
 , <a class="el" href="structst_1_1state_1_1machine.html#aac682462827df8851a8941b2084fb757">st::state::machine</a>
 , <a class="el" href="structst_1_1state.html#ae4ee7ee1d9035c37b4ed5f875c90fad8">st::state</a>
 , <a class="el" href="structst_1_1worker.html#a4ab1891f3a52bc05871caa1e4f0b55af">st::worker</a>
@@ -160,6 +168,9 @@ $(function() {
 <li>operator bool()
 : <a class="el" href="structst_1_1result.html#a4cb861d4420a826a0f012c3be249ca4c">st::result</a>
 , <a class="el" href="structst_1_1state_1_1machine_1_1status.html#a053209581db8188f2bd8db371928b005">st::state::machine::status</a>
+</li>
+<li>operator()()
+: <a class="el" href="structst_1_1processor.html#a519ff1237b4bd5794f8b3d71cee8d277">st::processor</a>
 </li>
 <li>operator&lt;()
 : <a class="el" href="structst_1_1worker_1_1weight.html#af4420017c2a78e925f13717d9c650e3b">st::worker::weight</a>
@@ -196,10 +207,12 @@ $(function() {
 : <a class="el" href="structst_1_1state_1_1machine.html#aee4bae16a32dd34957e770901f541014">st::state::machine</a>
 </li>
 <li>restart()
-: <a class="el" href="structst_1_1worker.html#a2e3f89739083c6d6779712081d30d459">st::worker</a>
+: <a class="el" href="structst_1_1executor.html#aaaf0abd5b804af93c36d48255f0babb3">st::executor</a>
+, <a class="el" href="structst_1_1worker.html#a2e3f89739083c6d6779712081d30d459">st::worker</a>
 </li>
 <li>running()
-: <a class="el" href="structst_1_1worker.html#a4a3d6b7c743dd8e168d08b6b10faacff">st::worker</a>
+: <a class="el" href="structst_1_1executor.html#a0b864199a7f76a4f07e61fe19650e688">st::executor</a>
+, <a class="el" href="structst_1_1worker.html#a4a3d6b7c743dd8e168d08b6b10faacff">st::worker</a>
 </li>
 </ul>
 
@@ -207,10 +220,12 @@ $(function() {
 <h3><a id="index_s"></a>- s -</h3><ul>
 <li>send()
 : <a class="el" href="structst_1_1channel.html#a2acf1a19224571f235913014841b0684">st::channel</a>
+, <a class="el" href="structst_1_1executor.html#ae7d8ab4f64b7b2479e79a11d6c31705f">st::executor</a>
 , <a class="el" href="structst_1_1worker.html#ab39d120e79c2a64a4f0fd5b71fd64760">st::worker</a>
 </li>
 <li>shutdown()
-: <a class="el" href="structst_1_1worker.html#a3f98d0479ad642ed572fd723caeb893d">st::worker</a>
+: <a class="el" href="structst_1_1executor.html#a0108d5f0f3a5cd584001d4c5822f51d0">st::executor</a>
+, <a class="el" href="structst_1_1worker.html#a3f98d0479ad642ed572fd723caeb893d">st::worker</a>
 </li>
 <li>state
 : <a class="el" href="structst_1_1state_1_1machine_1_1status.html#a1110cc91bc05469974d9b59c1877de8e">st::state::machine::status</a>
@@ -225,16 +240,27 @@ $(function() {
 
 
 <h3><a id="index_t"></a>- t -</h3><ul>
+<li>task
+: <a class="el" href="structst_1_1processor.html#af1c935ab88bcac5156186ce87ce94859">st::processor</a>
+</li>
 <li>this_worker()
 : <a class="el" href="structst_1_1worker.html#aec29be3a5f0972e678a756ff2a718a35">st::worker</a>
 </li>
 <li>try_send()
 : <a class="el" href="structst_1_1channel.html#ae0429626e7f10e18a1c3b79c0e3a80be">st::channel</a>
+, <a class="el" href="structst_1_1executor.html#a233db22a695c28d7f99429935cdb1e82">st::executor</a>
 , <a class="el" href="structst_1_1worker.html#a0fda1a895fc2ed37febec526c44c61f2">st::worker</a>
 </li>
 <li>type_code()
 : <a class="el" href="structst_1_1message.html#af3118f193af7802a5ead4a6d8a8e390f">st::message</a>
 , <a class="el" href="structst_1_1state.html#ace0d92dec99c8d4af418c76d5d377228">st::state</a>
+</li>
+</ul>
+
+
+<h3><a id="index_w"></a>- w -</h3><ul>
+<li>worker_count()
+: <a class="el" href="structst_1_1executor.html#a8c10abfb9bebc69d210186a1d3c22a01">st::executor</a>
 </li>
 </ul>
 </div><!-- contents -->

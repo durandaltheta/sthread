@@ -1,11 +1,9 @@
 var searchData=
 [
-  ['simple_20threading_20and_20communication_35',['Simple Threading and Communication',['../md__r_e_a_d_m_e.html',1,'']]],
-  ['send_36',['send',['../structst_1_1channel.html#a2acf1a19224571f235913014841b0684',1,'st::channel::send()'],['../structst_1_1worker.html#ab39d120e79c2a64a4f0fd5b71fd64760',1,'st::worker::send()']]],
-  ['shutdown_37',['shutdown',['../structst_1_1worker.html#a3f98d0479ad642ed572fd723caeb893d',1,'st::worker']]],
-  ['simple_5fthread_2ehpp_38',['simple_thread.hpp',['../simple__thread_8hpp.html',1,'']]],
-  ['simple_5fthread_5fchannel_5fdefault_5fmax_5fqueue_5fsize_39',['SIMPLE_THREAD_CHANNEL_DEFAULT_MAX_QUEUE_SIZE',['../simple__thread_8hpp.html#aad78e102993029782413cdad8cf36fe1',1,'simple_thread.hpp']]],
-  ['state_40',['state',['../structst_1_1state.html',1,'st::state'],['../structst_1_1state_1_1machine_1_1status.html#a1110cc91bc05469974d9b59c1877de8e',1,'st::state::machine::status::state()']]],
-  ['status_41',['status',['../structst_1_1state_1_1machine_1_1status.html',1,'st::state::machine::status'],['../structst_1_1result.html#aa80f6879a068bcfe66860e43e3ecc275',1,'st::result::status()']]],
-  ['success_42',['success',['../structst_1_1result.html#ad03e6cce1b301db4ff97841535487951aad8d6a2f3d16a69cef97fe168cc6a273',1,'st::result']]]
+  ['recv_33',['recv',['../structst_1_1channel.html#a789de5ce12c798c90d6773085e275f35',1,'st::channel']]],
+  ['register_5fcallback_34',['register_callback',['../structst_1_1state_1_1machine.html#a04280c721ad2cf53a56858354dafebdb',1,'st::state::machine']]],
+  ['register_5ftransition_35',['register_transition',['../structst_1_1state_1_1machine.html#aee4bae16a32dd34957e770901f541014',1,'st::state::machine']]],
+  ['restart_36',['restart',['../structst_1_1worker.html#a2e3f89739083c6d6779712081d30d459',1,'st::worker::restart()'],['../structst_1_1executor.html#aaaf0abd5b804af93c36d48255f0babb3',1,'st::executor::restart()']]],
+  ['result_37',['result',['../structst_1_1result.html',1,'st']]],
+  ['running_38',['running',['../structst_1_1worker.html#a4a3d6b7c743dd8e168d08b6b10faacff',1,'st::worker::running()'],['../structst_1_1executor.html#a0b864199a7f76a4f07e61fe19650e688',1,'st::executor::running()']]]
 ];
