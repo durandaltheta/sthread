@@ -8,7 +8,9 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -O3 -Wall")
 
 set(HEADER_FILES 
     ${CMAKE_CURRENT_LIST_DIR}/inc/sthread
+    ${CMAKE_CURRENT_LIST_DIR}/inc/athread
     ${CMAKE_CURRENT_LIST_DIR}/inc/simple_thread.hpp
+    ${CMAKE_CURRENT_LIST_DIR}/inc/advanced_thread.hpp
     )
 
 add_library(${LIBRARY} INTERFACE)
