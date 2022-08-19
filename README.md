@@ -3,6 +3,7 @@
 
 This library makes extensive use of inherited functionality via interfaces. If 
 code lacks documentation, look at the interfaces for more information.
+
 [Documentation](https://durandaltheta.github.io/sthread/)
 
 [Unit Test and Example Code](tst/simple_thread_tst.cpp)
