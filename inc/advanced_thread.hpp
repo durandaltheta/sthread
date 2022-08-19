@@ -19,257 +19,8 @@
 
 namespace at { // advanced thread
 
-/**
- * @brief a coroutine which is intended to run on an `at::processor` running on an `st::worker`
- *
- * The general advantages of using coroutines compared to threads:
- * - changing which coroutine is running is exponentially faster than changing 
- *   which thread is running. IE, the more concurrent operations need to occur,
- *   the more efficient coroutines become in comparison to threads.
- * - coroutines take less memory than threads 
- * - the number of coroutines is not limited by the operating system
- * - coroutines do not require system level calls to create
- *
- * The general disadvantages of using coroutines:
- * - coroutines are expected to use only non-blocking operations to avoid
- *   blocking their parent thread.
- *
- * While more powerful coroutines are possible in computing, particularly with 
- * assembler level support which allocates stacks for coroutines, the best that 
- * can be accomplished at present in C++ is stackless coroutines. This means 
- * that code cannot be arbitrarily suspended and resumed at will (without some 
- * complicated `switch` based hacks adding a lot of complexity, which also come 
- * with their own limitations). 
- *
- * Instead this library allows the user to create FUNCTORs in the same pattern 
- * as those used in `st::worker::make()` when calling `st::cotask::make()`. This 
- * means that whenever messages are asynchronously sent to the `cotask` via 
- * `send` functions, the `cotask` will be re-queued in its associated 
- * `st::worker` thread and the sent message will be processed by the user's 
- * FUNCTOR. The user is responsible for initially queueing the `cotask` on an
- * `st::worker` thread.
- *
- * In this way, the user's `cotask` will share a `st::worker` thread with any 
- * other number of operations, suspending itself until more messages are 
- * available for processing.
- * 
- * NOTE: `at::cotask` is an allocated `std::function<bool()>`.
- *
- * If `std::function<bool()>`'s `bool operator()()` returns `true`, then the 
- * cotask has no messages to process and should not be re-queued at that time 
- * for processing. Otherwise the `at::cotask` should be immediately re-queued to 
- * be re-evaluated sometime in the future. 
- *
- * This detail is only important if user code wishes to process `cotask` objects 
- * outside of a `at::processor`.
- */
-struct cotask : public std::function<bool()>, 
-                public st::type_aware,
-                public st::lifecycle_interface,
-                protected st::concurrent_interface {
-    /**
-     * @brief construct a coroutine task 
-     *
-     * Type `FUNCTOR` is similar to `st::worker`'s `FUNCTOR`. 
-     * Specifically, type `FUNCTOR` must implement the same operator as 
-     * `st::worker`'s `FUNCTOR`:
-     * `void operator()(st::sptr<message>)`
-     * `void operator()(st::sptr<message>&)`
-     * `st::sptr<message> operator()(st::sptr<message>)`
-     * `st::sptr<message> operator()(st::sptr<message>&)`
-     *
-     * This operator will be called whenever the cotask receives a message 
-     * to process via `at::cotask::send()`. This pattern is very similar to 
-     * how `st::worker` functions when `st::worker::send()` is called. 
-     *
-     * If `FUNCTOR` `operator()()` returns a non-null 
-     * `st::sptr<message>`, that message will be requeued for
-     * future processing by the cotask.
-     *
-     * In practice the main difference between `at::cotask` and `st::worker` is 
-     * that `at::cotask` is intended to runs *on* an existent `at::processor` 
-     * `st::worker` thread, instead of on its own managed thread. Many 
-     * `at::cotask`s can run on the same `at::processor`. 
-     *
-     * Another difference between `at::cotask` and `st::worker` is that the 
-     * `at::cotask`'s internal `st::channel` is allocated with no maximum size 
-     * due to implementation limitations and all `send` operations will never 
-     * block. 
-     */
-    template <typename FUNCTOR, typename... As>
-    st::sptr<cotask> make(As&&... as) {
-        if(proc && proc->is<at::cotask>()) {
-            auto hdl = cotask::generate_handler<FUNCTOR>(std::forward<As>(as)...);
-            auto cp = st::sptr<cotask>(new cotask(st::type_code<FUNCTOR>(), std::move(hdl)));
-            cp->m_self = cp;
-            return cp;
-        } else {
-            return st::sptr<task>();
-        }
-    }
-
-    inline void shutdown(bool process_remaining_messages) {
-        std::lock_guard<std::mutex> lk(m_mtx);
-        m_ch->close(process_remaining_messages);
-    }
-
-    static inline st::sptr<cotask> this_cotask() {
-        return tl_cotask().lock();
-    }
-
-protected:
-    inline result internal_send(st::sptr<message> msg, st::concurrent_interface::op o) {
-        std::lock_guard<std::mutex> lk(m_mtx);
-        result r;
-            
-        if(r = m_ch->force_send(std::move(msg))) { 
-            if(m_blocked) {
-                st::sptr<worker> proc = m_proc.lock();
-
-                if(proc) {
-                    if(r = proc->force_send(0, m_self.lock())) {
-                        m_blocked = false;
-                    } // else thread is shutdown
-                } // else coroutine not running on a worker yet
-            }
-        } 
-            
-        return r;
-    }
-
-private:
-    using std::function<bool()>::std::function<bool()>; // inherit constructors 
-
-    // handler for functors returning bool
-    template <std::true_type, typename FUNCTOR>
-    static bool process(FUNCTOR& f) {
-        return f(msg); 
-    }
-
-    // handler for all other functors
-    template <std::false_type, typename FUNCTOR>
-    static bool process(FUNCTOR& f) {
-        f(msg);
-        return true;
-    }
-
-    template <typename FUNCTOR, typename... As>
-    static std::function<bool()> generate_handler(As&&... as) {
-        auto fp = sptr<FUNCTOR>(new FUNCTOR(std::forward<As>(as)...));
-        return [fp]() -> bool { 
-            using isbool = std::is_same<bool,decltype(f())>::type;
-            return cotask::process<isbool>(*fp);
-        };
-    }
-
-    cotask(const std::size_t type_code, handler&& hdl) : 
-        m_blocked(true),
-        m_ch(channel::make(channel::queue_no_limit)),
-        m_hdl(std::move(hdl)),
-        std::function<bool()>([&]() -> bool {
-            auto parent = tl_cotask();
-            tl_cotask() = m_self;
-
-            if(m_msg || m_ch->queued() && m_ch->recv(m_msg)) {
-                m_msg = m_hdl(m_msg);
-            } 
-        
-            tl_cotask() = parent;
-
-            std::lock_guard<std::mutex> lk(m_mtx);
-            m_blocked = !m_msg; // bool conversion
-
-            if(m_blocked && !(m_proc.lock())) {
-                m_proc = worker::this_worker();
-            }
-
-            return m_blocked; // if !m_blocked, requeue coroutine for evaluation
-        }),
-        type_aware(type_code)
-    { }
-
-    static inline std::weak_ptr<cotask>& tl_cotask() {
-        thread_local std::weak_ptr<cotask> cp;
-        return cp;
-    }
-
-    std::mutex m_mtx;
-    bool m_blocked;
-    st::sptr<channel> m_ch;
-    std::weak_ptr<task> m_self; // weak pointer to this at::cotask
-    std::weak_ptr<worker> m_proc; // weak pointer to running st::worker
-    st::sptr<message> m_msg;
-    std::function<st::sptr<message>(st::sptr<message>)> m_hdl;
-};
-
-
-/**
- * @brief convenience functor class definition for generic asynchronous code execution
- *
- * This functor can be used as the template type for `st::worker::make<T>()`.
- *
- * This class is designed to receive and execute arbitrary wrapped function 
- * calls in the form of `at::processor::task`s or `at::cotask`s.
- *
- * The message id returned by `st::message::id()` is always ignored, only 
- * the type of the payload is checked before execution.
- */
-struct processor {
-    /**
-     * @brief convenience typedef for trivial queued operations
-     *
-     * Example usage:
-     * ```
-     * #include <string>
-     * #include <cout>
-     * #include <sthread>
-     * #include <athread>
-     *
-     * int main() {
-     *     auto proc = st::worker::make<at::processor>();
-     *     auto ret_ch = st::channel::make();
-     *     proc->send(0,at::processor::task([ret_ch]{ ret_ch->send(0, "hello main"); });
-     *     std::string s;
-     *     ret_ch->recv(s);
-     *     std::cout << s << std::endl;
-     *     return 0;
-     * }
-     * ```
-     *
-     * Expected result:
-     * ```
-     * $ ./a.out 
-     * hello main
-     * $
-     * ```
-     */
-    typedef std::function<void()> task;
-
-    /**
-     * @brief executes message payload tasks  
-     *
-     * FUNCTOR implementation for `st::worker`.
-     *
-     * If a task returns false, its message will be returned so it can be 
-     * requeued. Requeueing is done automatically if `at::processor` is running 
-     * inside a `st::worker`.
-     */
-    inline st::sptr<message> operator()(st::sptr<message>& msg) { 
-        if(msg->is<task>()) { 
-            msg->cast_data<task>()(); // process task  
-        } else if(msg->is<st::sptr<cotask>>()) { 
-            auto& t = msg->cast_data<st::sptr<cotask>>();
-            if(t && (*t)()) { // process cotask
-                // returned cotask msg to be reprocessed in the future
-                return msg; 
-            }
-        } 
-
-        // returned null message that will not be enqueued
-        return st::sptr<message>();
-    }
-};
-
+//******************************************************************************
+// ADVANCED CONCURRENCY
 
 /**
  * @brief a class managing one or more identical worker threads 
@@ -291,8 +42,9 @@ struct processor {
  * including deadlock. 
  */
 struct executor : public st::type_aware, 
-                  public st::lifecycle_interface,
-                  protected st::concurrent_interface {
+                  protected st::self_aware<executor>,
+                  public st::lifecycle_aware,
+                  protected st::processor {
     /**
      @brief attempt to retrieve a sane executor worker count for maximum CPU throughput
 
@@ -315,10 +67,9 @@ struct executor : public st::type_aware,
      * The template type FUNCTOR is the same as used in
      * `st::worker::make<FUNCTOR>(constructor args...)`, allowing the user to 
      * design and specify any FUNCTOR they please. However, in many cases the 
-     * user can simply use `at::processor` as the templated type, as that 
-     * functor definition is designed for processing generic operations. Doing 
-     * so will also allow the user to execute arbitary `at::cotask` coroutines 
-     * on the `at::executor`'s `st::worker`s.
+     * user can simply use `at::processor` as the FUNCTOR type, as it is 
+     * designed for processing generic operations. Doing so will also allow the 
+     * user to schedule arbitary `at::cotask` coroutines on the `at::executor`.
      *
      * An intelligent value for worker_count can typically be retrieved from 
      * `default_worker_count()` if maximum CPU throughput is desired.
@@ -327,7 +78,7 @@ struct executor : public st::type_aware,
      * @param as constructor arguments for type FUNCTOR
      * @return allocated running worker thread shared_ptr
      */
-    template <typename FUNCTOR, 
+    template <typename FUNCTOR=st::thread::worker, 
               std::size_t QUEUE_MAX_SIZE=SIMPLE_THREAD_CHANNEL_DEFAULT_MAX_QUEUE_SIZE, 
               typename... As>
     static st::sptr<executor> make(std::size_t worker_count, As&&... as) {
@@ -368,22 +119,23 @@ struct executor : public st::type_aware,
         return m_worker_count;
     }
 
+
 protected:
-    inline channel::reesult internal_send(st::sptr<message>&& msg, send_op o) {
-        result r{ result::eStatus::closed };
+    inline st::result internal_send(st::sptr<message>&& msg, sender::op o) const {
+        st::result r{ result::eStatus::closed };
 
         std::lock_guard<std::mutex> lk(m_mtx);
         if(m_workers.size() ? true : false) {
-            auto wkr = select_worker()->send(std::move(msg));
+            auto wkr = select_worker();
 
             switch(o) {
-                case send_op::blocking_send:
+                case sender::op::blocking_send:
                     r = wkr->send(std::move(msg));
                     break;
-                case send_op::try_send:
+                case sender::op::try_send:
                     r = wkr->try_send(std::move(msg));
                     break;
-                case send_op::force_send:
+                case sender::op::force_send:
                 default:
                     r = wkr->force_send(std::move(msg));
                     break;
@@ -401,26 +153,17 @@ private:
              const std::size_t worker_count, 
              std::function<st::sptr<worker>()> make_worker) :
         m_worker_count(worker_count ? worker_count : 1), // enforce 1 thread 
-        m_inner_restart([&,make_worker]{
-            m_workers = worker_vector_t(worker_count),
-            m_cur_it = m_workers.begin();
-            for(auto& w : m_workers) {
-                w = make_worker();
-            }
-        }),
+        m_workers(m_worker_count),
+        m_cur_it(m_workers.begin()),
         type_aware(type_code) {
-        restart(); // start workers
+        for(auto& w : m_workers) {
+            w = make_worker();
+        }
     }
 
     executor() = delete;
     executor(const executor& rhs) = delete;
     executor(executor&& rhs) = delete;
-
-    enum send_op {
-        blocking_send,
-        try_send,
-        force_send
-    };
 
     // selected a worker to sechedule task on
     inline worker* select_worker() {
@@ -444,38 +187,15 @@ private:
             return m_cur_it->get();
         }
     }
-    
-    inline channel::reesult internal_send(st::sptr<message>&& msg, send_op so) {
-        result r{ result::eStatus::closed };
-
-        std::lock_guard<std::mutex> lk(m_mtx);
-        if(m_workers.size() ? true : false) {
-            auto wkr = select_worker()->send(std::move(msg));
-
-            switch(so) {
-                case send_op::blocking_send:
-                    r = wkr->send(std::move(msg));
-                    break;
-                case send_op::try_send:
-                    r = wkr->try_send(std::move(msg));
-                    break;
-                case send_op::force_send:
-                default:
-                    r = wkr->force_send(std::move(msg));
-                    break;
-            }
-        } 
-
-        return r;
-    }
 
     mutable std::mutex m_mtx;
     const std::size_t m_worker_count;
-    worker_vector_t m_workers;
-    worker_iter_t m_cur_it;
-    std::function<void()> m_inner_restart;
+    mutable worker_vector_t m_workers;
+    mutable worker_iter_t m_cur_it;
 };
 
+//******************************************************************************
+// STATE MANAGEMENT
 
 /**
  * A fairly simple finite state machine mechanism (FSM). FSMs are

@@ -22,7 +22,7 @@ TEST(simple_thread, message) {
     // int message
     {
         int i = 14;
-        std::shared_ptr<st::message> msg = st::message::make(op::integer,i);
+        st::sptr<st::message> msg = st::message::make(op::integer,i);
 
         EXPECT_EQ(msg->id(), op::integer);
         EXPECT_NE(msg->id(), op::string);
@@ -65,7 +65,7 @@ TEST(simple_thread, message) {
     // std::string message
     {
         std::string s = "codemonkey";
-        std::shared_ptr<st::message> msg = st::message::make(op::string,s);
+        st::sptr<st::message> msg = st::message::make(op::string,s);
 
         EXPECT_EQ(msg->id(), op::string);
         EXPECT_NE(msg->id(), op::integer);
@@ -117,11 +117,11 @@ TEST(simple_thread, channel) {
     };
         
     // used for worker behavior confirmation purposes
-    std::shared_ptr<st::channel> ret_ch = st::channel::make();
+    st::sptr<st::channel> ret_ch = st::channel::make();
 
-    std::shared_ptr<st::channel> ch = st::channel::make();
-    std::thread thd([](std::shared_ptr<st::channel> ch, std::shared_ptr<st::channel> ret_ch) {
-        std::shared_ptr<st::message> msg;
+    st::sptr<st::channel> ch = st::channel::make();
+    std::thread thd([](st::sptr<st::channel> ch, st::sptr<st::channel> ret_ch) {
+        st::sptr<st::message> msg;
 
         while(ch->recv(msg)) {
             switch(msg->id()) {
@@ -159,7 +159,7 @@ TEST(simple_thread, channel) {
         }
     }, ch, ret_ch);
 
-    std::shared_ptr<st::message> msg;
+    st::sptr<st::message> msg;
     int i = 3;
     std::string s = "hello";
     garbazoo g;
@@ -170,7 +170,7 @@ TEST(simple_thread, channel) {
     EXPECT_EQ(msg->id(), op::print_int);
 
     {
-        // ensure `st::worker::send(std::shared_ptr<st::message>)` works
+        // ensure `st::worker::send(st::sptr<st::message>)` works
         msg = st::message::make(op::print_int, i);
         EXPECT_TRUE(ch->send(msg));
         EXPECT_TRUE(ret_ch->recv(msg));
@@ -191,7 +191,7 @@ TEST(simple_thread, channel) {
     EXPECT_EQ(msg->id(), op::print_string);
 
     {
-        // ensure `st::worker::send(std::shared_ptr<st::message>)` works
+        // ensure `st::worker::send(st::sptr<st::message>)` works
         msg = st::message::make(op::print_string, s);
         EXPECT_TRUE(ch->send(op::print_string, s));
         EXPECT_TRUE(ret_ch->recv(msg));
@@ -237,7 +237,7 @@ TEST(simple_thread, worker_lifecycle) {
         hdl(bool* running_ptr) : m_running_ptr(running_ptr) { *m_running_ptr = true; }
         ~hdl() { *m_running_ptr = false; }
 
-        inline void operator()(std::shared_ptr<st::message> msg) { 
+        inline void operator()(st::sptr<st::message> msg) { 
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
         bool* m_running_ptr;
@@ -248,7 +248,7 @@ TEST(simple_thread, worker_lifecycle) {
     {
         // prove hdl destructor was called
         bool thread_running = true;
-        std::shared_ptr<st::worker> wkr = st::worker::make<hdl>(&thread_running);
+        st::sptr<st::worker> wkr = st::worker::make<hdl>(&thread_running);
 
         // fill message q
         for(int i=0; i<10; i++) {
@@ -273,7 +273,7 @@ TEST(simple_thread, worker_lifecycle) {
     {
         // prove hdl destructor was called
         bool thread_running = true;
-        std::shared_ptr<st::worker> wkr = st::worker::make<hdl>(&thread_running);
+        st::sptr<st::worker> wkr = st::worker::make<hdl>(&thread_running);
 
         // fill message q
         for(int i=0; i<10; i++) {
@@ -299,7 +299,7 @@ TEST(simple_thread, worker_lifecycle) {
     {
         // prove hdl destructor was called
         bool thread_running = true;
-        std::shared_ptr<st::worker> wkr = st::worker::make<hdl>(&thread_running);
+        st::sptr<st::worker> wkr = st::worker::make<hdl>(&thread_running);
 
         // fill message q
         for(int i=0; i<10; i++) {
@@ -324,7 +324,7 @@ TEST(simple_thread, worker_lifecycle) {
     {
         // prove hdl destructor was called
         bool thread_running = true;
-        std::shared_ptr<st::worker> wkr = st::worker::make<hdl>(&thread_running);
+        st::sptr<st::worker> wkr = st::worker::make<hdl>(&thread_running);
 
         // fill message q
         for(int i=0; i<10; i++) {
@@ -350,7 +350,7 @@ TEST(simple_thread, worker_lifecycle) {
     {
         // prove hdl destructor was called
         bool thread_running = true;
-        std::shared_ptr<st::worker> wkr = st::worker::make<hdl>(&thread_running);
+        st::sptr<st::worker> wkr = st::worker::make<hdl>(&thread_running);
 
         // fill message q
         for(int i=0; i<10; i++) {
@@ -370,7 +370,7 @@ TEST(simple_thread, worker_lifecycle) {
     {
         // prove hdl destructor was called
         bool thread_running = true;
-        std::shared_ptr<st::worker> wkr = st::worker::make<hdl>(&thread_running);
+        st::sptr<st::worker> wkr = st::worker::make<hdl>(&thread_running);
 
         // fill message q
         for(int i=0; i<10; i++) {
@@ -395,7 +395,7 @@ TEST(simple_thread, worker_lifecycle) {
     {
         // prove hdl destructor was called
         bool thread_running = true;
-        std::shared_ptr<st::worker> wkr = st::worker::make<hdl>(&thread_running);
+        st::sptr<st::worker> wkr = st::worker::make<hdl>(&thread_running);
 
         // fill message q
         for(int i=0; i<10; i++) {
@@ -435,7 +435,7 @@ TEST(simple_thread, worker_lifecycle) {
     {
         // prove hdl destructor was called
         bool thread_running = true;
-        std::shared_ptr<st::worker> wkr = st::worker::make<hdl>(&thread_running);
+        st::sptr<st::worker> wkr = st::worker::make<hdl>(&thread_running);
 
         // fill message q
         for(int i=0; i<10; i++) {
@@ -475,7 +475,7 @@ TEST(simple_thread, worker_lifecycle) {
     {
         // prove hdl destructor was called
         bool thread_running = true;
-        std::shared_ptr<st::worker> wkr = st::worker::make<hdl>(&thread_running);
+        st::sptr<st::worker> wkr = st::worker::make<hdl>(&thread_running);
 
         // fill message q
         for(int i=0; i<10; i++) {
@@ -515,7 +515,7 @@ TEST(simple_thread, worker_lifecycle) {
     {
         // prove hdl destructor was called
         bool thread_running = true;
-        std::shared_ptr<st::worker> wkr = st::worker::make<hdl>(&thread_running);
+        st::sptr<st::worker> wkr = st::worker::make<hdl>(&thread_running);
 
         // fill message q
         for(int i=0; i<10; i++) {
@@ -562,9 +562,9 @@ TEST(simple_thread, worker_messaging) {
             unknown
         };
 
-        hdl(std::shared_ptr<st::channel> ret_ch) : m_ret_ch(ret_ch) { }
+        hdl(st::sptr<st::channel> ret_ch) : m_ret_ch(ret_ch) { }
 
-        inline void operator()(std::shared_ptr<st::message> msg) {
+        inline void operator()(st::sptr<st::message> msg) {
             switch(msg->id()) {
                 case op::print_int:
                 {
@@ -599,15 +599,15 @@ TEST(simple_thread, worker_messaging) {
             }
         }
             
-        std::shared_ptr<st::channel> m_ret_ch; 
+        st::sptr<st::channel> m_ret_ch; 
     };
 
     struct garbazoo { }; // random type unknown to worker
         
     // used for worker behavior confirmation purposes
-    std::shared_ptr<st::channel> ret_ch = st::channel::make();
-    std::shared_ptr<st::worker> wkr = st::worker::make<hdl>(ret_ch);
-    std::shared_ptr<st::message> msg;
+    st::sptr<st::channel> ret_ch = st::channel::make();
+    st::sptr<st::worker> wkr = st::worker::make<hdl>(ret_ch);
+    st::sptr<st::message> msg;
     int i = 3;
     std::string s = "hello";
     garbazoo g;
@@ -618,7 +618,7 @@ TEST(simple_thread, worker_messaging) {
     EXPECT_EQ(msg->id(), hdl::op::print_int);
 
     {
-        // ensure `st::worker::send(std::shared_ptr<st::message>)` works
+        // ensure `st::worker::send(st::sptr<st::message>)` works
         msg = st::message::make(hdl::op::print_int, i);
         EXPECT_TRUE(wkr->send(msg));
         EXPECT_TRUE(ret_ch->recv(msg));
@@ -639,7 +639,7 @@ TEST(simple_thread, worker_messaging) {
     EXPECT_EQ(msg->id(), hdl::op::print_string);
 
     {
-        // ensure `st::worker::send(std::shared_ptr<st::message>)` works
+        // ensure `st::worker::send(st::sptr<st::message>)` works
         msg = st::message::make(hdl::op::print_string, s);
         EXPECT_TRUE(wkr->send(hdl::op::print_string, s));
         EXPECT_TRUE(ret_ch->recv(msg));
@@ -688,9 +688,9 @@ TEST(simple_thread, worker_multiple_payload_types) {
         // in this test we only want 1 valid message id
         enum op { discern_type }; 
 
-        hdl(std::shared_ptr<st::channel> ret_ch) : m_ret_ch(ret_ch) { }
+        hdl(st::sptr<st::channel> ret_ch) : m_ret_ch(ret_ch) { }
 
-        inline void operator()(std::shared_ptr<st::message> msg) {
+        inline void operator()(st::sptr<st::message> msg) {
             switch(msg->id()) {
                 case op::discern_type:
                 {
@@ -727,13 +727,13 @@ TEST(simple_thread, worker_multiple_payload_types) {
             }
         }
 
-        std::shared_ptr<st::channel> m_ret_ch;
+        st::sptr<st::channel> m_ret_ch;
     };
 
     // used for worker behavior confirmation purposes
-    std::shared_ptr<st::channel> ret_ch = st::channel::make();
-    std::shared_ptr<st::worker> wkr = st::worker::make<hdl>(ret_ch);
-    std::shared_ptr<st::message> msg;
+    st::sptr<st::channel> ret_ch = st::channel::make();
+    st::sptr<st::worker> wkr = st::worker::make<hdl>(ret_ch);
+    st::sptr<st::message> msg;
     int i = 0;
     std::string s = "Hello, my baby";
     hdl::intstring_t is{1,"Hello, my honey"};
@@ -760,9 +760,9 @@ TEST(simple_thread, this_worker) {
     struct hdl {
         enum op { req_self };
 
-        hdl(std::shared_ptr<st::channel> ret_ch) : m_ret_ch(ret_ch) { }
+        hdl(st::sptr<st::channel> ret_ch) : m_ret_ch(ret_ch) { }
 
-        inline void operator()(std::shared_ptr<st::message> msg) {
+        inline void operator()(st::sptr<st::message> msg) {
             switch(msg->id()) {
                 case op::req_self:
                 {
@@ -773,12 +773,12 @@ TEST(simple_thread, this_worker) {
             }
         }
 
-        std::shared_ptr<st::channel> m_ret_ch;
+        st::sptr<st::channel> m_ret_ch;
     };
 
-    std::shared_ptr<st::channel> ret_ch = st::channel::make();
-    std::shared_ptr<st::worker> wkr = st::worker::make<hdl>(ret_ch);
-    std::shared_ptr<st::message> msg;
+    st::sptr<st::channel> ret_ch = st::channel::make();
+    st::sptr<st::worker> wkr = st::worker::make<hdl>(ret_ch);
+    st::sptr<st::message> msg;
     std::weak_ptr<st::worker> wp;
 
     EXPECT_TRUE(wkr->send(hdl::op::req_self));
@@ -786,7 +786,7 @@ TEST(simple_thread, this_worker) {
     EXPECT_TRUE(msg->copy_data_to(wp));
     EXPECT_EQ(wp.use_count(), 1);
 
-    std::shared_ptr<st::worker> new_wkr = wp.lock();
+    st::sptr<st::worker> new_wkr = wp.lock();
 
     EXPECT_TRUE(wkr);
     EXPECT_TRUE(new_wkr);
@@ -803,13 +803,13 @@ TEST(simple_thread, this_worker) {
 
 TEST(simple_thread, weight) {
     struct hdl {
-        hdl(std::shared_ptr<st::channel> wait_ch) : m_wait_ch(wait_ch) { }
+        hdl(st::sptr<st::channel> wait_ch) : m_wait_ch(wait_ch) { }
 
-        inline void operator()(std::shared_ptr<st::message> msg) {
+        inline void operator()(st::sptr<st::message> msg) {
             m_wait_ch->recv(msg);
         }
 
-        std::shared_ptr<st::channel> m_wait_ch;
+        st::sptr<st::channel> m_wait_ch;
     };
 
     auto wait_ch = st::channel::make();
@@ -818,7 +818,7 @@ TEST(simple_thread, weight) {
     auto wkr3 = st::worker::make<hdl>(wait_ch);
     auto wkr4 = st::worker::make<hdl>(wait_ch);
 
-    auto send_msgs = [](std::shared_ptr<st::worker> wkr, int max) {
+    auto send_msgs = [](st::sptr<st::worker> wkr, int max) {
         for(int i=0; i<max; i++) {
             wkr->send(0);
         }
@@ -913,7 +913,7 @@ TEST(simple_thread, weight) {
 
 TEST(simple_thread, executor_process_task) {
     std::size_t wkr_cnt = 10;
-    std::shared_ptr<st::executor> exec = st::executor::make<st::processor>(wkr_cnt);
+    st::sptr<at::executor> exec = at::executor::make<at::processor>(wkr_cnt);
     auto ret_ch = st::channel::make();
 
     EXPECT_EQ(wkr_cnt, exec->worker_count());
@@ -928,11 +928,11 @@ TEST(simple_thread, executor_process_task) {
     };
 
     for(std::size_t c=0; c<wkr_cnt; ++c) {
-        exec->send(0, st::processor::task(incr));
+        exec->send(0, at::processor::task(incr));
     }
 
     for(std::size_t c=0; c<wkr_cnt; ++c) {
-        std::shared_ptr<st::message> msg;
+        st::sptr<st::message> msg;
         ret_ch->recv(msg);
     }
 
@@ -940,13 +940,13 @@ TEST(simple_thread, executor_process_task) {
 }
 
 TEST(simple_thread, state_type_checks) {
-    struct state1 : public st::state { };
-    struct state2 : public st::state { };
-    struct state3 : public st::state { };
+    struct state1 : public at::state { };
+    struct state2 : public at::state { };
+    struct state3 : public at::state { };
 
-    auto st1 = st::state::make<state1>();
-    auto st2 = st::state::make<state2>();
-    auto st3 = st::state::make<state3>();
+    auto st1 = at::state::make<state1>();
+    auto st2 = at::state::make<state2>();
+    auto st3 = at::state::make<state3>();
 
     EXPECT_EQ(st1->type_code(), st::code<state1>());
     EXPECT_NE(st1->type_code(), st::code<state2>());
@@ -993,23 +993,23 @@ TEST(simple_thread, state_machine_basic_usage) {
         };
     };
 
-    struct listening : public st::state {
-        inline std::shared_ptr<st::message> enter(std::shared_ptr<st::message> event) {
+    struct listening : public at::state {
+        inline st::sptr<st::message> enter(st::sptr<st::message> event) {
             std::cout << "your partner begins speaking and you listen" << std::endl;
-            return std::shared_ptr<st::message>();
+            return st::sptr<st::message>();
         }
     };
 
-    struct talking : public st::state {
-        inline std::shared_ptr<st::message> enter(std::shared_ptr<st::message> event) {
+    struct talking : public at::state {
+        inline st::sptr<st::message> enter(st::sptr<st::message> event) {
             std::cout << "you begin speaking and your partner listens" << std::endl;
-            return std::shared_ptr<st::message>();
+            return st::sptr<st::message>();
         }
     };
 
-    auto listening_st = st::state::make<listening>();
-    auto talking_st = st::state::make<talking>();
-    auto conversation_machine = st::state::machine::make();
+    auto listening_st = at::state::make<listening>();
+    auto talking_st = at::state::make<talking>();
+    auto conversation_machine = at::state::machine::make();
 
     // register the state transitions 
     conversation_machine->register_transition(conversation::event::partner_speaks, listening_st);
@@ -1035,15 +1035,15 @@ TEST(simple_thread, state_machine_with_guards_and_payload) {
         };
     };
 
-    struct listening : public st::state {
-        inline std::shared_ptr<st::message> enter(std::shared_ptr<st::message> event) {
+    struct listening : public at::state {
+        inline st::sptr<st::message> enter(st::sptr<st::message> event) {
             std::string s;
             event->copy_data_to(s);
             std::cout << "your partner speaks: " << s << std::endl;
-            return std::shared_ptr<st::message>();
+            return st::sptr<st::message>();
         }
 
-        inline bool exit(std::shared_ptr<st::message> event) {
+        inline bool exit(st::sptr<st::message> event) {
             // standard guard preventing transitioning to the same event as we are leaving
             if(event->id() != conversation::event::partner_speaks) {
                 return true;
@@ -1053,15 +1053,15 @@ TEST(simple_thread, state_machine_with_guards_and_payload) {
         }
     };
 
-    struct talking : public st::state {
-        inline std::shared_ptr<st::message> enter(std::shared_ptr<st::message> event) {
+    struct talking : public at::state {
+        inline st::sptr<st::message> enter(st::sptr<st::message> event) {
             std::string s;
             event->copy_data_to(s);
             std::cout << "you speak: " << s << std::endl;
-            return std::shared_ptr<st::message>();
+            return st::sptr<st::message>();
         }
 
-        inline bool exit(std::shared_ptr<st::message> event) {
+        inline bool exit(st::sptr<st::message> event) {
             // standard guard preventing transitioning to the same event as we are leaving
             if(event->id() != conversation::event::you_speak) {
                 return true;
@@ -1071,9 +1071,9 @@ TEST(simple_thread, state_machine_with_guards_and_payload) {
         }
     };
 
-    auto listening_st = st::state::make<listening>();
-    auto talking_st = st::state::make<talking>();
-    auto conversation_machine = st::state::machine::make();
+    auto listening_st = at::state::make<listening>();
+    auto talking_st = at::state::make<talking>();
+    auto conversation_machine = at::state::machine::make();
 
     // register the state transitions 
     conversation_machine->register_transition(conversation::event::partner_speaks, listening_st);
@@ -1100,28 +1100,28 @@ TEST(simple_thread, state_machine_on_worker) {
             you_speak 
         };
 
-        struct listening : public st::state {
-            inline std::shared_ptr<st::message> enter(std::shared_ptr<st::message> event) {
+        struct listening : public at::state {
+            inline st::sptr<st::message> enter(st::sptr<st::message> event) {
                 std::string s;
                 event->copy_data_to(s);
                 std::cout << "your partner speaks: " << s << std::endl;
-                return std::shared_ptr<st::message>();
+                return st::sptr<st::message>();
             }
         };
 
-        struct talking : public st::state {
-            inline std::shared_ptr<st::message> enter(std::shared_ptr<st::message> event) {
+        struct talking : public at::state {
+            inline st::sptr<st::message> enter(st::sptr<st::message> event) {
                 std::string s;
                 event->copy_data_to(s);
                 std::cout << "you speak: " << s << std::endl;
-                return std::shared_ptr<st::message>();
+                return st::sptr<st::message>();
             }
         };
 
         conversation_worker() { 
-            auto listening_st = st::state::make<listening>();
-            auto talking_st = st::state::make<talking>();
-            m_machine = st::state::machine::make();
+            auto listening_st = at::state::make<listening>();
+            auto talking_st = at::state::make<talking>();
+            m_machine = at::state::machine::make();
 
             // register the state transitions 
             m_machine->register_transition(conversation_worker::op::partner_speaks, listening_st);
@@ -1133,11 +1133,11 @@ TEST(simple_thread, state_machine_on_worker) {
             EXPECT_EQ(conversation_worker::op::you_speak, cur_st.event);
         }
 
-        inline void operator()(std::shared_ptr<st::message> msg) {
+        inline void operator()(st::sptr<st::message> msg) {
             m_machine->process_event(msg);
         }
 
-        std::shared_ptr<st::state::machine> m_machine;
+        st::sptr<at::state::machine> m_machine;
     };
 
     // launch a worker thread to utilize the state machine
@@ -1163,10 +1163,10 @@ TEST(simple_thread, state_machine_transitory_state) {
     bool reached_state2=false;
     bool reached_state3=false;
 
-    struct state1 : public st::state {
+    struct state1 : public at::state {
         state1(bool& b) : m_b(b) { }
 
-        inline std::shared_ptr<st::message> enter(std::shared_ptr<st::message> event) {
+        inline st::sptr<st::message> enter(st::sptr<st::message> event) {
             m_b = true;
             std::cout << "state1" << std::endl;
             return st::message::make(events::event2);
@@ -1175,10 +1175,10 @@ TEST(simple_thread, state_machine_transitory_state) {
         bool& m_b;
     };
 
-    struct state2 : public st::state {
+    struct state2 : public at::state {
         state2(bool& b) : m_b(b) { }
 
-        inline std::shared_ptr<st::message> enter(std::shared_ptr<st::message> event) {
+        inline st::sptr<st::message> enter(st::sptr<st::message> event) {
             m_b = true;
             std::cout << "state2" << std::endl;
             return st::message::make(events::event3);
@@ -1187,22 +1187,22 @@ TEST(simple_thread, state_machine_transitory_state) {
         bool& m_b;
     };
 
-    struct state3 : public st::state {
+    struct state3 : public at::state {
         state3(bool& b) : m_b(b) { }
 
-        inline std::shared_ptr<st::message> enter(std::shared_ptr<st::message> event) {
+        inline st::sptr<st::message> enter(st::sptr<st::message> event) {
             m_b = true;
             std::cout << "state3" << std::endl;
-            return std::shared_ptr<st::message>();
+            return st::sptr<st::message>();
         }
 
         bool& m_b;
     };
 
-    auto sm = st::state::machine::make();
-    sm->register_transition(events::event1, st::state::make<state1>(reached_state1));
-    sm->register_transition(events::event2, st::state::make<state2>(reached_state2));
-    sm->register_transition(events::event3, st::state::make<state3>(reached_state3));
+    auto sm = at::state::machine::make();
+    sm->register_transition(events::event1, at::state::make<state1>(reached_state1));
+    sm->register_transition(events::event2, at::state::make<state2>(reached_state2));
+    sm->register_transition(events::event3, at::state::make<state3>(reached_state3));
 
     sm->process_event(events::event1);
 
@@ -1215,18 +1215,18 @@ TEST(simple_thread, state_machine_transitory_state) {
 }
 
 TEST(simple_thread, state_machine_callback) {
-    struct actual_state : public st::state { };
+    struct actual_state : public at::state { };
 
     bool enter_flag = false;
 
-    auto callback = [&](std::shared_ptr<st::message> event) {
+    auto callback = [&](st::sptr<st::message> event) {
         std::cout << "I have arrived" << std::endl;
         enter_flag = true;
-        return std::shared_ptr<st::message>();
+        return st::sptr<st::message>();
     };
 
-    auto sm = st::state::machine::make();
-    auto as = st::state::make<actual_state>();
+    auto sm = at::state::machine::make();
+    auto as = at::state::make<actual_state>();
 
     sm->register_transition(0, as);
     sm->register_callback(1, callback);
@@ -1249,27 +1249,27 @@ TEST(simple_thread, state_machine_callback_cascade) {
         trigger_final_state
     };
 
-    struct final_state : public st::state { };
+    struct final_state : public at::state { };
 
     bool cb1_flag = false;
     bool cb2_flag = false;
 
-    auto callback1 = [&](std::shared_ptr<st::message> event) {
+    auto callback1 = [&](st::sptr<st::message> event) {
         cb1_flag = true;
         return st::message::make(op::trigger_cb2);
     };
 
-    auto callback2 = [&](std::shared_ptr<st::message> event) {
+    auto callback2 = [&](st::sptr<st::message> event) {
         cb2_flag = true;
         return st::message::make(op::trigger_final_state);
     };
 
-    auto sm = st::state::machine::make();
+    auto sm = at::state::machine::make();
     auto sts = sm->current_status();
 
     EXPECT_FALSE(sts);
 
-    auto fs = st::state::make<final_state>();
+    auto fs = at::state::make<final_state>();
 
     sm->register_callback(op::trigger_cb1, callback1);
     sm->register_callback(op::trigger_cb2, callback2);
@@ -1293,7 +1293,7 @@ TEST(simple_thread, readme_example1) {
             world
         };
 
-        inline void operator()(std::shared_ptr<st::message> msg) {
+        inline void operator()(st::sptr<st::message> msg) {
             switch(msg->id()) {
                 case op::hello:
                     std::cout << "hello " << std::endl;
@@ -1305,7 +1305,7 @@ TEST(simple_thread, readme_example1) {
         }
     };
 
-    std::shared_ptr<st::worker> my_worker = st::worker::make<MyClass>();
+    st::sptr<st::worker> my_worker = st::worker::make<MyClass>();
 
     my_worker->send(MyClass::op::hello);
     my_worker->send(MyClass::op::world);
@@ -1317,7 +1317,7 @@ TEST(simple_thread, readme_example2) {
             print
         };
 
-        inline void operator()(std::shared_ptr<st::message> msg) {
+        inline void operator()(st::sptr<st::message> msg) {
             switch(msg->id()) {
                 case op::print:
                 {
@@ -1331,7 +1331,7 @@ TEST(simple_thread, readme_example2) {
         }
     };
 
-    std::shared_ptr<st::worker> my_worker = st::worker::make<MyClass>();
+    st::sptr<st::worker> my_worker = st::worker::make<MyClass>();
 
     std::string s("hello again");
     my_worker->send(MyClass::op::print, s);
@@ -1343,7 +1343,7 @@ TEST(simple_thread, readme_example3) {
             print
         };
 
-        inline void operator()(std::shared_ptr<st::message> msg) {
+        inline void operator()(st::sptr<st::message> msg) {
             switch(msg->id()) {
                 case op::print:
                     if(msg->is<std::string>()) {
@@ -1360,7 +1360,7 @@ TEST(simple_thread, readme_example3) {
         }
     };
 
-    std::shared_ptr<st::worker> my_worker = st::worker::make<MyClass>();
+    st::sptr<st::worker> my_worker = st::worker::make<MyClass>();
 
     std::string s("hello ");
     my_worker->send(MyClass::op::print, s);
@@ -1382,13 +1382,13 @@ TEST(simple_thread, readme_example4) {
             std::cout << std::this_thread::get_id() << ":" <<  m_destructor_string << std::endl;
         }
 
-        inline void operator()(std::shared_ptr<st::message> msg) { }
+        inline void operator()(st::sptr<st::message> msg) { }
 
         std::string m_destructor_string;
     };
 
     std::cout << std::this_thread::get_id() << ":" <<  "parent thread started" << std::endl;
-    std::shared_ptr<st::worker> wkr = st::worker::make<MyClass>("hello", "goodbye");
+    st::sptr<st::worker> wkr = st::worker::make<MyClass>("hello", "goodbye");
 }
 
 
@@ -1406,7 +1406,7 @@ TEST(simple_thread, readme_example5) {
             auto ret_ch = st::channel::make();
             m_wkr->send(op::eget_string, ret_ch);
             std::string s;
-            std::shared_ptr<st::message> msg;
+            st::sptr<st::message> msg;
             ret_ch->recv(msg);
             msg->copy_data_to(s);
             return s;
@@ -1419,14 +1419,14 @@ TEST(simple_thread, readme_example5) {
         };
 
         struct Worker { 
-            inline void operator()(std::shared_ptr<st::message> msg) {
+            inline void operator()(st::sptr<st::message> msg) {
                 switch(msg->id()) {
                     case op::eset_string:
                         msg->copy_data_to(m_str);
                         break;
                     case op::eget_string:
                     {
-                        std::shared_ptr<st::channel> ret_ch;
+                        st::sptr<st::channel> ret_ch;
                         if(msg->copy_data_to(ret_ch)) {
                             ret_ch->send(0,m_str);
                         }
@@ -1438,9 +1438,9 @@ TEST(simple_thread, readme_example5) {
             std::string m_str;
         };
 
-        MyClass(std::shared_ptr<st::worker> wkr) : m_wkr(wkr) { }
+        MyClass(st::sptr<st::worker> wkr) : m_wkr(wkr) { }
 
-        std::shared_ptr<st::worker> m_wkr;
+        st::sptr<st::worker> m_wkr;
     };
 
     MyClass my_class = MyClass::make();
@@ -1456,9 +1456,9 @@ TEST(simple_thread, readme_example6) {
             forward
         };
 
-        MyClass(std::shared_ptr<st::channel> fwd_ch) : m_fwd_ch(fwd_ch) { }
+        MyClass(st::sptr<st::channel> fwd_ch) : m_fwd_ch(fwd_ch) { }
 
-        inline void operator()(std::shared_ptr<st::message> msg) {
+        inline void operator()(st::sptr<st::message> msg) {
             switch(msg->id()) {
                 case op::forward:
                     m_fwd_ch->send(msg);
@@ -1466,15 +1466,15 @@ TEST(simple_thread, readme_example6) {
             }
         }
 
-        std::shared_ptr<st::channel> m_fwd_ch;
+        st::sptr<st::channel> m_fwd_ch;
     };
 
-    std::shared_ptr<st::channel> my_channel = st::channel::make();
-    std::shared_ptr<st::worker> my_worker = st::worker::make<MyClass>(my_channel);
+    st::sptr<st::channel> my_channel = st::channel::make();
+    st::sptr<st::worker> my_worker = st::worker::make<MyClass>(my_channel);
 
     my_worker->send(MyClass::op::forward, std::string("forward this string"));
     
-    std::shared_ptr<st::message> msg;
+    st::sptr<st::message> msg;
     my_channel->recv(msg);
 
     std::string s;
@@ -1484,8 +1484,8 @@ TEST(simple_thread, readme_example6) {
 }
 
 TEST(simple_thread, readme_example7) {
-    auto looping_recv = [](std::shared_ptr<st::channel> ch) {
-        std::shared_ptr<st::message> msg;
+    auto looping_recv = [](st::sptr<st::channel> ch) {
+        st::sptr<st::message> msg;
 
         while(ch->recv(msg)) {
             std::string s;
@@ -1497,9 +1497,9 @@ TEST(simple_thread, readme_example7) {
         std::cout << "thread done" << std::endl;
     };
 
-    std::shared_ptr<st::channel> my_channel = st::channel::make();
+    st::sptr<st::channel> my_channel = st::channel::make();
     std::thread my_thread(looping_recv, my_channel);
-    std::shared_ptr<st::message> msg;
+    st::sptr<st::message> msg;
 
     my_channel->send(0, std::string("You say goodbye"));
     my_channel->send(0, std::string("And I say hello"));
@@ -1509,8 +1509,8 @@ TEST(simple_thread, readme_example7) {
     my_thread.join(); // join thread
 }
 
-TEST(simple_thread, readme_example8) {
-    std::shared_ptr<st::worker> proc = st::worker::make<st::processor>();
+TEST(advanced_thread, readme_processor_example1) {
+    st::sptr<st::worker> proc = st::worker::make<at::processor>();
 
     std::cout << std::this_thread::get_id() << ": main thread\n";
 
@@ -1521,13 +1521,16 @@ TEST(simple_thread, readme_example8) {
     };
 
     for(std::size_t c=0; c<5; ++c) {
-        proc->send(0, st::processor::task(greet));
+        proc->send(0, at::processor::task(greet));
     }
 }
 
-TEST(simple_thread, readme_example9) {
-    std::size_t wkr_cnt = st::executor::default_worker_count();
-    std::shared_ptr<st::executor> exec = st::executor::make<st::processor>(wkr_cnt);
+TEST(advanced_thread, readme_cotask_example1) {
+}
+
+TEST(advanced_thread, readme_executor_example1) {
+    std::size_t wkr_cnt = at::executor::default_worker_count();
+    st::sptr<at::executor> exec = at::executor::make<at::processor>(wkr_cnt);
 
     std::cout << std::this_thread::get_id() << ": worker count: " << exec->worker_count() << std::endl;
 
@@ -1538,11 +1541,11 @@ TEST(simple_thread, readme_example9) {
     };
 
     for(std::size_t c=0; c<5; ++c) {
-        exec->send(0, st::processor::task(greet));
+        exec->send(0, at::processor::task(greet));
     }
 }
 
-TEST(simple_thread, readme_example10) {
+TEST(advanced_thread, readme_state_example1) {
     struct conversation {
         enum event {
             partner_speaks,
@@ -1550,24 +1553,24 @@ TEST(simple_thread, readme_example10) {
         };
     };
 
-    struct listening : public st::state {
-        inline std::shared_ptr<st::message> enter(std::shared_ptr<st::message> event) {
+    struct listening : public at::state {
+        inline st::sptr<st::message> enter(st::sptr<st::message> event) {
             std::cout << "your partner begins speaking and you listen" << std::endl;
             // a default (null) shared pointer returned from enter() causes transition to continue normally
-            return std::shared_ptr<st::message>(); 
+            return st::sptr<st::message>(); 
         }
     };
 
-    struct talking : public st::state {
-        inline std::shared_ptr<st::message> enter(std::shared_ptr<st::message> event) {
+    struct talking : public at::state {
+        inline st::sptr<st::message> enter(st::sptr<st::message> event) {
             std::cout << "you begin speaking and your partner listens" << std::endl;
-            return std::shared_ptr<st::message>();
+            return st::sptr<st::message>();
         }
     };
 
-    auto listening_st = st::state::make<listening>();
-    auto talking_st = st::state::make<talking>();
-    auto conversation_machine = st::state::machine::make();
+    auto listening_st = at::state::make<listening>();
+    auto talking_st = at::state::make<talking>();
+    auto conversation_machine = at::state::machine::make();
 
     // register the state transitions 
     conversation_machine->register_transition(conversation::event::partner_speaks, listening_st);
@@ -1581,46 +1584,46 @@ TEST(simple_thread, readme_example10) {
     conversation_machine->process_event(conversation::event::partner_speaks); 
 }
 
-TEST(simple_thread, readme_example11) {
+TEST(advanced_thread, readme_state_example2) {
     struct conversation_worker {
         enum op {
             partner_speaks,
             you_speak 
         };
 
-        struct listening : public st::state {
-            inline std::shared_ptr<st::message> enter(std::shared_ptr<st::message> event) {
+        struct listening : public at::state {
+            inline st::sptr<st::message> enter(st::sptr<st::message> event) {
                 std::string s;
                 event->copy_data_to(s);
                 std::cout << "your partner speaks: " << s << std::endl;
-                return std::shared_ptr<st::message>();
+                return st::sptr<st::message>();
             }
         };
 
-        struct talking : public st::state {
-            inline std::shared_ptr<st::message> enter(std::shared_ptr<st::message> event) {
+        struct talking : public at::state {
+            inline st::sptr<st::message> enter(st::sptr<st::message> event) {
                 std::string s;
                 event->copy_data_to(s);
                 std::cout << "you speak: " << s << std::endl;
-                return std::shared_ptr<st::message>();
+                return st::sptr<st::message>();
             }
         };
 
         conversation_worker() { 
-            auto listening_st = st::state::make<listening>();
-            auto talking_st = st::state::make<talking>();
-            m_machine = st::state::machine::make();
+            auto listening_st = at::state::make<listening>();
+            auto talking_st = at::state::make<talking>();
+            m_machine = at::state::machine::make();
 
             // register the state transitions 
             m_machine->register_transition(conversation_worker::op::partner_speaks, listening_st);
             m_machine->register_transition(conversation_worker::op::you_speak, talking_st);
         }
 
-        inline void operator()(std::shared_ptr<st::message> msg) {
+        inline void operator()(st::sptr<st::message> msg) {
             m_machine->process_event(msg);
         }
 
-        std::shared_ptr<st::state::machine> m_machine;
+        st::sptr<at::state::machine> m_machine;
     };
 
     // launch a worker thread to utilize the state machine
@@ -1633,7 +1636,7 @@ TEST(simple_thread, readme_example11) {
     wkr->send(conversation_worker::op::you_speak, std::string("goodbye faa")); 
 }
 
-TEST(simple_thread, readme_example12) {
+TEST(advanced_thread, readme_state_example3) {
     struct conversation {
         enum event {
             partner_speaks,
@@ -1641,15 +1644,15 @@ TEST(simple_thread, readme_example12) {
         };
     };
 
-    struct listening : public st::state {
-        inline std::shared_ptr<st::message> enter(std::shared_ptr<st::message> event) {
+    struct listening : public at::state {
+        inline st::sptr<st::message> enter(st::sptr<st::message> event) {
             std::string s;
             event->copy_data_to(s);
             std::cout << "your partner speaks: " << s << std::endl;
-            return std::shared_ptr<st::message>();
+            return st::sptr<st::message>();
         }
 
-        inline bool exit(std::shared_ptr<st::message> event) {
+        inline bool exit(st::sptr<st::message> event) {
             // standard guard preventing transitioning to the same event as we are leaving
             if(event->id() != conversation::event::partner_speaks) {
                 return true;
@@ -1659,15 +1662,15 @@ TEST(simple_thread, readme_example12) {
         }
     };
 
-    struct talking : public st::state {
-        inline std::shared_ptr<st::message> enter(std::shared_ptr<st::message> event) {
+    struct talking : public at::state {
+        inline st::sptr<st::message> enter(st::sptr<st::message> event) {
             std::string s;
             event->copy_data_to(s);
             std::cout << "you speak: " << s << std::endl;
-            return std::shared_ptr<st::message>();
+            return st::sptr<st::message>();
         }
 
-        inline bool exit(std::shared_ptr<st::message> event) {
+        inline bool exit(st::sptr<st::message> event) {
             // standard guard preventing transitioning to the same event as we are leaving
             if(event->id() != conversation::event::you_speak) {
                 return true;
@@ -1677,9 +1680,9 @@ TEST(simple_thread, readme_example12) {
         }
     };
 
-    auto listening_st = st::state::make<listening>();
-    auto talking_st = st::state::make<talking>();
-    auto conversation_machine = st::state::machine::make();
+    auto listening_st = at::state::make<listening>();
+    auto talking_st = at::state::make<talking>();
+    auto conversation_machine = at::state::machine::make();
 
     // register the state transitions 
     conversation_machine->register_transition(conversation::event::partner_speaks, listening_st);
@@ -1695,7 +1698,7 @@ TEST(simple_thread, readme_example12) {
     conversation_machine->process_event(conversation::event::you_speak, std::string("hello faa3")); 
 }
 
-TEST(simple_thread, readme_example13) {
+TEST(advanced_thread, readme_state_example4) {
     struct events {
         enum op {
             event1,
@@ -1704,64 +1707,64 @@ TEST(simple_thread, readme_example13) {
         };
     };
 
-    struct state1 : public st::state {
-        inline std::shared_ptr<st::message> enter(std::shared_ptr<st::message> event) {
+    struct state1 : public at::state {
+        inline st::sptr<st::message> enter(st::sptr<st::message> event) {
             std::cout << "state1" << std::endl;
             return st::message::make(events::event2);
         }
     };
 
-    struct state2 : public st::state {
-        inline std::shared_ptr<st::message> enter(std::shared_ptr<st::message> event) {
+    struct state2 : public at::state {
+        inline st::sptr<st::message> enter(st::sptr<st::message> event) {
             std::cout << "state2" << std::endl;
             return st::message::make(events::event3);
         }
     };
 
-    struct state3 : public st::state {
-        inline std::shared_ptr<st::message> enter(std::shared_ptr<st::message> event) {
+    struct state3 : public at::state {
+        inline st::sptr<st::message> enter(st::sptr<st::message> event) {
             std::cout << "state3" << std::endl;
-            return std::shared_ptr<st::message>();
+            return st::sptr<st::message>();
         }
     };
 
-    auto sm = st::state::machine::make();
-    sm->register_transition(events::event1, st::state::make<state1>());
-    sm->register_transition(events::event2, st::state::make<state2>());
-    sm->register_transition(events::event3, st::state::make<state3>());
+    auto sm = at::state::machine::make();
+    sm->register_transition(events::event1, at::state::make<state1>());
+    sm->register_transition(events::event2, at::state::make<state2>());
+    sm->register_transition(events::event3, at::state::make<state3>());
 
     sm->process_event(events::event1);
 }
 
-TEST(simple_thread, readme_example14) {
+TEST(advanced_thread, readme_state_example5) {
     enum class op {
         trigger_cb1,
         trigger_cb2,
         trigger_final_state
     };
 
-    auto callback1 = [&](std::shared_ptr<st::message> event) {
+    auto callback1 = [&](st::sptr<st::message> event) {
         std::cout << "We " << std::endl;
         return st::message::make(op::trigger_cb2);
     };
 
-    auto callback2 = [&](std::shared_ptr<st::message> event) {
+    auto callback2 = [&](st::sptr<st::message> event) {
         std::cout << "made " << std::endl;
         return st::message::make(op::trigger_final_state);
     };
 
-    struct final_state : public st::state { 
-        inline std::shared_ptr<st::message> enter(std::shared_ptr<st::message> event) {
+    struct final_state : public at::state { 
+        inline st::sptr<st::message> enter(st::sptr<st::message> event) {
             std::cout << "it!" << std::endl;
-            return std::shared_ptr<st::message>();
+            return st::sptr<st::message>();
         }
     };
 
-    auto sm = st::state::machine::make();
+    auto sm = at::state::machine::make();
 
     sm->register_callback(op::trigger_cb1, callback1);
     sm->register_callback(op::trigger_cb2, callback2);
-    sm->register_transition(op::trigger_final_state, st::state::make<final_state>());
+    sm->register_transition(op::trigger_final_state, at::state::make<final_state>());
 
     sm->process_event(op::trigger_cb1);
 }
