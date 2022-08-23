@@ -476,7 +476,6 @@ Without going into to much detail, here are some advantages of coroutines compar
  - the number of coroutines is not limited by the operating system
  - coroutines do not require system level calls to create 
 
-A significant negat blocking
 `st::fiber`s are designed to run inside of each other in a cooperative fashion by allowing other `st::fiber`s to process messages after processing its own message.
 
 `st::fiber`s have a parent and child relationship. That is, they are either running in a blocking fashion at the top level of a thread or they are running in a non-blocking fashion inside of another `st::fiber`. `st::fiber`s running as children of a parent `st::fiber` will suspend themselves to allow give a chance for their sibling `st::fiber`s to run. 
