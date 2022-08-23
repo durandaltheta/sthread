@@ -23,7 +23,7 @@ code lacks documentation, look at the interfaces for more information.
 
 [Running Functions on Fibers](#running-functions-on-fibers)
 
-[Running Fibers On Fibers](#running-fibers-on-other-fibers)
+[Running Fibers On Fibers](#running-fibers-on-fibers)
 
 [Object Lifecycles](#object-lifecycles)
 
