@@ -8,19 +8,29 @@ code lacks documentation, look at the interfaces for more information.
 
 [Unit Test and Example Code](tst/simple_thread_tst.cpp)
 
+### Usage:
 [Basic Usage](#basic-usage)
-
-[Advanced Usage](README_ADVANCED.md)
+[Send Operations](#send-operations)
+[Type Checking](#type-checking)
+[Fiber Constructor Arguments](#thread-constructor-arguments)
+[Sending Messages To Standard Threads With Channels](#sending-messages-to-standard-threads-with-channels)
+[Dealing With Blocking Functions](#dealing-with-blocking-functions)
+[Running Functions on Fibers](#running-functions-on-fibers)
+[Running Fibers On Other Fibers](#running-fibers-on-other-fibers)
+[Object Lifecycles](#object-lifecycles)
 
 ## Purpose 
 This header only library seeks to easily setup useful threading & concurrency with a simple API.
 
-Instead of functions `st::thread`s execute c++ functors. A functor is a class 
+The main thread-like object provided by the library is `st::fiber`, an object 
+which can manage a system thread and process incoming messages.
+
+Instead of functions `st::fiber`s execute c++ functors. A functor is a class 
 which has a function call overload allowing you to execute the object like a 
 function, IE:
 ```
 struct MyClass {
-    inline void operator()(std::shared_ptr<st::message> msg) { /* ... */ }
+    void operator()(std::shared_ptr<st::message> msg) { /* ... */ }
 };
 ```
 
@@ -56,19 +66,18 @@ simple_thread_tst binary will be placed in tst/
 ## Shared Pointers
 This class makes extensive use of `std::shared_ptr` instances. Unfortunately,
 this can make fairly simple code unnecessarily verbose. As a convenience this 
-library provides `st::sptr` as a typedef to `std::shared_ptr` and `st::wptr` as 
-a typedef to `std::weak_ptr`. Usage of these typedefs is completely optional in 
-user code.
+library provides `st::sptr` as a typedef to `std::shared_ptr`, `st::wptr` as 
+a typedef to `std::weak_ptr`, and `st::uptr` as a typedef to `st::unique_ptr`. 
+
+Usage of these typedefs is completely optional in user code.
 
 ## Basic Usage
-[Back To Top](#simple-threading-and-communication)
-
 - Install the library and include the header `sthread` or `simple_thread.hpp`
 - Create a class or struct with `void operator()(st::sptr<st::message>)` to 
 handle received messages (also called a 'functor')
 - Define some enum to distinguish different messages 
-- Launch your thread with `st::thread::make<YourClassNameHere>()`
-- Trigger user class's `void operator()(st::sptr<st::message>)` via `st::thread::send(/* ... */)` 
+- Launch your thread with `st::fiber::thread<YourClassNameHere>()`
+- Trigger user class's `void operator()(st::sptr<st::message>)` via `st::fiber::send(/* ... */)` 
 
 #### Example 1:
 ```
@@ -81,7 +90,7 @@ struct MyClass {
         world
     };
 
-    inline void operator()(st::sptr<st::message> msg) {
+    void operator()(st::sptr<st::message> msg) {
         switch(msg->id) {
             case op::hello:
                 std::cout << "hello " << std::endl;
@@ -94,7 +103,7 @@ struct MyClass {
 };
 
 int main() {
-    st::sptr<st::thread> my_thread = st::thread::make<MyClass>();
+    st::sptr<st::fiber> my_thread = st::fiber::thread<MyClass>();
 
     my_thread->send(MyClass::op::hello);
     my_thread->send(MyClass::op::world);
@@ -107,6 +116,8 @@ $./a.out
 hello
 world
 ```
+
+[Back To Top](#simple-threading-and-communication)
 
 ### Message Payload Data 
 Messages store their (optional) payload data in an object called `st::data`.
@@ -127,7 +138,7 @@ struct MyClass {
         print
     };
 
-    inline void operator()(st::sptr<st::message> msg) {
+    void operator()(st::sptr<st::message> msg) {
         switch(msg->id) {
             case op::print:
             {
@@ -142,7 +153,7 @@ struct MyClass {
 };
 
 int main() {
-    st::sptr<st::thread> my_thread = st::thread::make<MyClass>();
+    st::sptr<st::fiber> my_thread = st::fiber::thread<MyClass>();
 
     my_thread->send(MyClass::op::print, "hello again");
 }
@@ -154,11 +165,12 @@ $./a.out
 hello again
 ```
 
+[Back To Top](#simple-threading-and-communication)
+
 ### Send Operations
 Several classes in this library support the ability to send messages:
 - `st::channel::send(/* ... *)`
-- `st::thread::send(/* ... *)`
-- `st::coroutine::send(/* ... *)`
+- `st::fiber::send(/* ... *)`
 - `st::executor::send(/* ... *)`
 
 Arguments passed to `send(/* ... */)` are subsequently passed to `st::sptr<st::message>  st::message::make(/* ... */)` before the resulting `st::sptr<st::message>` is passed to its destination thread and functor. The summary of the 3 basic overloads of `st::sptr<st::message> st::message::make(/* ... */)` are:
@@ -166,13 +178,15 @@ Arguments passed to `send(/* ... */)` are subsequently passed to `st::sptr<st::m
 - `template <typename ID> st::sptr<st::message> st::message::make(ID id)`: Returns a constructed message which returns argument unsigned integer `id` as `st::message::id`.
 - `template <typename ID, typename T> st::sptr<st::message> st::message::make(ID id, T&& t)`: Same as the previous invocation but additionally accepts and stores a payload `t` of any type (compiler deduced) `T` which can later be copied with `template <typename T> bool st::data::copy_to(T& t)` or moved out of the message with `template <typename T> bool st:data::move_to(T& t)`.
 
+[Back To Top](#simple-threading-and-communication)
+
 ### Type Checking
 Payload types can also be easily checked with `st::data::is<T>()` (returns `true` if types match, else `false`) which is useful if a message's data might contain several different potential types. 
 
 NOTE: `st::data` can store a payload of any type. However, it does provide one special exception when passed explicit c-style `char*` strings, where it will automatically convert the argument `char*` into a `std::string` to protect the user against unexpected behavior. However, this means the the user must use `std::string` type when trying to copy or move the data back out. If this behavior is not desired, the user will have to wrap their `char*` in some other object.
 
 Many classes support a similar method also named `is<T>()`:
-- `st::thread::is<T>()` // compares against the type of the thread's FUNCTOR 
+- `st::fiber::is<T>()` // compares against the type of the thread's FUNCTOR 
 - `at::coroutine::is<T>()` // compares against the type of the coroutine's FUNCTOR 
 - `at::executor::is<T>()` // compares against the type of the executor's worker thread's FUNCTOR
 
@@ -187,7 +201,7 @@ struct MyClass {
         print
     };
 
-    inline void operator()(st::sptr<st::message> msg) {
+    void operator()(st::sptr<st::message> msg) {
         switch(msg->id) {
             case op::print:
                 if(msg->data.is<std::string>()) {
@@ -205,7 +219,7 @@ struct MyClass {
 };
 
 int main() {
-    st::sptr<st::thread> my_thread = st::thread::make<MyClass>();
+    st::sptr<st::fiber> my_thread = st::fiber::thread<MyClass>();
 
     std::string s("hello ");
     my_thread->send(MyClass::op::print, s);
@@ -222,12 +236,13 @@ $./a.out
 hello 1 more time
 ```
 
-`st::thread`s will automatically shutdown and join when they are destructed. This can be done early with `st::thread::shutdown()`. 
+`st::fiber`s will automatically shutdown and join when they are destructed. This can be done early with `st::fiber::shutdown()`. 
 [documentation](https://durandaltheta.github.io/sthread/) for more info.
 
+[Back To Top](#simple-threading-and-communication)
 
-### Thread Constructor Arguments and Lifecycle
-`st::thread`s can be passed constructor arguments in `st::thread::make<FUNCTOR>(As&&...)`. The `FUNCTOR` class will be created on the new thread and destroyed before said thread ends.
+### Fiber Constructor Arguments
+`st::fiber`s can be passed constructor arguments in `st::fiber::thread<FUNCTOR>(As&&...)`. The `FUNCTOR` class will be created on the new thread and destroyed before said thread ends.
 
 #### Example 4
 ```
@@ -246,14 +261,14 @@ struct MyClass {
         std::cout << std::this_thread::get_id() << ":" <<  m_destructor_string << std::endl;
     }
 
-    inline void operator()(st::sptr<st::message> msg) { }
+    void operator()(st::sptr<st::message> msg) { }
 
     std::string m_destructor_string;
 };
 
 int main() {
     std::cout << std::this_thread::get_id() << ":" <<  "parent thread started" << std::endl;
-    st::sptr<st::thread> wkr = st::thread::make<MyClass>("hello", "goodbye");
+    st::sptr<st::fiber> wkr = st::fiber::thread<MyClass>("hello", "goodbye");
 }
 
 ```
@@ -266,89 +281,12 @@ $./a.out
 0x800098150:goodbye
 ```
 
+[Back To Top](#simple-threading-and-communication)
 
-### Abstracting Message Passing Details
-One useful advanced design pattern is abstracting all of the operation details 
-for message passing into some API, freeing the user from having to interact 
-directly with the thread details.
+### Sending Messages To Standard Threads With Channels
+The object that `st::fiber`s use for communication in their `send()` methods is called `st::channel`. `st::channel`s can be created and used outside of `st::fiber` objects if desired. This allows the user, for example, to send messages to threads which were not launched with `st::fiber::thread<T>()`.
 
 #### Example 5:
-```
-#include <iostream>
-#include <string>
-#include <sthread>
-
-struct MyClass {
-    static inline MyClass make() {
-        return MyClass(st::thread::make<thread>());
-    }
-
-    inline void set_string(std::string txt) {
-        m_wkr->send(op::eset_string, txt);
-    }
-
-    inline std::string get_string() {
-        auto ret_ch = st::channel::make();
-        m_wkr->send(op::eget_string, ret_ch);
-        std::string s;
-        st::sptr<st::message> msg;
-        ret_ch->recv(msg);
-        msg->data.copy_to(s);
-        return s;
-    }
-
-private:
-    enum op {
-        eset_string,
-        eget_string
-    };
-
-    struct thread { 
-        inline void operator()(st::sptr<st::message> msg) {
-            switch(msg->id) {
-                case op::eset_string:
-                    msg->data.copy_to(m_str);
-                    break;
-                case op::eget_string:
-                {
-                    st::sptr<st::channel> ret_ch;
-                    if(msg->data.copy_to(ret_ch)) {
-                        ret_ch->send(0,m_str);
-                    }
-                    break;
-                }
-            }
-        }
-
-        std::string m_str;
-    };
-
-    MyClass(st::sptr<st::thread> wkr) : m_wkr(wkr) { }
-
-    st::sptr<st::thread> m_wkr;
-};
-
-int main() {
-    MyClass my_class = MyClass::make();
-    my_class.set_string("hello");
-    std::cout << my_class.get_string() << std::endl;
-    my_class.set_string("hello hello");
-    std::cout << my_class.get_string() << std::endl;
-}
-```
-
-Terminal output might be:
-```
-$./a.out
-hello
-hello hello
-```
-
-
-### Channels
-The object that `st::thread`s use for communication in their `send()` methods is called `st::channel`. `st::channel`s can be created and used outside of `st::thread` objects if desired. This allows the user, for example, to send messages to threads which were not launched with `st::thread::make<T>()`.
-
-#### Example 6:
 ```
 #include <iostream>
 #include <string>
@@ -361,7 +299,7 @@ struct MyClass {
 
     MyClass(st::sptr<st::channel> fwd_ch) : m_fwd_ch(fwd_ch) { }
 
-    inline void operator()(st::sptr<st::message> msg) {
+    void operator()(st::sptr<st::message> msg) {
         switch(msg->id) {
             case op::forward:
                 m_fwd_ch->send(msg);
@@ -374,7 +312,7 @@ struct MyClass {
 
 int main() {
     st::sptr<st::channel> my_channel = st::channel::make();
-    st::sptr<st::thread> my_thread = st::thread::make<MyClass>(my_channel);
+    st::sptr<st::fiber> my_thread = st::fiber::thread<MyClass>(my_channel);
 
     my_thread->send(MyClass::op::forward, "forward this string");
     
@@ -394,24 +332,264 @@ $./a.out
 forward this string
 ```
 
-### Further Object Lifecycles
+### Dealing With Blocking Functions 
+To ensure messages are processed in a timely manner, and to avoid deadlock in general, it is important to avoid 
+calling functions which will block for indeterminate periods within an `st::fiber`. If the user needs to call such a function, a simple solution is to make use of the standard library's `std::async()` feature to execute arbitrary code on a new thread, then `send()` the result back to the `st::fiber` when the call completes.
+
+#### Example 6:
+```
+#include <iostream>
+#include <string>
+#include <thread>
+#include <chrono>
+#include <sthread>
+
+std::string blocking_function() {
+    std::this_thread::sleep_for(std::chrono::seconds(5));A
+    return "that's all folks!"
+}
+
+struct MyFunctor {
+    MyFunctor(st::sptr<st::channel> main_ch) : m_main_ch(main_ch) { }
+
+    enum op {
+        call_blocker,
+        print,
+        unblock_main
+    };
+
+    void operator()(st::sptr<st::message> msg) {
+        switch(msg->id) {
+            case op::call_blocker:
+                // acquire a copy of the running `st::fiber` shared pointer
+                st::sptr<st::fiber> self = st::fiber::local_self();
+               
+                // use `std::async` to execute our code on a new thread
+                std::async([self] {
+                    std::string result = blocking_function();
+                    self->send(op::print, result);
+                    self->send(op::unblock_main);
+                });
+                break;
+            case op::print:
+                std::string s;
+                if(msg.data->copy_to(s)) {
+                    std::cout << s << std::endl;
+                }
+                break;
+            case op::unblock_main:
+                m_main_ch->send(0); // unblock main
+                break;
+        }
+    }
+
+    st::sptr<st::channel> m_main_ch;
+}
+
+int main() {
+    st::sptr<st::channel> ch = st::channel::make();
+    st::sptr<st::message> msg;
+    st::sptr<st::fiber> my_fiber = st::fiber::thread<MyFunctor>(ch);
+    my_fiber->send(MyFunctor::op::call_blocker);
+    my_fiber->send(MyFunctor::op::print, "1");
+    my_fiber->send(MyFunctor::op::print, "2");
+    my_fiber->send(MyFunctor::op::print, "3");
+    ch->recv(msg); // block so program doesn't end before our functions can run
+    return 0;
+};
+```
+
+Terminal output might be:
+```
+$./a.out
+1
+2
+3
+that's all folks!
+```
+
+[Back To Top](#simple-threading-and-communication)
+
+
+
+### Running Functions on Fibers 
+`st::fiber`s provide the ability to enqueue arbitrary code for execution with `st::fiber::schedule(...)` API. Any `st::fiber` can be used for this purpose, though the default `st::fiber::thread()` `FUNCTOR` template type `st::fiber::processor` is often useful for generating worker threads dedicated to scheduling other code.
+
+`st::fiber::schedule()` can accept a function, functor, or lambda function, in a similar fashion to standard library features `std::async()` and `std::thread()`.
+
+#### Example 7:
+```
+#include <iostream>
+#include <string>
+#include <sthread>
+
+void print(std::string s) {
+    std::cout << s << std::endl;
+}
+
+struct printer { 
+    void operator()(std::string s) {
+        std::cout << s << std::endl;
+    }
+};
+
+int main() {
+    // specifying `st::fiber::processor` inside the template `<>` is optional
+    st::sptr<st::fiber> my_processor = st::fiber::thread<>();
+    my_processor->schedule(print, std::string("what a beautiful day"));
+    my_processor->schedule(printer, std::string("looks like rain"));
+    my_processor->schedule([]{ std::cout << "what a beautiful sunset" << std::endl; });
+}
+```
+
+Terminal output might be:
+```
+$./a.out 
+what a beautiful day 
+looks like rain 
+what a beautiful sunset
+```
+
+[Back To Top](#simple-threading-and-communication)
+### Running Fibers On Other Fibers 
+`st::fiber` is actually an example of a stackless coroutine. According to wikipedia: 
+```
+Coroutines are computer program components that generalize subroutines for non-preemptive multitasking, by allowing execution to be suspended and resumed.
+```
+
+Without going into to much detail, here are some advantages of coroutines compared to threads:
+ - changing which coroutine is running by suspending its execution is 
+   exponentially faster than changing which system thread is running. IE, the 
+   more concurrent operations need to occur, the more efficient coroutines 
+   become in comparison to threads. 
+ - faster context switching results in faster communication between code
+ - coroutines take less memory than threads 
+ - the number of coroutines is not limited by the operating system
+ - coroutines do not require system level calls to create 
+
+A significant negat blocking
+`st::fiber`s are designed to run inside of each other in a cooperative fashion by allowing other `st::fiber`s to process messages after processing its own message.
+
+`st::fiber`s have a parent and child relationship. That is, they are either running in a blocking fashion at the top level of a thread or they are running in a non-blocking fashion inside of another `st::fiber`. `st::fiber`s running as children of a parent `st::fiber` will suspend themselves to allow give a chance for their sibling `st::fiber`s to run. 
+
+Multiple children can run on a single `st::fiber`. In fact, child `st::fiber`s can be parents to their own children, creating a family tree as extensive as desired.
+
+The simple way to create a child `st::fiber` is by calling `st::fiber::launch()` on a pre-existing `st::fiber` that was created by a call to `st::fiber::thread()`. `st::fiber:launch()` takes a template `FUNCTOR` and optional constructor arguments in the same way as `st::fiber::thread()`. `st::fiber`s can hold shared pointers to one another and use each other's `st::fiber::send()` functions to communicate.
+
+#### Example 8:
+```
+// in main.h
+#include <sthread>
+
+struct parent {
+    enum op {
+        say_hello,
+        unblock_main,
+    };
+
+    parent(st::sptr<st::channel>);
+    void operator()(st::sptr<st::message>);
+
+    st::sptr<st::channel> m_main_ch;
+    st::sptr<st::fiber> m_child;
+};
+
+struct child {
+    enum op {
+        say_goodbye
+    };
+
+    child(st::sptr<st::fiber> par);
+    void operator()(st::sptr<st::message>);
+
+    st::sptr<st::fiber> m_parent;
+};
+
+// in main.c
+#include <iostream>
+#include <string>
+#include "main.h"
+
+parent::parent(st::sptr<st::channel> main_ch) : m_main_ch(main_ch) { 
+    // acquire the pointer to `st::fiber` running on this thread
+    st::sptr<st::fiber> self = st::fiber::local_self(); 
+
+    // launch the child fiber on the parent fiber
+    m_child(self->launch<child>(self));
+}
+
+void parent::operator(st::sptr<st::message> msg) {
+    switch(msg->id) {
+        case op::say_hello:
+            std::cout << "hello" << std::endl;
+            // tell the child fiber to say goodbye
+            m_child->send(child::op::say_goodbye);
+            break;
+        case op::unblock_main:
+            // allow the program to exit
+            m_main_ch->send(0);
+            break;
+    }
+}
+
+child::child(st::sptr<st::fiber> par) : m_parent(par) {
+    // tell the parent fiber to say hello
+    m_parent->send(parent::op::say_hello);
+}
+
+void child::operator(st::sptr<st::message> msg) {
+    switch(msg->id) {
+        case op::say_goodbye:
+            std::cout << "goodbye" << std::endl;
+            m_parent->send(parent::op::unblock_main);
+            break;
+    }
+}
+
+int main() {
+    st::sptr<st::channel> chan;
+    st::sptr<st::message> msg;
+    st::sptr<st::fiber> par = st::fiber::thread<parent>(chan);
+    chan->recv(msg); // block until parent sends a message
+    return 0;
+}
+
+```
+
+Terminal output might be:
+```
+$./a.out 
+hello 
+goodbye
+```
+
+The only concern a user may have for scheduling is to know that parent `st::fiber`s are of an implicit higher priority to handle their own messages. As simple solution to create evenly balanced priorities between all working `st::fiber`s is to have the parent thread launched with `st::fiber::thread()` be created with the default `FUNCTOR` (`st::fiber::processor`) which itself will process no messages except to handle scheduling of other code:
+``` 
+// call `st::fiber::thread` with empty template to use default `st::fiber::processor`
+st::sptr<st::fiber> processor = st::fiber::thread<>();
+processor->launch<ChildFiber1>();
+processor->launch<ChildFiber2>();
+// etc...
+```
+
+[Back To Top](#simple-threading-and-communication)
+
+### Object Lifecycles
 In looping `st::channel::recv()` operations `st::channel::shutdown()` can be manually called to force all operations to cease on the `st::channel` (operations will return `false`). The default behavior for `st::channel::shutdown()` is to cause all current and future all `st::channel::send()` operations to fail early but to allow `st::channel::recv()` to continue succeeding until the internal message queue is empty. 
 
 This is the default behavior of several objects which use `st::channel` internally:
 - `st::channel::shutdown(/* default true */)`
-- `st::thread::shutdown(/* default true */)`
-- `at::cotask::shutdown(/* default true */)`
+- `st::fiber::shutdown(/* default true */)`
 - `at::executor::shutdown(/* default true */)`
 
 Alternatively, the user can call said functions with explicit `false` to immediately end all operations on the channel:
 - `st::channel::shutdown(false)`
-- `st::thread::shutdown(false)`
-- `at::cotask::shutdown(false)`
+- `st::fiber::shutdown(false)`
 - `at::executor::shutdown(false)`
 
 NOTE: When an closable/shutdownable object goes out of scope (no more `st::sptr` for that object instance exists), the object will be shutdown with default behavior (if the object is not already shutdown).
 
-#### Example 7:
+#### Example 9:
 ```
 #include <iostream>
 #include <string>
