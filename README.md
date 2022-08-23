@@ -8,7 +8,7 @@ code lacks documentation, look at the interfaces for more information.
 
 [Unit Test and Example Code](tst/simple_thread_tst.cpp)
 
-### Usage:
+#### Usage:
 [Basic Usage](#basic-usage)
 
 [Send Operations](#send-operations)
