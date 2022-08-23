@@ -462,7 +462,8 @@ what a beautiful sunset
 ### Running Fibers On Other Fibers 
 `st::fiber` is actually an example of a stackless coroutine. According to wikipedia: 
 ```
-Coroutines are computer program components that generalize subroutines for non-preemptive multitasking, by allowing execution to be suspended and resumed.
+Coroutines are computer program components that generalize subroutines for 
+non-preemptive multitasking, by allowing execution to be suspended and resumed.
 ```
 
 Without going into to much detail, here are some advantages of coroutines compared to threads:
