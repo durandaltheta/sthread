@@ -340,6 +340,8 @@ $./a.out
 forward this string
 ```
 
+[Back To Top](#simple-threading-and-communication)
+
 ### Dealing With Blocking Functions 
 To ensure messages are processed in a timely manner, and to avoid deadlock in general, it is important to avoid 
 calling functions which will block for indeterminate periods within an `st::fiber`. If the user needs to call such a function, a simple solution is to make use of the standard library's `std::async()` feature to execute arbitrary code on a new thread, then `send()` the result back to the `st::fiber` when the call completes.
@@ -417,8 +419,6 @@ that's all folks!
 ```
 
 [Back To Top](#simple-threading-and-communication)
-
-
 
 ### Running Functions on Fibers 
 `st::fiber`s provide the ability to enqueue arbitrary code for execution with `st::fiber::schedule(...)` API. Any `st::fiber` can be used for this purpose, though the default `st::fiber::thread()` `FUNCTOR` template type `st::fiber::processor` is often useful for generating worker threads dedicated to scheduling other code.
