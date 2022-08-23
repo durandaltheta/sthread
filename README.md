@@ -193,10 +193,8 @@ Payload types can also be easily checked with `st::data::is<T>()` (returns `true
 
 NOTE: `st::data` can store a payload of any type. However, it does provide one special exception when passed explicit c-style `char*` strings, where it will automatically convert the argument `char*` into a `std::string` to protect the user against unexpected behavior. However, this means the the user must use `std::string` type when trying to copy or move the data back out. If this behavior is not desired, the user will have to wrap their `char*` in some other object.
 
-Many classes support a similar method also named `is<T>()`:
-- `st::fiber::is<T>()` // compares against the type of the thread's FUNCTOR 
-- `at::coroutine::is<T>()` // compares against the type of the coroutine's FUNCTOR 
-- `at::executor::is<T>()` // compares against the type of the executor's worker thread's FUNCTOR
+Some classes support a similar method also named `is<T>()`:
+- `st::fiber::is<T>()` // compares against the type of the fiber's FUNCTOR 
 
 #### Example 3:
 ```
@@ -588,12 +586,10 @@ In looping `st::channel::recv()` operations `st::channel::shutdown()` can be man
 This is the default behavior of several objects which use `st::channel` internally:
 - `st::channel::shutdown(/* default true */)`
 - `st::fiber::shutdown(/* default true */)`
-- `at::executor::shutdown(/* default true */)`
 
 Alternatively, the user can call said functions with explicit `false` to immediately end all operations on the channel:
 - `st::channel::shutdown(false)`
 - `st::fiber::shutdown(false)`
-- `at::executor::shutdown(false)`
 
 NOTE: When an closable/shutdownable object goes out of scope (no more `st::sptr` for that object instance exists), the object will be shutdown with default behavior (if the object is not already shutdown).
 
