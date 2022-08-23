@@ -10,13 +10,21 @@ code lacks documentation, look at the interfaces for more information.
 
 ### Usage:
 [Basic Usage](#basic-usage)
+
 [Send Operations](#send-operations)
+
 [Type Checking](#type-checking)
+
 [Fiber Constructor Arguments](#thread-constructor-arguments)
+
 [Sending Messages To Standard Threads With Channels](#sending-messages-to-standard-threads-with-channels)
+
 [Dealing With Blocking Functions](#dealing-with-blocking-functions)
+
 [Running Functions on Fibers](#running-functions-on-fibers)
+
 [Running Fibers On Other Fibers](#running-fibers-on-other-fibers)
+
 [Object Lifecycles](#object-lifecycles)
 
 ## Purpose 
