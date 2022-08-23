@@ -15,7 +15,7 @@ code lacks documentation, look at the interfaces for more information.
 
 [Type Checking](#type-checking)
 
-[Fiber Constructor Arguments](#thread-constructor-arguments)
+[Fiber Constructor Arguments](#fiber-constructor-arguments)
 
 [Sending Messages To Standard Threads With Channels](#sending-messages-to-standard-threads-with-channels)
 
