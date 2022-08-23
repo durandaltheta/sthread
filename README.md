@@ -23,7 +23,7 @@ code lacks documentation, look at the interfaces for more information.
 
 [Running Functions on Fibers](#running-functions-on-fibers)
 
-[Running Fibers On Other Fibers](#running-fibers-on-other-fibers)
+[Running Fibers On Fibers](#running-fibers-on-other-fibers)
 
 [Object Lifecycles](#object-lifecycles)
 
@@ -194,7 +194,7 @@ Payload types can also be easily checked with `st::data::is<T>()` (returns `true
 NOTE: `st::data` can store a payload of any type. However, it does provide one special exception when passed explicit c-style `char*` strings, where it will automatically convert the argument `char*` into a `std::string` to protect the user against unexpected behavior. However, this means the the user must use `std::string` type when trying to copy or move the data back out. If this behavior is not desired, the user will have to wrap their `char*` in some other object.
 
 Some classes support a similar method also named `is<T>()`:
-- `st::fiber::is<T>()` // compares against the type of the fiber's FUNCTOR 
+- `st::fiber::is<T>()` // compares against the type of the fiber's `FUNCTOR`
 
 #### Example 3:
 ```
@@ -457,7 +457,7 @@ what a beautiful sunset
 ```
 
 [Back To Top](#simple-threading-and-communication)
-### Running Fibers On Other Fibers 
+### Running Fibers On Fibers 
 `st::fiber` is actually an example of a stackless coroutine. According to wikipedia: 
 ```
 Coroutines are computer program components that generalize subroutines for 
