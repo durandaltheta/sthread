@@ -64,30 +64,6 @@ struct hold_and_restore {
 // INHERITABLE INTERFACES & CORE DATA TYPES
 
 /**
- * @brief interface representing types with shared context
- *
- * This interface is used to represent types that want to wrap a shared pointer.
- *
- * Implementing this interface provides the inheriting class with standard 
- * user api to manage the lifecycle of the object.
- */
-template <typename T>
-struct shared_context {
-    /**
-     * @return `true` if object is allocated, else `false`
-     */
-    inline operator bool() {
-        return m_context ? true : false;
-    }
-
-protected:
-    /**
-     * Implementor is responsible for setting and maintaining this value
-     */
-    std::shared_ptr<T> m_context;
-};
-
-/**
  * Type erased data container. Its purpose is similar to c++17 `std::any` but is 
  * backwards compatible to c++11.
  *
@@ -225,6 +201,30 @@ private:
 };
 
 /**
+ * @brief interface representing types with shared context
+ *
+ * This interface is used to represent types that want to wrap a shared pointer.
+ *
+ * Implementing this interface provides the inheriting class with standard 
+ * user api to manage the lifecycle of the object.
+ */
+template <typename T>
+struct shared_context {
+    /**
+     * @return `true` if object is allocated, else `false`
+     */
+    inline operator bool() {
+        return m_context ? true : false;
+    }
+
+protected:
+    /**
+     * Implementor is responsible for setting and maintaining this value
+     */
+    std::shared_ptr<T> m_context;
+};
+
+/**
  * @brief Interthread type erased message container 
  *
  * This object is *not* mutex locked beyond what is included in the 
@@ -305,6 +305,10 @@ private:
 
 /**
  * @brief interface for a class with a controllable lifecycle
+ * 
+ * Operations are "const" to ensure that lambda captures are trivial. Because of 
+ * this implementors of `sender` must mark all members used in the 
+ * implementation of this function as mutable or const.
  */
 struct lifecycle {
     /**
@@ -317,12 +321,12 @@ struct lifecycle {
      *
      * @param process_remaining_messages if true allow recv() to succeed until message queue is empty
      */
-    virtual void shutdown(bool process_remaining_messages) = 0;
+    virtual void shutdown(bool process_remaining_messages) const = 0;
 
     /**
      * @brief shutdown the object with default behavior
      */
-    virtual void shutdown() { 
+    virtual void shutdown() const { 
         shutdown(true); 
     }
 };
@@ -332,16 +336,14 @@ struct lifecycle {
  *
  * Implementing this interface provides the inheriting class with standard 
  * user api to send messages to it.
+ * 
+ * Operations are "const" to ensure that lambda captures are trivial. Because of 
+ * this implementors of `sender` must mark all members used in the 
+ * implementation of this function as mutable or const.
  */
 struct sender {
     /**
      * @brief user implementation of message send 
-     * 
-     * Operation is "const" to ensure that lambda captures are easy. Otherwise 
-     * the user would have to make all lambdas which capture a `sender` to have 
-     * a `mutable` capture list. Because of this implementors of `sender` 
-     * must mark all members used in the implementation of this function as 
-     * mutable or const.
      *
      * @param msg message to be sent to the object 
      * @return `true` on success, `false` on failure due to object being shutdown 
@@ -389,7 +391,7 @@ struct channel : protected shared_context<channel::context>, public sender {
 
     inline bool running() const {
         std::lock_guard<std::mutex> lk(m_mtx);
-        return m_shutdown;
+        return m_context->running();
     }
 
     inline void shutdown(bool process_remaining_messages) const {
@@ -442,6 +444,10 @@ private:
         };
 
         context() : m_shutdown(false) { }
+
+        inline bool running() const { 
+            return !m_shutdown;
+        }
         
         inline std::size_t queued() const {
             std::lock_guard<std::mutex> lk(m_mtx);
@@ -453,7 +459,7 @@ private:
             return m_recv_q.size();
         }
 
-        inline void shutdown(bool process_remaining_messages) {
+        inline void shutdown(bool process_remaining_messages) const {
             std::lock_guard<std::mutex> lk(m_mtx);
             m_shutdown = true;
 
@@ -487,7 +493,7 @@ private:
             return true;
         }
 
-        inline bool recv(message& msg) {
+        inline bool recv(message& msg) const {
             std::unique_lock<std::mutex> lk(m_mtx);
 
             // block until message is available or channel close
@@ -658,7 +664,9 @@ struct fiber : protected shared_context<fiber::context>,
         // explicitly shutdown root fiber channel because a system thread 
         // holds a copy of this fiber which keeps the channel alive even 
         // though the root fiber is no longer reachable
-        if(m_context && m_context.use_count() < 3 && *this == root()) {
+        if(m_context && 
+           m_context.get() == root().m_context.get() &&
+           m_context.use_count() < 3) {
             m_context->shutdown();
         }
     }
@@ -693,102 +701,61 @@ struct fiber : protected shared_context<fiber::context>,
         return fiber(m_context->launch<FUNCTOR>(std::forward<As>(as)...));
     }
 
+    /** 
+     * @brief a lightweight, trivially copiable class that serves as a unique identifier of an `st::fiber` object
+     */
+    struct id {
+        id() : m_addr(0) { }
+        id(const id& rhs) : m_addr(rhs.m_addr) { }
+        id(id&& rhs) : m_addr(rhs.m_addr) { }
+
+        /**
+         * @return an unsigned integer of the `st::fiber`'s shared context memory address 
+         */
+        inline std::size_t addr() const {
+            return m_addr;
+        }
+    private:
+        id(std::size_t addr) : m_addr(addr) { }
+        std::size_t m_addr;
+    };
+    
+    /**
+     * @brief return the `st::fiber::id` representing the `st::fiber`
+     *
+     * An `id` can trivially represent an enumeration, which can represent a 
+     * specific request, response, or notification operation.
+     */
+    const id get_id() const {
+        return id((std::size_t)(m_context.get()));
+    }
+
+    /**
+     * @return the `std::thread::id` of the system thread this `st::fiber` is running on
+     */
+    inline std::thread::id get_thread_id() const {
+        return m_context ? m_context->id() : std::thread::id();
+    }
+
+    /// implement `bool lifecycle::running() const`
     inline bool running() const {
         return m_context->running();
     }
 
-    inline void shutdown(bool process_remaining_messages) {
+    /// implement `void lifecycle::shutdown(bool)`
+    inline void shutdown(bool process_remaining_messages) const {
         m_context->shutdown(process_remaining_messages);
     }
 
+    /// implement `bool sender::send(message) const`
     inline bool send(message msg) const {
         m_context->send(std::move(msg));
     }
 
     /**
-     * @brief generic function wrapper for scheduling and executing arbitrary code
-     *
-     * Used to convert and wrap any code to a generically executable type.
-     */
-    struct task { 
-        task(){}
-        task(const task& rhs) : m_hdl(rhs.m_hdl) { }
-        task(task&& rhs) : m_hdl(std::move(rhs.m_hdl)) { }
-        task(const std::function<void()>& rhs) : m_hdl(rhs) { }
-        task(std::function<void()>&& rhs) : m_hdl(std::move(rhs)) { }
-
-        /**
-         * Template type `F` should be a Callable function or functor. 
-         */
-        template <typename F, typename... As>
-        task(F&& f, As&&... as) : 
-            m_hdl([=]() mutable { f(std::forward<As>(as)...); })
-        { }
-
-        /**
-         * @brief boolean conversion function
-         *
-         * @return `true` if task contains valid function, else `false`
-         */
-        inline operator bool()() {
-            return m_hdl ? true : false;
-        }
-
-        /**
-         * @return an `true` if re-queueing is required, else false
-         */
-        inline bool operator()() {
-            detail::hold_and_restore<bool*> har(tl_complete()); 
-            tl_complete() = &m_complete;
-            m_hdl();
-            return m_complete;
-        }
-
-        /**
-         * Modify the completion state of task object running on the calling thread.
-         *
-         * The internal flag this modifies defaults to `true`. If the user sets 
-         * this value to `false`, it will indicate to the processing code that 
-         * the task needs to be re-executed instead of being discarded.
-         *
-         * @param val the new complete state 
-         * @return `true` if completion state was successfully changed, else `false`
-         */
-        inline static bool complete(bool val) {
-            bool* cp = tl_complete();
-            if(cp) {
-                *cp = val;
-                return true;
-            } else {
-                return false;
-            }
-        }
-
-    private:
-        static inline bool*& tl_complete() {
-            thread_local bool* c=nullptr;
-            return c;
-        }
-
-        bool m_complete = true;
-        std::function<void()> m_hdl;
-    };
-
-    /**
-     * @brief schedule a generic task for execution
-     *
-     * @param t function to execute on target sender
-     * @return `true` on success, `false` on failure due to object being shutdown 
-     */
-    inline bool schedule(task t) const {
-        return m_context->schedule(std::move(t));
-    }
-
-    /**
      * @brief schedule a generic task for execution 
      *
-     * Allows for implicit conversions to `std::function<void()>`, if possible, 
-     * and subsequently to `st::fiber::task`.
+     * Allows for implicit conversions to `std::function<void()>`, if possible.
      *
      * @param t std::function to execute on target sender
      * @return `true` on success, `false` on failure due to object being shutdown 
@@ -813,7 +780,7 @@ struct fiber : protected shared_context<fiber::context>,
      * @brief return the parent `st::fiber` of this instance
      * @return allocated `st::fiber` if this object has a parent, else the root `st::fiber`
      */
-    inline fiber parent() {
+    inline fiber parent() const {
         return fiber(m_context->parent())
     }
 
@@ -821,7 +788,7 @@ struct fiber : protected shared_context<fiber::context>,
      * @brief return the root `st::fiber` of this instance's executing system thread
      * @return allocated root `st::fiber` which manages this instance's system thread
      */
-    inline fiber root() {
+    inline fiber root() const {
         return fiber(m_context->root())
     }
 
@@ -852,39 +819,6 @@ struct fiber : protected shared_context<fiber::context>,
             return self ? self->root() : self;
         }
     };
-
-    /** 
-     * @brief a lightweight, trivially copiable class that serves as a unique identifier of an `st::fiber` object
-     */
-    struct id {
-        id() : m_addr(0) { }
-        id(const id& rhs) : m_addr(rhs.m_addr) { }
-        id(id&& rhs) : m_addr(rhs.m_addr) { }
-
-        inline std::size_t addr() const {
-            return m_addr;
-        }
-    private:
-        id(std::size_t addr) : m_addr(addr) { }
-        std::size_t m_addr;
-    };
-    
-    /**
-     * @brief return the `st::fiber::id` representing the `st::fiber`
-     *
-     * An `id` can trivially represent an enumeration, which can represent a 
-     * specific request, response, or notification operation.
-     */
-    const id get_id() const {
-        return id((std::size_t)(m_context.get()));
-    }
-
-    /**
-     * @return the `std::thread::id` of the system thread this `st::fiber` is running on
-     */
-    inline std::thread::id get_thread_id() const {
-        return m_context->id();
-    }
 
     /**
      * @brief class describing the workload of an `st::fiber`
@@ -932,12 +866,73 @@ struct fiber : protected shared_context<fiber::context>,
      * @brief abstract the weight comparison between two fibers 
      * @return `true` if this fiber has lighter workload than the other, else `false`
      */
-    inline bool operator<(const fiber& rhs) {
+    inline bool operator<(const fiber& rhs) const {
         return workload() < rhs.workload();
     }
 
 private:
     typedef std::function<message(message&)> handler;
+
+    /*
+     * Generic function wrapper for scheduling and executing arbitrary code
+     *
+     * Used to convert and wrap any code to a generically executable type.
+     */
+    struct task { 
+        task(){}
+        task(const task& rhs) : m_hdl(rhs.m_hdl) { }
+        task(task&& rhs) : m_hdl(std::move(rhs.m_hdl)) { }
+        task(const std::function<void()>& rhs) : m_hdl(rhs) { }
+        task(std::function<void()>&& rhs) : m_hdl(std::move(rhs)) { }
+
+        // Template type `F` should be a Callable function or functor. 
+        template <typename F, typename... As>
+        task(F&& f, As&&... as) : 
+            m_hdl([=]() mutable { f(std::forward<As>(as)...); })
+        { }
+
+        // return `true` if task contains valid function, else `false`
+        inline operator bool()() {
+            return m_hdl ? true : false;
+        }
+
+        // return an `true` if re-queueing is required, else false
+        inline bool operator()() {
+            detail::hold_and_restore<bool*> har(tl_complete()); 
+            tl_complete() = &m_complete;
+            m_hdl();
+            return m_complete;
+        }
+
+        /*
+         * Modify the completion state of task object running on the calling thread.
+         *
+         * The internal flag this modifies defaults to `true`. If the user sets 
+         * this value to `false`, it will indicate to the processing code that 
+         * the task needs to be re-executed instead of being discarded.
+         *
+         * @param val the new complete state 
+         * @return `true` if completion state was successfully changed, else `false`
+         */
+        inline static bool complete(bool val) {
+            bool* cp = tl_complete();
+            if(cp) {
+                *cp = val;
+                return true;
+            } else {
+                return false;
+            }
+        }
+
+    private:
+        static inline bool*& tl_complete() {
+            thread_local bool* c=nullptr;
+            return c;
+        }
+
+        bool m_complete = true;
+        std::function<void()> m_hdl;
+    };
 
     struct context : public std::enable_shared_from_this<context> {
         context(std::weak_ptr<context> root = std::weak_ptr<context>(), 
@@ -1011,7 +1006,7 @@ private:
             return m_ch->running();
         }
     
-        inline void shutdown(bool process_remaining_messages) {
+        inline void shutdown(bool process_remaining_messages) const {
             m_ch->shutdown(process_remaining_messages);
         }
 
@@ -1040,13 +1035,13 @@ private:
             return send(message::make(0,std::move(t)));
         }
 
-        inline std::shared_ptr<context> parent() {
+        inline std::shared_ptr<context> parent() const {
             std::lock_guard<std::mutex> lk(m_mtx);
             std::shared_ptr<context> parent = m_parent.lock();
             return = parent ? parent : m_root.lock();
         }
 
-        inline std::shared_ptr<context> root() {
+        inline std::shared_ptr<context> root() const {
             std::lock_guard<std::mutex> lk(m_mtx);
             return m_root.lock();
         }
@@ -1081,7 +1076,7 @@ private:
          * Conversion to `task` is private so only `st::fiber::launch()` 
          * can access it, to avoid the possibility of double scheduling.
          */
-        inline task run_task() {
+        inline task run_task() const {
             // hold a single copy of self to keep memory allocated during processing
             std::shared_ptr<context> self(shared_from_this());
             return task([&,self]() mutable { 
@@ -1112,7 +1107,7 @@ private:
             });
         }
 
-        inline task blocking_run_task() {
+        inline task blocking_run_task() const {
             // hold a single copy of self to keep memory allocated during processing
             std::shared_ptr<context> self(shared_from_this());
             return task([&,self]() mutable { 
@@ -1149,8 +1144,8 @@ private:
         mutable bool m_blocked;
         mutable std::weak_ptr<context> m_root; // weak pointer to root fiber
         mutable std::weak_ptr<context> m_parent; // weak pointer to parent fiber
-        std::thread::id m_thread_id;
-        handler m_hdl; // function wrapper utilizing functor to parse messages 
+        mutable std::thread::id m_thread_id;
+        mutable handler m_hdl; // function wrapper utilizing functor to parse messages 
     };
 
     fiber(std::shared_ptr<context> ctx) : m_context(std::move(ctx));
@@ -1179,8 +1174,8 @@ operator<<(std::basic_ostream<CharT,Traits>& ost, fiber::id id) {
 /**
  * @brief jointly manage the lifecycle of multiple `st::fiber`s
  *
- * When the last shared context contained by an `st::weave` is destroyed, 
- * all `st::fiber`s managed by the `st::weave` will be 
+ * When the last shared `st::weave` context managed is destroyed, all 
+ * `st::fiber`s managed by the `st::weave`'s context will be shutdown with
  * `st::fiber::shutdown()`.
  *
  * This is a useful object for storing arbitrary fibers that should be 
@@ -1248,7 +1243,7 @@ struct weave : protected shared_context<weave::context>
         return m_context->running();
     }
 
-    inline void shutdown(bool process_remaining_messages) {
+    inline void shutdown(bool process_remaining_messages) const {
         return m_context->shutdown(process_remaining_messages);
     }
 
@@ -1309,7 +1304,7 @@ struct weave : protected shared_context<weave::context>
      *
      * @return the selected fiber
      */
-    inline fiber select() {
+    inline fiber select() const {
         return m_context->select();
     }
 
@@ -1331,7 +1326,7 @@ private:
             return m_fibers.size();
         }
     
-        inline void shutdown(bool process_remaining_messages) {
+        inline void shutdown(bool process_remaining_messages) const {
             std::vector<fiber> fibers;
 
             {
@@ -1358,24 +1353,24 @@ private:
         }
 
         template <typename... Fs>
-        void inner_append(fiber& f) {
+        void inner_append(fiber& f) const {
             m_fibers->push_back(f);
         }
 
         template <typename... Fs>
-        void inner_append(fiber& f, fiber& f2, Fs&&... fibers) {
+        void inner_append(fiber& f, fiber& f2, Fs&&... fibers) const {
             m_fibers->push_back(f);
             append(f2, std::forward<Fs>(fibers)...);
         }
 
         template <std::size_t fiber_count, typename... Fs>
-        void append(fiber& f, Fs&&... fibers) {
+        void append(fiber& f, Fs&&... fibers) const {
             std::lock_guard<std::mutex> lk(m_context->m_mtx);
             m_fibers.reserve(fiber_count + m_fibers.size());
             inner_append(f, std::forward<Fs>(fibers)...);
         }
 
-        inline fiber select() {
+        inline fiber select() const {
             std::lock_guard<std::mutex> lk(m_mtx);
             std::size_t sz = m_fibers.size();
 
@@ -1397,9 +1392,9 @@ private:
             }
         }
 
-        std::mutex m_mtx;
-        std::vector<fiber> m_fibers;
-        std::size_t m_cur_idx;
+        mutable std::mutex m_mtx;
+        mutable std::vector<fiber> m_fibers;
+        mutable std::size_t m_cur_idx;
     };
     
     weave(std::shared_ptr<context> ctx) : m_context(std::move(ctx));

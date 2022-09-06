@@ -17,22 +17,22 @@ code lacks documentation, look at the interfaces for more information.
 
 [Fiber Constructor Arguments](#fiber-constructor-arguments)
 
-[Sending Messages To Standard Threads With Channels](#sending-messages-to-standard-threads-with-channels)
+[Sending Messages to Standard Threads with Channels](#sending-messages-to-standard-threads-with-channels)
 
-[Dealing With Blocking Functions](#dealing-with-blocking-functions)
+[Dealing with Blocking Functions](#dealing-with-blocking-functions)
 
 [Object Lifecycles](#object-lifecycles)
 
 #### Extended Usage:
-[Running Functions On Fibers](#running-functions-on-fibers)
+[Running Functions on Fibers](#running-functions-on-fibers)
 
-[Running Fibers On Fibers](#running-fibers-on-fibers)
+[Running Fibers on Fibers](#running-fibers-on-fibers)
 
 [Fiber Trees](#fiber-trees)
 
-[Managing Groups Of Fibers](#managing-groups-of-fibers)
+[Managing Groups of Fibers](#managing-groups-of-fibers)
 
-[Creating A Pool Of Worker Fibers](#creating-a-pool-of-worker-fibers)
+[Creating a Pool of Worker Fibers](#creating-a-pool-of-worker-fibers)
 
 ## Purpose 
 This header only library seeks to easily setup useful concurrency with a simple API.
@@ -283,7 +283,7 @@ $./a.out
 
 [Back To Top](#simple-threading-and-communication)
 
-### Sending Messages To Standard Threads With Channels
+### Sending Messages to Standard Threads with Channels
 The object that `st::fiber`s uses for communication in their `send()` methods is called `st::channel`. `st::channel`s can be created and used outside of `st::fiber` objects if desired. This allows the user, for example, to send messages to threads which were not launched with `st::fiber::thread()`.
 
 #### Example 5
@@ -322,9 +322,9 @@ forward this string to main
 
 [Back To Top](#simple-threading-and-communication)
 
-### Dealing With Blocking Functions 
+### Dealing with Blocking Functions 
 To ensure messages are processed in a timely manner, and to avoid deadlock in general, it is important to avoid 
-calling functions which will block for indeterminate periods within an `st::fiber`. If the user needs to call such a function, a simple solution is to make use of the standard library's `std::async()` feature to execute arbitrary code on a new thread, then `send()` the result back to the `st::fiber` when the call completes.
+calling functions which will block for indeterminate periods within an `st::fiber`. If the user needs to call such a function, a simple solution is to make use of the standard library's `std::async()` feature to execute arbitrary code on a dedicated system thread, then `send()` the result back to the `st::fiber` when the call completes.
 
 #### Example 6
 ```
@@ -335,7 +335,7 @@ calling functions which will block for indeterminate periods within an `st::fibe
 #include <sthread>
 
 std::string blocking_function(st::fiber origin) {
-    std::this_thread::sleep_for(std::chrono::seconds(5));
+    std::this_thread::sleep_for(std::chrono::seconds(3));
     origin.send(op::print, "that's all folks!");
     origin.send(op::unblock_main);
 };
@@ -353,10 +353,10 @@ struct MyFunctor {
         switch(msg.id()) {
             case op::call_blocker:
             {
-                // acquire a copy of the running `st::fiber` shared pointer
-                st::fiber self = st::fiber::local_self();
+                // acquire a copy of the running `st::fiber`
+                st::fiber self = st::fiber::local::self();
                
-                // use `std::async` to execute our lambda code on a new thread
+                // use `std::async` to execute our lambda code on its own thread
                 std::async(blocking_function, self);
                 break;
             }
@@ -379,12 +379,13 @@ struct MyFunctor {
 
 int main() {
     st::channel ch = st::channel::make();
-    st::message msg;
     st::fiber my_fiber = st::fiber::thread<MyFunctor>(ch);
     my_fiber.send(MyFunctor::op::call_blocker);
     my_fiber.send(MyFunctor::op::print, "1");
     my_fiber.send(MyFunctor::op::print, "2");
     my_fiber.send(MyFunctor::op::print, "3");
+
+    st::message msg;
     ch.recv(msg); // block so program doesn't end before our functions can run
     return 0;
 };
@@ -403,10 +404,10 @@ that's all folks!
 
 ### Object Lifecycles
 Many objects in this library are actually shared pointers to some shared context, whose context needs to be allocated with a static call to their respective `make()`, `thread()` or `launch()` functions. Objects in this category include:
-`st::message`
-`st::channel`
-`st::fiber`
-`st::weave`
+- `st::message`
+- `st::channel`
+- `st::fiber`
+- `st::weave`
 
 The user can check if these objects contain an allocated shared context with their `bool` conversion. This is easiest to do by using the object as the argument to an `if()` statement. Given an `st::fiber` named 'my_fib':
 ```
@@ -422,8 +423,9 @@ Attempting to use API of these objects when they are *NOT* allocated (other than
 When the last object holding a copy of some shared context goes out of scope, that object will be neatly shutdown and be destroyed. As such, the user is responsible for keeping copies of the above objects when they are created with an allocator function (`make()`, `thread()` or `launch()`), otherwise they may unexpectedly shut down.
 
 In some cases, objects shared context can be shutdown early with a call to their `shutdown()` API. Objects with this API:
-`st::channel`
-`st::fiber`
+- `st::channel`
+- `st::fiber`
+- `st::weave`
 
 In `st::channel`'s case, blocking `st::channel::recv()` operations can be stopped and made to return `false` by calling `st::channel::shutdown()`. `st::fiber` uses a `st::channel` internally for receiving `st::message`s, and it uses this behavior in order to determine when it should stop processing messages and go out of scope.
 
@@ -470,7 +472,7 @@ thread done
 [Back To Top](#simple-threading-and-communication)
 
 ### Running Functions on Fibers 
-`st::fiber`s provide the ability to enqueue arbitrary code for asynchronous execution with `st::fiber::schedule(...)` API. Any `st::fiber` can be used for this purpose, though the default `st::fiber::thread<>()` and `st::fiber::launch<>()` `FUNCTOR` template type `st::fiber::processor` is often useful for generating worker threads dedicated to scheduling other code.
+`st::fiber`s provide the ability to enqueue arbitrary code for asynchronous execution with `st::fiber::schedule(...)` API. Any `st::fiber` can be used for this purpose, though the default `st::fiber::thread<>()` and `st::fiber::launch<>()` `FUNCTOR` template type `st::fiber::processor` is useful for generating worker fibers dedicated to scheduling other code.
 
 `st::fiber::schedule()` can accept a function, functor, or lambda function, alongside optional arguments, in a similar fashion to standard library features `std::async()` and `std::thread()`.
 
@@ -494,7 +496,7 @@ int main() {
     // specifying `st::fiber::processor` inside the template `<>` is optional
     st::fiber my_processor = st::fiber::thread<>();
     my_processor.schedule(print, std::string("what a beautiful day"));
-    my_processor.schedule(PrinterFunctor, std::string("looks like rain"));
+    my_processor.schedule(PrintFunctor, std::string("what a beautiful day"));
     my_processor.schedule([]{ std::cout << "what a beautiful sunset" << std::endl; });
 }
 ```
@@ -509,7 +511,7 @@ what a beautiful sunset
 
 [Back To Top](#simple-threading-and-communication)
 
-### Running Fibers On Fibers 
+### Running Fibers on Fibers 
 `st::fiber` is actually an example of a stackless coroutine. According to wikipedia: 
 ```
 Coroutines are computer program components that generalize subroutines for 
@@ -727,30 +729,42 @@ st::fiber ch2 = processor.launch<ChildFiber2>();
 The object `st::weave` exists to manage the lifecycle of multiple fibers. An `st::weave` represents a private shared context in a similar way to an `st::fiber`. When the last `st::weave` representing a shared context goes out of scope all the `st::fiber`s managed by that `st::weave` will be `st::fiber::shutdown()` OR if the `st::weave::shutdown()` variant function is called.
 
 `st::weave` implements lifecycle API:
-`bool st::weave::running()`: returns `true` if managing any running fibers, else `false`
-`void st::weave::shutdown()`: shutdown any managed fibers with default behavior
-`void st::weave::shutdown(bool process_remaining_messages)`: shutdown any managed fibers with specified behavior
+- `bool st::weave::running()`: returns `true` if managing any fibers, else `false`
+- `void st::weave::shutdown()`: shutdown any managed fibers with default behavior
+- `void st::weave::shutdown(bool process_remaining_messages)`: shutdown any managed fibers with specified behavior
 
 `st::weave` implements this unique API:
-`st::weave st::weave::make(... fibers ...)`: allocate a `st::weave` managing argument fibers 
-`st::weave st::weave::threadpool<FUNCTOR>(optional_count, args...)`: allocate a `st::weave` managing `optional_count` of `st::fiber`s implementing `FUNCTOR` constructed with `args...`. Default usage `st::weave:;threadpool<>()` can be used to allocate a maximum processing throughput weave.
-`void st::weave::append(... fibers ...)`: append additional `st::fiber`s to an existing `st::weave`
-`std::vector<st::fiber> st::weave::fibers()`: return the `std::vector<st::fiber>` of `st::fiber`s stored at the given index
-`std::size_t st::weave::count()`: return a count of managed `st::fibers`
-`st::fiber st::weave::operator[](index)`: return the `st::fiber` stored at the given index
-`st::fiber st::weave::select()`: return a `st::fiber` with a relatively light workload
+- `st::weave st::weave::make(... fibers ...)`: allocate a `st::weave` managing argument fibers 
+- `st::weave st::weave::threadpool<FUNCTOR>(count, args...)`: allocate a `st::weave` managing `count` of `st::fiber`s implementing `FUNCTOR` constructed with `args...`. Default usage `st::weave::threadpool<>()` can be used to allocate a maximum processing throughput weave.
+- `void st::weave::append(... fibers ...)`: append additional `st::fiber`s to an existing `st::weave`
+- `std::vector<st::fiber> st::weave::fibers()`: return the `std::vector<st::fiber>` of `st::fiber`s stored at the given index
+- `std::size_t st::weave::count()`: return a count of managed `st::fibers`
+- `st::fiber st::weave::operator[](index)`: return the `st::fiber` stored at the given index
+- `st::fiber st::weave::select()`: return a `st::fiber` with a relatively light workload
 
-`st::weave::select()` will return a managed `st::fiber` with a relatively light workload. This is useful for `st::fiber::schedule()`ing arbitrary code over a number of worker `st::fiber`s intended for generic code processing. IE, creating an `st::weave` managing a group of `st::fiber`s launched with `st::fiber::thread<>()` is an easy way to set up a threadpool.
+NOTE:
+
+`st::weave::select()` will return a managed `st::fiber` with a relatively light workload. This is useful for `st::fiber::schedule()`ing arbitrary code over a number of worker `st::fiber`s intended for generic code processing. 
+
+It is important to note that if the user manually calls `st::fiber::shutdown()` on an `st::fiber` managed by an `st::weave`, then `st::weave::select()` may accidentally return that shutdown `st::fiber`, causing unexpected behavior. 
+
+Similarly, if a given `st::weave` manages *no* `st::fiber`s, then `st::fiber::select()` will return an empty `st::fiber` object.
 
 #### Extended Example 4
 ```
 #include <iostream>
 #include <string>
 #include <sthread>
+#include <thread>
+#include <chrono>
 
 struct PrintIdFiber {
     PrintIdFiber() {
         std::cout << "PrintIdFiber[" << this << "]:" << std::this_thread::get_id() << std::endl;
+    }
+
+    ~PrintIdFiber() {
+        std::cout << "~PrintIdFiber[" << this << "]:" << std::this_thread::get_id() << std::endl;
     }
 
     void operator()(st::message msg) { }
@@ -761,7 +775,6 @@ void UnblockMain(st::channel ch) {
 }
 
 int main() {
-    st::channel ch = st::channel::make();
     st::fiber root = st::fiber::thread<>();
 
     // hold a copy of all launched fibers
@@ -775,7 +788,12 @@ int main() {
         root.launch<PrintIdFiber>(),
         root.launch<PrintIdFiber>()
     );
-        
+
+    // sleep to let all fibers construct on root fiber thread
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    std::cout << "all fibers launched" << std::endl;
+
+    st::channel ch = st::channel::make();
     root.schedule(UnblockMain, ch);
 
     st::message msg;
@@ -791,12 +809,12 @@ $./a.out
 
 [Back To Top](#simple-threading-and-communication) 
 
-### Creating A Pool Of Worker Fibers 
-A common concurrency usecase is creating a group of system threads where arbitrary code code can be executed in an asynchronous fashion. The static function `st::weave::threadpool<FUNCTOR>(count, ... optional FUNCTOR constructor args ...)` is provided for this purpose.
+### Creating a Pool of Worker Fibers 
+A common concurrency usecase is creating a group of system threads where any (potentially large quantity of) arbitrary code code can be executed in an asynchronous fashion. The static function `st::weave::threadpool<FUNCTOR>(count, ... optional FUNCTOR constructor args ...)` is provided for this purpose.
 
 `st::weave::threadpool<FUNCTOR>(count, ...args...)` calls `st::fiber::thread<FUNCTOR>(...args...)` `count` times and returns the collection of launched fibers as an `st::weave`. 
 
-The default `FUNCTOR` for `st::weave::threadpool()` is `st::fiber::processor`, which is a FUNCTOR which does not process messages with its `void operator(st::message)` overload, and is intended to be used *only* for `st::fiber::schedule(...)`ing code to be asynchronously executed.
+The default `FUNCTOR` for `st::weave::threadpool()` is `st::fiber::processor`, which is a FUNCTOR which does not process messages with its `void operator(st::message)` overload, and is instead intended to asynchronously execute arbitrary code with calls to `st::fiber::schedule(...)`.
 
 If no arguments are provided to the function, a default count of fibers is selected which attempts to launch a count of `st::fiber`s equal to the number of concurrently executable system threads. This count is typically equal to the count of processor cores on some hardware.
 
