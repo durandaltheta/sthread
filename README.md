@@ -1,29 +1,28 @@
 # Simple Threading and Communication
 ## Quick Links
 
-This library makes extensive use of inherited functionality via interfaces. If 
-code lacks documentation, look at the interfaces for more information.
+This library makes use of inherited functionality via interfaces. If code lacks documentation, look at the interfaces for more information.
 
 [Documentation](https://durandaltheta.github.io/sthread/)
 
 [Unit Test and Example Code](tst/simple_thread_tst.cpp)
 
-#### Usage:
-[Basic Usage](#basic-usage)
+#### Basic Usage:
+[Creating Threads from Functors](#creating-threads-from-functors)
 
-[Send Operations](#send-operations)
+[Send Operations](#send-operations) 
 
 [Type Checking](#type-checking)
 
 [Fiber Constructor Arguments](#fiber-constructor-arguments)
 
-[Sending Messages to Standard Threads with Channels](#sending-messages-to-standard-threads-with-channels)
+[Sending Messages Between Threads with Channels](#sending-messages-between-threads-with-channels)
 
 [Dealing with Blocking Functions](#dealing-with-blocking-functions)
 
 [Object Lifecycles](#object-lifecycles)
 
-#### Extended Usage:
+#### Advanced Usage:
 [Running Functions on Fibers](#running-functions-on-fibers)
 
 [Running Fibers on Fibers](#running-fibers-on-fibers)
@@ -53,7 +52,7 @@ Functors (as used by this library) have several advantages over raw functions.
 - Functors allow for inheritance
 - Functors allow for public enumerations and child classes to be defined as part of its namespace, which is useful for organizing what messages and message payload data types the thread will listen for.
 - Functors allow for class method definitions, instead of forcing the user to rely on lambdas, local objects or global namespace functions if further function calls are desired.
-- Initialization (constructor), runtime execution (`void operator()(st::message`), and deinitialization (destructor) are broken in to separate functions, which I think makes them more readable. A thread running only a raw function requires everything be managed within that function. 
+- Initialization (constructor), runtime execution (`void operator()(st::message`), and deinitialization (destructor) are broken in to separate functions, which I think makes them more readable. A thread running only a raw function requires everything be managed within that function or within child objects managed by that function. 
 
 ## Requirements
 - C++11 
@@ -75,13 +74,14 @@ Alternatively just copy the .h files in inc/ folder to your local project header
 
 simple_thread_tst binary will be placed in tst/ 
 
-## Basic Usage
+## Basic Usage 
+### Creating Threads from Functors
 - Install the library and include the header `sthread` or `simple_thread.hpp`
-- Create a class or struct with `void operator()(st::message)` to 
-handle received messages (also called a 'functor')
+- Create a class or struct and implement method `void operator()(st::message)` to handle received messages (such an object is also called a 'functor')
 - Define some enum to distinguish different messages 
 - Launch your thread with `st::fiber::thread<YourClassNameHere>()`
 - Trigger user class's `void operator()(st::message)` via `st::fiber::send(/* ... */)` 
+- User functor can distinguish `st::message`s by their unsigned integer id (possibly representing an enumeration) with a call to `st::message::id()`. 
 
 #### Example 1
 ```
@@ -120,15 +120,22 @@ hello
 world
 ```
 
+The code that calls `st::fiber::thread()` to create a fiber is responsible for keeping a copy of the resulting `st::fiber` object. Otherwise the launched `st::fiber` may stop executing because it will go out of scope.
+
 [Back To Top](#simple-threading-and-communication)
 
-### Message Payload Data 
-Messages store their (optional) payload data in an object called `st::data`.
-The message's data object is a member also called `data` (`st::message::data`).
+### Send Operations
+Several classes in this library support the ability to send messages:
+- `st::channel::send(/* ... *)`
+- `st::fiber::send(/* ... *)`
+- `st::weave::send(/* ... *)`
 
-Message data can be of any type and can be copied to argument `T t` with `st::data::copy_to<T>(T&& t)` or rvalue swapped with `st::message::move_data_to<T>(T&& t)`. 
+Arguments passed to `send(/* ... */)` are subsequently passed to `st::message st::message::make(/* ... */)` before the resulting `st::message` is passed to its destination thread and functor. The summary of the 3 basic overloads of `st::message st::message::make(/* ... */)` are:
+- `st::message st::message st::message::make(ID id)`: Returns a constructed message which returns argument unsigned integer `id` as `st::message::id()`.
+- `st::message st::message st::message::make(ID id, T&& t)`: Same as the previous invocation but additionally accepts and stores a payload `t` of any type (compiler deduced) `T`. The will be stored in the message as a type erased `st::data`. The `st::message`'s `st::data` can be retrieved by reference with a call to `st::data& st::message::data()`. 
+- `st::message st::message::make(st::message)`: Returns its argument immediately with no changes
 
-`st::data::copy_to<T>(T&& t)` and `st::data::move_to<T>(T&& t)` will return `true` only if the stored payload type matches type `T`, otherwise it returns `false`. 
+`st::data()` can be of any type and can be copied to an argument of templated type `T` with `st::data::copy_to(T& t)` or rvalue swapped with `st::data::move_to(T& t)`. Said functions will return `true` if their argument `T` matches the type `T` originally stored in the `st::data`, otherwise they will return `false`.
 
 #### Example 2
 ```
@@ -148,6 +155,8 @@ struct MyClass {
                 std::string s;
                 if(msg.data().copy_to(s)) {
                     std::cout << s << std::endl;
+                } else {
+                    std::cout << "message data was not a string" << std::endl;
                 }
                 break;
             }
@@ -158,7 +167,8 @@ struct MyClass {
 int main() {
     st::fiber my_thread = st::fiber::thread<MyClass>();
 
-    my_thread.send(MyClass::op::print, "hello again");
+    my_thread.send(MyClass::op::print, std::string("hello again"));
+    my_thread.send(MyClass::op::print, 14);
 }
 ```
 
@@ -166,32 +176,17 @@ Terminal output might be:
 ```
 $./a.out
 hello again
+message data was not a string
 ```
-
-The code that `st::fiber::thread()`es launches a fiber is responsible for keeping a copy of the resulting `st::fiber`, otherwise the launched `st::fiber` may randomly stop executing because it will go out of scope.
-
-[Back To Top](#simple-threading-and-communication)
-
-### Send Operations
-Several classes in this library support the ability to send messages:
-- `st::channel::send(/* ... *)`
-- `st::fiber::send(/* ... *)`
-- `st::weave::send(/* ... *)`
-
-Arguments passed to `send(/* ... */)` are subsequently passed to `st::message st::message::make(/* ... */)` before the resulting `st::message` is passed to its destination thread and functor. The summary of the 3 basic overloads of `st::message st::message::make(/* ... */)` are:
-- `st::message st::message st::message::make(ID id)`: Returns a constructed message which returns argument unsigned integer `id` as `st::message::id()`.
-- `st::message st::message st::message::make(ID id, T&& t)`: Same as the previous invocation but additionally accepts and stores a payload `t` of any type (compiler deduced) `T`. The will be stored in the message as a type erased `st::data`, accessible via `st::data& st::message::data()`. The stored value `T` can be copied out of the `st::data` object a with a call to `bool st::data::copy_to(T& t)` or moved out of the message with `bool st:data::move_to(T& t)`. Said functions will return false if their argument `T` does not match the type `T` originally stored in the `st::data`.
-- `st::message st::message::make(st::message)`: Returns its argument immediately with no changes
 
 [Back To Top](#simple-threading-and-communication)
 
 ### Type Checking
 Payload `st::data` types can also be checked with `st::data::is<T>()` (returns `true` if types match, else `false`) which is useful if a message's data might contain several different potential types. 
 
-NOTE: `st::data` can store a payload of any type. However, it does provide one special exception when passed explicit c-style `char*` strings, where it will automatically convert the argument `char*` into a `std::string` to protect the user against unexpected behavior. However, this means the the user must use `std::string` type when trying to copy or move the data back out. If this behavior is not desired, the user will have to wrap their `char*` in some other object.
+WARNING: `st::data` can store a payload of any type. However, this behavior can be confusing with regard to c-style `char*` strings. c-style strings are just pointers to memory, and the user is responsible for ensuring that said memory is accessible outside of the scope when the message is sent. Typically, it is safe to send c-style strings with a hardcoded value, as this is normally stored in the program's data. However, local stack arrays of characters, or, even worse, allocated c-strings must be carefully considered when sending over a message. 
 
-Some classes support a similar method also named `is<T>()`:
-- `st::fiber::is<T>()` // compares against the type of the fiber's `FUNCTOR`
+A simple workaround to these headaches is to encapsulate c-style strings within a c++ `std::string`.
 
 #### Example 3
 ```
@@ -224,12 +219,9 @@ struct MyClass {
 int main() {
     st::fiber my_fiber = st::fiber::thread<MyClass>();
 
-    std::string s("hello ");
-    my_fiber.send(MyClass::op::print, s);
-    int i = 1;
-    my_fiber.send(MyClass::op::print, i);
-    s = " more time\n";
-    my_fiber.send(MyClass::op::print, s);
+    my_fiber.send(MyClass::op::print, std::string("hello"));
+    my_fiber.send(MyClass::op::print, 1);
+    my_fiber.send(MyClass::op::print, std::string(" more time\n"));
 }
 ```
 
@@ -242,7 +234,7 @@ hello 1 more time
 [Back To Top](#simple-threading-and-communication)
 
 ### Fiber Constructor Arguments
-`st::fiber`s can be passed constructor arguments in `st::fiber::thread<FUNCTOR>(As&&...)`. The `FUNCTOR` class will be created on the new thread and destroyed before said thread ends.
+`st::fiber`s can be passed `FUNCTOR` constructor arguments `as...` in `st::fiber::thread<FUNCTOR>(As&& as...)`. The `FUNCTOR` class will be created on the new thread and destroyed before said thread ends.
 
 #### Example 4
 ```
@@ -283,7 +275,7 @@ $./a.out
 
 [Back To Top](#simple-threading-and-communication)
 
-### Sending Messages to Standard Threads with Channels
+### Sending Messages Between Threads with Channels
 The object that `st::fiber`s uses for communication in their `send()` methods is called `st::channel`. `st::channel`s can be created and used outside of `st::fiber` objects if desired. This allows the user, for example, to send messages to threads which were not launched with `st::fiber::thread()`.
 
 #### Example 5
@@ -294,7 +286,7 @@ The object that `st::fiber`s uses for communication in their `send()` methods is
 
 struct MyClass {
     MyClass(st::channel ch) { 
-        ch.send("forward this string to main");
+        ch.send(std::string("forward this string to main"));
     }
 
     void operator()(st::message msg) { }
@@ -381,9 +373,9 @@ int main() {
     st::channel ch = st::channel::make();
     st::fiber my_fiber = st::fiber::thread<MyFunctor>(ch);
     my_fiber.send(MyFunctor::op::call_blocker);
-    my_fiber.send(MyFunctor::op::print, "1");
-    my_fiber.send(MyFunctor::op::print, "2");
-    my_fiber.send(MyFunctor::op::print, "3");
+    my_fiber.send(MyFunctor::op::print, std::string("1"));
+    my_fiber.send(MyFunctor::op::print, std::string("2"));
+    my_fiber.send(MyFunctor::op::print, std::string("3"));
 
     st::message msg;
     ch.recv(msg); // block so program doesn't end before our functions can run
@@ -422,7 +414,7 @@ Attempting to use API of these objects when they are *NOT* allocated (other than
 
 When the last object holding a copy of some shared context goes out of scope, that object will be neatly shutdown and be destroyed. As such, the user is responsible for keeping copies of the above objects when they are created with an allocator function (`make()`, `thread()` or `launch()`), otherwise they may unexpectedly shut down.
 
-In some cases, objects shared context can be shutdown early with a call to their `shutdown()` API. Objects with this API:
+In some cases, object's shared context can be shutdown early with a call to their `shutdown()` API. Objects with this API:
 - `st::channel`
 - `st::fiber`
 - `st::weave`
@@ -430,6 +422,8 @@ In some cases, objects shared context can be shutdown early with a call to their
 In `st::channel`'s case, blocking `st::channel::recv()` operations can be stopped and made to return `false` by calling `st::channel::shutdown()`. `st::fiber` uses a `st::channel` internally for receiving `st::message`s, and it uses this behavior in order to determine when it should stop processing messages and go out of scope.
 
 The default behavior for `st::channel::shutdown()` is to cause all current and future all `st::channel::send()` operations to fail early but to allow `st::channel::recv()` to continue succeeding until the internal message queue is empty. Alternatively, the user can call `st::channel::shutdown(false)`/`st::fiber::shutdown(false)` to immediately end all operations on the `st::channel`/`st::fiber`.
+
+The user can call `bool running()` on each of these objects to check if an object has had `shutdown()` called on it. `running()` will return `true` if `shutdown()` has *NOT* been called, else it will return `false`. 
 
 #### Example 7
 ```
@@ -446,37 +440,58 @@ void looping_recv(st::channel ch) {
             std::cout << s << std::endl;
         }
     }
-
-    std::cout << "thread done" << std::endl;
 }
 
 int main() {
-    st::channel my_channel = st::channel::make();
+    st::channel my_channel;
+
+    if(!my_channel) {
+        std::cout << "my_channel is not yet allocated" << std::endl;
+    }
+
+    my_channel = st::channel::make();
+
+    if(my_channel) {
+        std::cout << "my_channel is allocated" << std::endl;
+    }
+
     std::thread my_thread(looping_recv, my_channel);
 
-    my_channel.send(0, "You say goodbye");
-    my_channel.send(0, "And I say hello");
+    if(my_channel.running()) {
+        std::cout << "channel is running" << std::endl;
+    }
+
+    my_channel.send(0, "you say goodbye");
+    my_channel.send(0, "and I say hello");
     my_channel.shutdown(); // end thread looping 
     my_thread.join(); // join thread
+
+    if(!my_channel.running()) {
+        std::cout << "channel is shutdown" << std::endl;
+    }
 }
 ```
 
 Terminal output might be:
 ```
 $./a.out 
-You say goodbye
-And I say hello
-thread done 
+my_channel is not yet allocated
+my_channel is allocated
+channel is running
+you say goodbye
+and I say hello
+channel is shutdown
 ```
 
 [Back To Top](#simple-threading-and-communication)
 
+#### Advanced Usage:
 ### Running Functions on Fibers 
-`st::fiber`s provide the ability to enqueue arbitrary code for asynchronous execution with `st::fiber::schedule(...)` API. Any `st::fiber` can be used for this purpose, though the default `st::fiber::thread<>()` and `st::fiber::launch<>()` `FUNCTOR` template type `st::fiber::processor` is useful for generating worker fibers dedicated to scheduling other code.
+`st::fiber`s provide the ability to enqueue arbitrary code for asynchronous execution with `st::fiber::schedule(...)` API. Any `st::fiber` can be used for this purpose, though the default `st::fiber::thread<>()` and `st::fiber::launch<>()` `FUNCTOR` template type `st::fiber::processor` is useful for generating worker `st::fiber`s dedicated to scheduling other code.
 
 `st::fiber::schedule()` can accept a function, functor, or lambda function, alongside optional arguments, in a similar fashion to standard library features `std::async()` and `std::thread()`.
 
-#### Extended Example 1
+#### Advanced Example 1
 ```
 #include <iostream>
 #include <string>
@@ -529,20 +544,20 @@ Without going into to much detail, here are some advantages of coroutines compar
  - coroutines do not require system level calls to create 
 
 `st::fiber`s can be created in two ways:
-`static st::fiber st::fiber::thread<FUNCTOR>(As&& as...)`: launch a blocking root `st::fiber` on a new system thread
-`st::fiber st::fiber::launch<FUNCTOR>(As&& as...)`: launch a cooperative `st::fiber` inside another `st::fiber`
+- `static st::fiber st::fiber::thread<FUNCTOR>(As&& as...)`: launch a blocking root `st::fiber` on a new system thread
+- `st::fiber st::fiber::launch<FUNCTOR>(As&& as...)`: launch a cooperative `st::fiber` inside another `st::fiber`
 
 `st::fiber`s are designed to run inside of each other in a cooperative fashion. That is, after processing their own message, the `st::fiber` will suspend itself and allowing other `st::fiber`s to process messages. 
 
 The creator of an `st::fiber` is responsible for holding a copy of any `st::fiber` it creates to make sure that they stay in memory. 
 
-*WARNING*: `st::fiber`s need to be careful to *NOT* hold a copy of themselves as a member variable, as this can create a memory leak. 
+*WARNING*: `FUNCTOR`s running in an `st::fiber` need to be careful to *NOT* hold a copy of that `st::fiber` as a member variable, as this can create a memory leak. Instead, `st::fiber::local::self()` should be called from within the running `FUNCTOR` when accessing the `FUNCTOR`'s associated `st::fiber` is necessary.
 
-However, `st::fiber`s can hold copies of one another and use each other's `st::fiber::send()` functions to communicate. 
+However, `st::fiber`s can hold copies of other `st::fiber`s and use these copies' `st::fiber::send()` functions to communicate with each other. 
 
-The simplest way to start executing many child `st::fiber`s is to create a new `st::fiber` with `st::fiber::thread` with the default `FUNCTOR` and `st::fiber::launch()` the rest of the `st::fiber`s on top of the first `st::fiber`. 
+A simple way to start executing many child `st::fiber`s is to create a new `st::fiber` with `st::fiber::thread` with the default `FUNCTOR` and `st::fiber::launch()` the rest of the `st::fiber`s on top of the first `st::fiber`. 
 
-#### Extended Example 2
+#### Advanced Example 2
 ```
 #include <iostream>
 #include <string>
@@ -554,32 +569,31 @@ struct ChildFiber {
         say_name
     };
     
-    struct Data {
-        int name_id;
-        std::list<st::fiber> fibs;
-        st::channel done_ch;
-    };
+    ChildFiber(int name, 
+               st::channel done_ch,
+               st::fiber next=st::fiber()) : 
+        m_name(name), m_done_ch(done_ch), m_next(next) 
+    { }
 
     void operator()(st::message msg) {
         switch(msg.id()) {
             case op::say_name:
             {
-                Data d;
-                if(msg.data().copy_to(d)) {
-                    d.fibs.pop_front();
-                    std::cout << "My name is ChildFiber_" << d.name_id << std::endl;
+                std::cout << "My name is ChildFiber" << m_name << std::endl;
 
-                    if(d.fibs.size()) {
-                        ++(d.id);
-                        d.fibs.front().send(op::say_name, d);
-                    } else {
-                        d.done_ch.send(0);
-                    }
+                if(m_next) {
+                    m_next.send(op::say_name);
+                } else {
+                    m_done_ch.send(0);
                 }
                 break;
             }
         }
     }
+
+    int m_name;
+    st::channel m_done_ch;
+    st::fiber m_next; // next fiber in the list
 };
 
 int main() {
@@ -589,16 +603,12 @@ int main() {
     // create a channel to block on while fibers are running
     st::channel ch = st::channel::make();
 
-    // launch child fibers within the root fiber
-    std::list<st::fiber> fibs{ 
-        root.launch<ChildFiber>(),
-        root.launch<ChildFiber>(),
-        root.launch<ChildFiber>(),
-        root.launch<ChildFiber>(),
-        root.launch<ChildFiber>()
-    };
+    // Create an implicit singly linked list of fibers.
+    st::fiber child2 = root.launch<ChildFiber>(2,ch);
+    st::fiber child1 = root.launch<ChildFiber>(1,ch,child2);
+    st::fiber child0 = root.launch<ChildFiber>(0,ch,child1);
 
-    fibs.front().send(ChildFiber::op::say_name, ChildFiber::Data{ 0, fibs, ch })
+    child0.send(ChildFiber::op::say_name);
 
     st::message msg;
     ch.recv(msg); // block until fibers are done processing
@@ -609,19 +619,17 @@ int main() {
 Terminal output might be:
 ```
 $./a.out 
-My name is MyFiber_0
-My name is MyFiber_1
-My name is MyFiber_2
-My name is MyFiber_3
-My name is MyFiber_4
+My name is ChildFiber0
+My name is ChildFiber1
+My name is ChildFiber2
 ```
 
 [Back To Top](#simple-threading-and-communication) 
 
 ### Fiber Trees
-`st::fiber`s have a parent and child relationship. That is, they are either running in a blocking fashion at the top level of a system thread or they are running in a non-blocking fashion inside of another `st::fiber`. `st::fiber`s running as children of a parent `st::fiber` will suspend themselves to allow for their sibling `st::fiber`s to run after they have processed an `st::message` or executed some `st::fiber::schedule()`ed code. 
+`st::fiber`s have a parent and child relationship. That is, they are either running in a blocking fashion at the top level of a system thread or they are running in a non-blocking fashion inside of another `st::fiber`. 
 
-Multiple children can run on a single parent `st::fiber`. In fact, child `st::fiber`s can be parents to their own children, creating a multi-tiered family tree.
+Multiple children can run on a single parent `st::fiber`. In fact, child `st::fiber`s can be parents to their own children, creating a branching family tree.
 
 `st::fiber`s have some awarenes of their position in the current system thread's family tree. Each fiber has the following API:
 `st::fiber::parent()`: return a copy of the parent `st::fiber` (or the root `st::fiber` if there is no parent)
@@ -632,7 +640,9 @@ Additionally, the `FUNCTOR` executing inside an `st::fiber` can get the same inf
 `st::fiber::local::parent()`: return a copy of the parent `st::fiber` (or the root `st::fiber` if there is no parent) of the `st::fiber` running on the calling thread
 `st::fiber::local::root()`: return a copy of the root `st::fiber` at the top of the family tree on the current thread
 
-#### Extended Example 3
+`st::fiber`s running as children of a parent `st::fiber` will suspend themselves to allow for their sibling `st::fiber`s to run after they have processed an `st::message` or executed some `st::fiber::schedule()`ed code. 
+
+#### Advanced Example 3
 ```
 // in main.h
 #include <sthread>
@@ -714,7 +724,7 @@ hi
 goodbye
 ```
 
-An important note for scheduling is that parent `st::fiber`s are of an implicit higher priority than their children when handling messages and scheduled code. A simple solution to create evenly balanced priorities between all working `st::fiber`s is to have the parent thread launched with `st::fiber::thread()` using the default `FUNCTOR` (`st::fiber::processor`) which itself will process no messages except to handle scheduling of other code:
+An important note is that parent `st::fiber`s are of an implicit higher priority than their children when handling messages and scheduled code. A simple solution to create evenly balanced priorities between all working `st::fiber`s is to have the parent thread launched with `st::fiber::thread()` using the default `FUNCTOR` (`st::fiber::processor`) which itself will process no messages except to handle scheduling of other code:
 ``` 
 // call `st::fiber::thread` with empty template to use default `st::fiber::processor`
 st::fiber processor = st::fiber::thread<>();
@@ -726,7 +736,7 @@ st::fiber ch2 = processor.launch<ChildFiber2>();
 [Back To Top](#simple-threading-and-communication) 
 
 ### Managing Groups of Fibers
-The object `st::weave` exists to manage the lifecycle of multiple fibers. An `st::weave` represents a private shared context in a similar way to an `st::fiber`. When the last `st::weave` representing a shared context goes out of scope all the `st::fiber`s managed by that `st::weave` will be `st::fiber::shutdown()` OR if the `st::weave::shutdown()` variant function is called.
+The object `st::weave` exists to manage the lifecycle of multiple fibers. An `st::weave` represents a private shared context in a similar way to an `st::fiber`. When the last `st::weave` representing a shared context goes out of scope (or when `st::weave::shutdown()` is called) all the `st::fiber`s managed by that `st::weave` will be shutdown.
 
 `st::weave` implements lifecycle API:
 - `bool st::weave::running()`: returns `true` if managing any fibers, else `false`
@@ -750,7 +760,7 @@ It is important to note that if the user manually calls `st::fiber::shutdown()` 
 
 Similarly, if a given `st::weave` manages *no* `st::fiber`s, then `st::fiber::select()` will return an empty `st::fiber` object.
 
-#### Extended Example 4
+#### Advanced Example 4
 ```
 #include <iostream>
 #include <string>
@@ -810,17 +820,17 @@ $./a.out
 [Back To Top](#simple-threading-and-communication) 
 
 ### Creating a Pool of Worker Fibers 
-A common concurrency usecase is creating a group of system threads where any (potentially large quantity of) arbitrary code code can be executed in an asynchronous fashion. The static function `st::weave::threadpool<FUNCTOR>(count, ... optional FUNCTOR constructor args ...)` is provided for this purpose.
+A common concurrency usecase is creating a group of worker system threads that can execute (a potentially large quantity of) arbitrary code. The static function `st::weave::threadpool<FUNCTOR>(count, ... optional FUNCTOR constructor args ...)` is provided for this purpose.
 
 `st::weave::threadpool<FUNCTOR>(count, ...args...)` calls `st::fiber::thread<FUNCTOR>(...args...)` `count` times and returns the collection of launched fibers as an `st::weave`. 
 
-The default `FUNCTOR` for `st::weave::threadpool()` is `st::fiber::processor`, which is a FUNCTOR which does not process messages with its `void operator(st::message)` overload, and is instead intended to asynchronously execute arbitrary code with calls to `st::fiber::schedule(...)`.
+The default `FUNCTOR` for `st::weave::threadpool<FUNCTOR>()` is `st::fiber::processor`, a `FUNCTOR` which does not process messages with its `void operator(st::message)` overload, and is instead intended to execute arbitrary code with calls to `st::fiber::schedule(...)`.
 
-If no arguments are provided to the function, a default count of fibers is selected which attempts to launch a count of `st::fiber`s equal to the number of concurrently executable system threads. This count is typically equal to the count of processor cores on some hardware.
+If no arguments are provided to `st::weave::threadpool<FUNCTOR>()`, a default count of fibers is selected which attempts to launch a count of `st::fiber`s equal to the number of concurrently executable system threads. This count is typically equal to the count of processor cores on the running hardware.
 
 Therefore, a simple way to create a multipurpose, (theoretically) maximally efficient (in terms of CPU throughput) threadpool is to use all default options: `st::weave::threadpool<>()`.
 
-#### Extended Example 5
+#### Advanced Example 5
 ```
 #include <iostream>
 #include <string>
@@ -836,6 +846,7 @@ int main() {
     std::cout << "worker thread count: " << pool.size() << std::endl;
 
     for(int i=0; i<pool.size(); ++i) {
+        // select the next `st::fiber` to schedule on
         pool.select().schedule(foo);
     }
 

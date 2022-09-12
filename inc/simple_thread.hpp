@@ -39,7 +39,7 @@ using base = typename std::remove_reference<typename std::remove_cv<T>::type>::t
  */
 template <typename T>
 static constexpr std::size_t type_code() {
-    return typeid(base<T>).hash_type_code();
+    return typeid(base<T>).hash_code();
 }
 
 namespace detail {
@@ -49,9 +49,9 @@ namespace detail {
  */
 template <typename T>
 struct hold_and_restore {
-    hold_and_restore() = 0; // cannot create empty value
-    hold_and_restore(const hold_and_restore&) = 0; // cannot copy
-    hold_and_restore(hold_and_restore&& rhs) = 0 // cannot move
+    hold_and_restore() = delete; // cannot create empty value
+    hold_and_restore(const hold_and_restore&) = delete; // cannot copy
+    hold_and_restore(hold_and_restore&& rhs) = delete; // cannot move
     hold_and_restore(T& t) : m_ref(t), m_old(t) { }
     ~hold_and_restore() { m_ref = m_old; }
     
@@ -71,23 +71,13 @@ struct hold_and_restore {
  * manages and sanitizes memory allocation.
  */
 struct data {
-    data() : data_pointer_t(nullptr, data::no_delete) { }
+    data() : m_data(nullptr, data::no_delete), m_type_code(0) { }
     data(const data& rhs) = delete; // cannot copy unique_ptr
 
     data(data&& rhs) : 
-        m_data(std::move(rhs.m_data_pointer)), 
+        m_data(std::move(rhs.m_data)), 
         m_type_code(rhs.m_type_code) 
     { }
-    
-    /**
-     * @brief const c-string constructor
-     */
-    explicit data(const char* s) : data(hint<std::string>(), s) { }
-    
-    /**
-     * @brief c-string constructor
-     */
-    explicit data(char* s) : data(hint<std::string>(), s) { }
 
     /**
      * @brief type deduced constructor
@@ -124,7 +114,7 @@ struct data {
      */
     template <typename T>
     bool is() const {
-        return m_type_code == type_code<T>();
+        return m_type_code == st::type_code<T>();
     }
 
     /**
@@ -186,7 +176,7 @@ private:
     { }
 
     template <typename T, typename... As>
-    static void* allocate(As&&...) {
+    static void* allocate(As&&... as) {
         return (void*)(new base<T>(std::forward<As>(as)...));
     }
 
@@ -201,39 +191,25 @@ private:
 };
 
 /**
- * @brief interface representing types with shared context
- *
- * This interface is used to represent types that want to wrap a shared pointer.
- *
- * Implementing this interface provides the inheriting class with standard 
- * user api to manage the lifecycle of the object.
- */
-template <typename T>
-struct shared_context {
-    /**
-     * @return `true` if object is allocated, else `false`
-     */
-    inline operator bool() {
-        return m_context ? true : false;
-    }
-
-protected:
-    /**
-     * Implementor is responsible for setting and maintaining this value
-     */
-    std::shared_ptr<T> m_context;
-};
-
-/**
  * @brief Interthread type erased message container 
  *
  * This object is *not* mutex locked beyond what is included in the 
  * `std::shared_ptr` implementation.
  */
-struct message : protected shared_context<message::context> {
+struct message {
     message(){}
     message(const message& rhs) : m_context(rhs.m_context) { }
     message(message&& rhs) : m_context(std::move(rhs.m_context)) { }
+
+    inline message& operator=(const message& rhs) {
+        m_context = rhs.m_context;
+        return *this;
+    }
+
+    inline message& operator=(message&& rhs) {
+        m_context = std::move(rhs.m_context);
+        return *this;
+    }
 
     /** 
      * @brief convenience function for templating 
@@ -272,35 +248,44 @@ struct message : protected shared_context<message::context> {
     }
 
     /**
+     * @return `true` if object is allocated, else `false`
+     */
+    inline operator bool() {
+        return m_context ? true : false;
+    }
+
+    /**
      * @brief an unsigned integer representing message's intended operation
      *
      * An `id` can trivially represent an enumeration, which can represent a 
      * specific request, response, or notification operation.
      */
     const std::size_t id() const {
-        return m_context->id;
+        return m_context->m_id;
     }
 
     /**
      * @brief optional type erased payload data
      */
     inline st::data& data() {
-        return m_context->data;
+        return m_context->m_data;
     }
 
 private:
     struct context {
-        message(const std::size_t c) : m_id(c) { }
+        context(const std::size_t c) : m_id(c) { }
 
         template <typename T>
-        message(const std::size_t c, T&& t) :
+        context(const std::size_t c, T&& t) :
             m_id(c),
-            data(std::forward<T>(t))
+            m_data(std::forward<T>(t))
         { }
 
-        const std::size_t id;
-        st::data data;
+        const std::size_t m_id;
+        st::data m_data;
     };
+
+    std::shared_ptr<context> m_context;
 };
 
 /**
@@ -314,7 +299,7 @@ struct lifecycle {
     /**
      * @return `true` if the object is running, else `false`
      */
-    virtual bool running() const = 0
+    virtual bool running() const = 0;
 
     /** 
      * @brief shutdown the object (running() == `false`)
@@ -326,9 +311,7 @@ struct lifecycle {
     /**
      * @brief shutdown the object with default behavior
      */
-    virtual void shutdown() const { 
-        shutdown(true); 
-    }
+    virtual void shutdown() const = 0;
 };
 
 /**
@@ -376,26 +359,49 @@ struct sender {
  * Methods in this class are const in order to enable trivial lambda captures 
  * without having to always specify the lambda is mutable.
  */
-struct channel : protected shared_context<channel::context>, public sender {
+struct channel {
     channel(){}
-    channel(const message& rhs) : m_context(rhs.m_context) { }
-    channel(message&& rhs) : m_context(std::move(rhs.m_context)) { }
+    channel(const channel& rhs) : m_context(rhs.m_context) { }
+    channel(channel&& rhs) : m_context(std::move(rhs.m_context)) { }
 
-    /**
-     * @brief Construct a channel as a shared_ptr 
-     * @return a channel shared_ptr
-     */
-    static inline std::shared_ptr<channel> make() {
-        return channel(std::shared_ptr<context>(new context);
+    inline channel& operator=(const channel& rhs) {
+        m_context = rhs.m_context;
+        return *this;
     }
 
+    inline channel& operator=(channel&& rhs) {
+        m_context = std::move(rhs.m_context);
+        return *this;
+    }
+
+    /**
+     * @brief Construct an allocated channel
+     * @return the allocated channel
+     */
+    static inline channel make() {
+        return channel(std::shared_ptr<context>(new context));
+    }
+
+    /**
+     * @return `true` if object is allocated, else `false`
+     */
+    inline operator bool() {
+        return m_context ? true : false;
+    }
+
+    /// implement `bool lifecycle::running() const`
     inline bool running() const {
-        std::lock_guard<std::mutex> lk(m_mtx);
         return m_context->running();
     }
 
+    /// implement `void lifecycle::shutdown(bool)`
     inline void shutdown(bool process_remaining_messages) const {
-        return m_context->shutdown(process_remaining_messages);
+        m_context->shutdown(process_remaining_messages);
+    }
+    
+    /// implement `void lifecycle::shutdown()`
+    inline void shutdown() const {
+        shutdown(true);
     }
 
     /** 
@@ -424,7 +430,7 @@ struct channel : protected shared_context<channel::context>, public sender {
      * will be overwritten by the front of the queue.
      *
      * @param msg interprocess message object reference to contain the received message 
-     * @return true on success, false if channel is closed
+     * @return true on success, false if channel is shutdown
      */
     inline bool recv(message& msg) const {
         return m_context->recv(msg);
@@ -446,6 +452,7 @@ private:
         context() : m_shutdown(false) { }
 
         inline bool running() const { 
+            std::lock_guard<std::mutex> lk(m_mtx);
             return !m_shutdown;
         }
         
@@ -503,7 +510,7 @@ private:
                 recv_blk->wait(lk);
             }
 
-            if(m_msg_q.empty()) { // no more messages to process, channel closed
+            if(m_msg_q.empty()) { // no more messages to process, channel shutdown
                 return false;
             } else {
                 msg = std::move(m_msg_q.front());
@@ -516,9 +523,10 @@ private:
         mutable std::mutex m_mtx;
         mutable std::deque<message> m_msg_q;
         mutable std::deque<std::shared_ptr<blocker>> m_recv_q;
-    }
+    };
 
     channel(std::shared_ptr<context> ctx) : m_context(std::move(ctx)) { }
+    std::shared_ptr<context> m_context;
 };
 
 /**
@@ -546,16 +554,15 @@ private:
  * assembler level support which allocates stacks for coroutines, the best that 
  * can be accomplished at present in C++ is stackless coroutines. This means 
  * that code cannot be *arbitrarily* suspended and resumed at will (although 
- * this can be simulated with some complicated `switch` based hacks which add a 
- * lot of complexity, that also come with their own limitations. Further support 
- * for this kind of coroutine is provided in C++20 and onwards). 
+ * this can be simulated with some complicated `switch` based hacks which add  
+ * significant complexity, and also come with their own limitations. Further 
+ * support for this kind of coroutine is provided in C++20 and onwards). 
  *
  * Instead this library allows the user to create `st::fiber` instances 
  * with user defined functors as a template argument. This is the case in 
  * these functions: 
  * `st::fiber::thread<FUNCTOR>(...)`
  * `st::fiber::launch<FUNCTOR>(...)`
- * `st::fiber::make<FUNCTOR>(...)`
  *
  * Type FUNCTOR should be a functor class. A functor is a class with call 
  * operator overload which accepts an argument message, ex:
@@ -572,8 +579,8 @@ private:
  * };
  * ```
  *
- * Note: `st::fibers`s automatically throw out any null messages received 
- * from their channel.
+ * Note: `st::fibers`s automatically throw out any unallocated messages 
+ * received over their internal channel.
  *
  * Functors can alternatively return an `st::message`. If the 
  * functor follows this pattern any returned non-null message will be 
@@ -602,9 +609,11 @@ private:
  *
  * Another distinct advantage is functors are able to make intelligent use 
  * of C++ RAII semantics, as the functor can specify constructors and 
- * destructors as normal.
+ * destructors as normal. In fact, the user's FUNCTOR is constructed on the 
+ * target `st::fiber`'s thread, instead of the calling thread, allowing for 
+ * `thread_local` data to be safely used by the user FUNCTOR.
  *
- * If a `st::fiber` running in a non-blocking fashion has no more messages 
+ * If an `st::fiber` running in a non-blocking fashion has no more messages 
  * to receive, it will suspend itself until new messages are sent to it via 
  * `st::fiber::send()` or `st::fiber::schedule<FUNCTOR>()`, whereupon it will 
  * resume processing messages.
@@ -613,8 +622,8 @@ private:
  * message whose processing blocks an `st::fiber` indefinitely can cause all 
  * sorts of bad effects, including deadlock. In a scenario where a long running 
  * or indefinite call needs to be made, it may be better to call `std::async` 
- * to launch a dedicated system thread and execute the function, then send a 
- * message back to the originating fiber with the result:
+ * to execute the function on a dedicated system thread, then send a message 
+ * back to the originating fiber with the result:
  * ```
  * struct MyFiber {
  *     enum op {
@@ -645,9 +654,7 @@ private:
  * };
  * ```
  */
-struct fiber : protected shared_context<fiber::context>, 
-               public lifecycle,
-               public sender {
+struct fiber : public lifecycle, public sender {
     /**
      * Generic FUNCTOR which only processes messages sent via `schedule()` API, 
      * ignoring all other messages.
@@ -658,7 +665,7 @@ struct fiber : protected shared_context<fiber::context>,
 
     fiber(){}
     fiber(const fiber& rhs) : m_context(rhs.m_context) { }
-    fiber(fiber&& rhs) : m_context(std::move(rhs.m_context) { }
+    fiber(fiber&& rhs) : m_context(std::move(rhs.m_context)) { }
 
     virtual ~fiber() {
         // explicitly shutdown root fiber channel because a system thread 
@@ -667,15 +674,39 @@ struct fiber : protected shared_context<fiber::context>,
         if(m_context && 
            m_context.get() == root().m_context.get() &&
            m_context.use_count() < 3) {
-            m_context->shutdown();
+            shutdown();
         }
     }
+
+    inline fiber& operator=(const fiber& rhs) {
+        m_context = rhs.m_context;
+        return *this;
+    }
+
+    inline fiber& operator=(fiber&& rhs) {
+        m_context = std::move(rhs.m_context);
+        return *this;
+    }
+
+    inline void* get() {
+        return m_context.get();
+    }
+
+    /**
+     * @return `true` if argument fiber represents this fiber (or no fiber), else `false`
+     */
+    inline bool operator==(fiber rhs) noexcept {
+        return m_context.get() == rhs.m_context.get();
+    }
+
+    //--------------------------------------------------------------------------
+    // allocation 
 
     /**
      * @brief construct and launch a system thread running user FUNCTOR as the blocking root `st::fiber`
      *
      * `st::fiber`'s FUNCTOR will be allocated on the scheduled thread, not the 
-     * calling thread. This allows usage of thread_local data where necessary.
+     * calling thread. This allows usage of `thread_local` data where necessary.
      *
      * @param as optional arguments to the constructor of type FUNCTOR
      */
@@ -691,7 +722,7 @@ struct fiber : protected shared_context<fiber::context>,
      * fashion on the target `st::fiber`.
      *
      * `st::fiber`'s FUNCTOR will be allocated on the scheduled thread, not the 
-     * calling thread. This allows usage of thread_local data where necessary.
+     * calling thread. This allows usage of `thread_local` data where necessary.
      *
      * @param as optional arguments to the constructor of type FUNCTOR
      * @return allocated `st::fiber` if successfully launched, else empty pointer
@@ -701,41 +732,15 @@ struct fiber : protected shared_context<fiber::context>,
         return fiber(m_context->launch<FUNCTOR>(std::forward<As>(as)...));
     }
 
-    /** 
-     * @brief a lightweight, trivially copiable class that serves as a unique identifier of an `st::fiber` object
-     */
-    struct id {
-        id() : m_addr(0) { }
-        id(const id& rhs) : m_addr(rhs.m_addr) { }
-        id(id&& rhs) : m_addr(rhs.m_addr) { }
-
-        /**
-         * @return an unsigned integer of the `st::fiber`'s shared context memory address 
-         */
-        inline std::size_t addr() const {
-            return m_addr;
-        }
-    private:
-        id(std::size_t addr) : m_addr(addr) { }
-        std::size_t m_addr;
-    };
-    
     /**
-     * @brief return the `st::fiber::id` representing the `st::fiber`
-     *
-     * An `id` can trivially represent an enumeration, which can represent a 
-     * specific request, response, or notification operation.
+     * @return `true` if object is allocated, else `false`
      */
-    const id get_id() const {
-        return id((std::size_t)(m_context.get()));
+    inline operator bool() {
+        return m_context ? true : false;
     }
 
-    /**
-     * @return the `std::thread::id` of the system thread this `st::fiber` is running on
-     */
-    inline std::thread::id get_thread_id() const {
-        return m_context ? m_context->id() : std::thread::id();
-    }
+    //--------------------------------------------------------------------------
+    // lifecycle 
 
     /// implement `bool lifecycle::running() const`
     inline bool running() const {
@@ -746,34 +751,20 @@ struct fiber : protected shared_context<fiber::context>,
     inline void shutdown(bool process_remaining_messages) const {
         m_context->shutdown(process_remaining_messages);
     }
-
-    /// implement `bool sender::send(message) const`
-    inline bool send(message msg) const {
-        m_context->send(std::move(msg));
+    
+    /// implement `void lifecycle::shutdown()`
+    inline void shutdown() const {
+        shutdown(true);
     }
 
-    /**
-     * @brief schedule a generic task for execution 
-     *
-     * Allows for implicit conversions to `std::function<void()>`, if possible.
-     *
-     * @param t std::function to execute on target sender
-     * @return `true` on success, `false` on failure due to object being shutdown 
-     */
-    inline bool schedule(std::function<void()> f) const {
-        return m_context->schedule(task(std::move(f)));
-    }
+    //--------------------------------------------------------------------------
+    // state
 
     /**
-     * @brief wrap user function and arguments then schedule as a generic task for execution
-     *
-     * @param f function to execute on target sender 
-     * @param as arguments for argument function
-     * @return `true` on success, `false` on failure due to object being shutdown 
+     * @return the `std::thread::id` of the system thread this `st::fiber` is running on
      */
-    template <typename F, typename... As>
-    bool schedule(F&& f, As&&... as) const {
-        return schedule(task([=]() mutable { f(std::forward<As>(as)...); }));
+    inline std::thread::id get_id() const {
+        return m_context ? m_context->get_thread_id() : std::thread::id();
     }
 
     /**
@@ -781,7 +772,7 @@ struct fiber : protected shared_context<fiber::context>,
      * @return allocated `st::fiber` if this object has a parent, else the root `st::fiber`
      */
     inline fiber parent() const {
-        return fiber(m_context->parent())
+        return fiber(m_context->parent());
     }
 
     /**
@@ -789,7 +780,7 @@ struct fiber : protected shared_context<fiber::context>,
      * @return allocated root `st::fiber` which manages this instance's system thread
      */
     inline fiber root() const {
-        return fiber(m_context->root())
+        return fiber(m_context->root());
     }
 
     /**
@@ -808,7 +799,7 @@ struct fiber : protected shared_context<fiber::context>,
          */
         static inline fiber parent() {
             auto self = local::self();
-            return self ? self->parent() : self;
+            return self ? self.parent() : self;
         }
 
         /**
@@ -816,7 +807,7 @@ struct fiber : protected shared_context<fiber::context>,
          */
         static inline fiber root() {
             auto self = local::self();
-            return self ? self->root() : self;
+            return self ? self.root() : self;
         }
     };
 
@@ -859,7 +850,7 @@ struct fiber : protected shared_context<fiber::context>,
      * @return weight representing workload of `st::fiber`
      */
     inline weight workload() const {
-        m_context->workload();
+        return m_context->workload();
     }
 
     /**
@@ -870,13 +861,45 @@ struct fiber : protected shared_context<fiber::context>,
         return workload() < rhs.workload();
     }
 
+    //--------------------------------------------------------------------------
+    // communication
+
+    /// implement `bool sender::send(message) const`
+    inline bool send(message msg) const {
+        return m_context->send(std::move(msg));
+    }
+
+    /**
+     * @brief schedule a generic task for execution 
+     *
+     * Allows for implicit conversions to `std::function<void()>`, if possible.
+     *
+     * @param t std::function to execute on target sender
+     * @return `true` on success, `false` on failure due to object being shutdown 
+     */
+    inline bool schedule(std::function<void()> f) const {
+        return m_context->schedule(task(std::move(f)));
+    }
+
+    /**
+     * @brief wrap user function and arguments then schedule as a generic task for execution
+     *
+     * @param f function to execute on target sender 
+     * @param as arguments for argument function
+     * @return `true` on success, `false` on failure due to object being shutdown 
+     */
+    template <typename F, typename... As>
+    bool schedule(F&& f, As&&... as) const {
+        return schedule(task([=]() mutable { f(std::forward<As>(as)...); }));
+    }
+
 private:
     typedef std::function<message(message&)> handler;
 
     /*
      * Generic function wrapper for scheduling and executing arbitrary code
      *
-     * Used to convert and wrap any code to a generically executable type.
+     * Used to convert and wrap any code to a generically executable type. 
      */
     struct task { 
         task(){}
@@ -891,37 +914,18 @@ private:
             m_hdl([=]() mutable { f(std::forward<As>(as)...); })
         { }
 
-        // return `true` if task contains valid function, else `false`
-        inline operator bool()() {
-            return m_hdl ? true : false;
-        }
-
         // return an `true` if re-queueing is required, else false
         inline bool operator()() {
+            m_complete = true;
             detail::hold_and_restore<bool*> har(tl_complete()); 
             tl_complete() = &m_complete;
             m_hdl();
             return m_complete;
         }
 
-        /*
-         * Modify the completion state of task object running on the calling thread.
-         *
-         * The internal flag this modifies defaults to `true`. If the user sets 
-         * this value to `false`, it will indicate to the processing code that 
-         * the task needs to be re-executed instead of being discarded.
-         *
-         * @param val the new complete state 
-         * @return `true` if completion state was successfully changed, else `false`
-         */
-        inline static bool complete(bool val) {
-            bool* cp = tl_complete();
-            if(cp) {
-                *cp = val;
-                return true;
-            } else {
-                return false;
-            }
+        // Modify the completion state of task object running on the calling thread.
+        inline static void complete(bool val) {
+            *tl_complete() = val;
         }
 
     private:
@@ -937,96 +941,187 @@ private:
     struct context : public std::enable_shared_from_this<context> {
         context(std::weak_ptr<context> root = std::weak_ptr<context>(), 
                 std::weak_ptr<context> parent = std::weak_ptr<context>(),
-                std::thread::id thread_id = std::thread_id()) : 
+                std::thread::id thread_id = std::thread::id()) : 
             m_ch(channel::make()),
             m_blocked(true),
             m_root(root),
             m_parent(parent),
             m_thread_id(thread_id)
-        { }
+        { 
+            m_self = shared_from_this();
+        }
         
         template <typename FUNCTOR, typename... As>
         static std::shared_ptr<context> thread(As&&... as) {
             std::shared_ptr<context> c(new context);
-
-            std::lock_guard<std::mutex> lk(c->m_mtx);
-
-            std::thread thd([c]() mutable {
-                {
-                    // block until lock is released by spawning thread
-                    std::lock_guard<std::mutex> lk(c->m_mtx);
-                }
-
-                // init and run
-                c->init<FUNCTOR>(std::forward<As>(as)...); 
-                task t = c->blocking_run_task();
-                c.reset(); // release extra copy of the context pointer
-                t(); // block thread and listen for messages
-            })
-
-            c->m_thread_id = thd.get_id();
-            thd.detach();
-
+            c->launch_root_thread<FUNCTOR>(std::forward<As>(as)...);
             return c;
         }
 
         static inline std::weak_ptr<context>& tl_self() {
             thread_local std::weak_ptr<context> wp;
-            return wp
+            return wp;
         }
 
         static inline std::weak_ptr<context>& tl_root() {
             thread_local std::weak_ptr<context> wp;
-            return wp
+            return wp;
         }
 
         // sub handler for functors returning message
-        template <std::true_type, typename FUNCTOR>
-        static message execute_functor(FUNCTOR& f, message& msg) {
+        template <typename FUNCTOR>
+        static message execute_functor(std::true_type, FUNCTOR& f, message& msg) {
             return f(msg); 
         }
 
         // sub handler for all other functors
-        template <std::false_type, typename FUNCTOR>
-        static message execute_functor(FUNCTOR& f, message& msg) {
+        template <typename FUNCTOR>
+        static message execute_functor(std::false_type, FUNCTOR& f, message& msg) {
             f(msg);
             return message();
         }
 
         template <typename FUNCTOR, typename... As>
         std::shared_ptr<context> launch(As&&... as) {
-            std::shared_ptr<context> c = new context(root(), shared_from_this(), id())
+            std::shared_ptr<context> c = new context(root(), 
+                                                     m_self.lock(), 
+                                                     get_thread_id());
             return schedule(task([=]() mutable {
-                c->init<FUNCTOR>(std::forward<As>(as)...);
-                c->parent()->schedule(c->run_task());
+                c->late_init<FUNCTOR>(std::forward<As>(as)...);
+                c->parent()->schedule(c->nonblocking_fiber_task());
             })) ? c : std::shared_ptr<context>();
         }
 
+        template <typename FUNCTOR, typename... As>
+        void launch_root_thread(As&&... as) {
+            std::shared_ptr<context> self = m_self.lock();
+            m_root = self;
+            m_parent = self;
+
+            std::lock_guard<std::mutex> lk(m_mtx);
+
+            std::thread thd([&,self]{
+                {
+                    // block until lock is released by spawning thread
+                    std::lock_guard<std::mutex> lk(m_mtx);
+                }
+
+                // finish initialization
+                detail::hold_and_restore<std::weak_ptr<context>> root_har(tl_root());
+                detail::hold_and_restore<std::weak_ptr<context>> self_har(tl_self());
+                tl_root() = self;
+                tl_self() = self;
+                late_init<FUNCTOR>(std::forward<As>(as)...); 
+
+                // block thread and listen for messages in a loop
+                message msg;
+
+                std::unique_lock<std::mutex> lk(m_mtx);
+
+                while(m_ch.recv(msg) && msg) { 
+                    lk.unlock();
+                    msg = m_hdl(msg);
+
+                    if(msg) {
+                        m_ch.send(msg);
+                    }
+                    lk.lock();
+                }
+            });
+
+            m_thread_id = thd.get_id();
+            thd.detach();
+        }
+
+        /*
+         * Finish initializing the `st::fiber` by allocating the FUNCTOR object 
+         * and related handlers. Should be called on the scheduled parent 
+         * `st::fiber`.
+         */
+        template <typename FUNCTOR, typename... As>
+        void late_init(As&&... as) {
+            // properly set the `st::fiber` before `FUNCTOR` construction
+            detail::hold_and_restore<std::weak_ptr<context>> self_har(tl_self());
+            tl_self() = m_self.lock();
+
+            // construct the `FUNCTOR`
+            std::shared_ptr<FUNCTOR> f(new FUNCTOR(std::forward<As>(as)...));
+
+            // set the `st::fiber`s handler
+            m_hdl = [f](message& msg) -> message {
+                using ismsg = std::is_same<message,decltype((*f)(msg))>;
+
+                if(msg.data().is<task>()) {
+                    msg.data().cast_to<task>()();
+                    return message();
+                } else {
+                    return context::execute_functor(
+                        std::integral_constant<bool,ismsg::value>(), 
+                        *f, 
+                        msg);
+                }
+            };
+        }
+
+        /*
+         * Conversion to `task` is private so only `st::fiber::launch()` 
+         * can access it, to avoid the possibility of double scheduling.
+         */
+        inline task nonblocking_fiber_task() const {
+            // hold a single copy of self to keep memory allocated during processing
+            std::shared_ptr<context> self = m_self.lock();
+            return task([&,self]() mutable { 
+                message msg;
+                detail::hold_and_restore<std::weak_ptr<context>> self_har(tl_self());
+                tl_self() = self;
+
+                std::unique_lock<std::mutex> lk(m_mtx);
+
+                // receive once if we will not block
+                if(m_ch.queued() && m_ch.recv(msg) && msg) { 
+                    lk.unlock();
+                    msg = m_hdl(msg);
+
+                    if(msg) {
+                        m_ch.send(msg);
+                    }
+                    lk.lock();
+                } 
+
+                if(m_ch.queued() || m_ch.running()) {
+                    m_blocked = !m_ch.queued(); 
+                    task::complete(!m_blocked);
+                }
+            });
+        }
+
         inline bool running() const {
-            return m_ch->running();
+            return m_ch.running();
         }
     
         inline void shutdown(bool process_remaining_messages) const {
-            m_ch->shutdown(process_remaining_messages);
+            m_ch.shutdown(process_remaining_messages);
         }
 
         inline bool send(message msg) const {
-            bool r = m_ch->send(std::move(msg));
+            bool r = m_ch.send(std::move(msg));
 
-            std::lock_guard<std::mutex> lk(m_mtx);
-            if(r && m_blocked) {
-                std::shared_ptr<context> parent = m_parent.lock();
+            if(r) {
+                std::lock_guard<std::mutex> lk(m_mtx);
+                if(m_blocked) {
+                    std::shared_ptr<context> parent = m_parent.lock();
 
-                if(parent) {
-                    r = parent->schedule(run_task())
-                    if(r) {
-                        m_blocked = false;
-                    } // else parent has been shutdown
-                } else { 
-                    // else this fiber has not been run yet
-                    r = false;
-                }
-            } // else fiber is shutdown or is already running
+                    if(parent) {
+                        r = parent->schedule(nonblocking_fiber_task());
+                        if(r) {
+                            m_blocked = false;
+                        } // else parent has been shutdown
+                    } else { 
+                        // else this fiber has not been run yet
+                        r = false;
+                    }
+                } // else fiber is already running 
+            } // else fiber is shutdown
 
             return r;
         }
@@ -1038,7 +1133,7 @@ private:
         inline std::shared_ptr<context> parent() const {
             std::lock_guard<std::mutex> lk(m_mtx);
             std::shared_ptr<context> parent = m_parent.lock();
-            return = parent ? parent : m_root.lock();
+            return parent ? parent : m_root.lock();
         }
 
         inline std::shared_ptr<context> root() const {
@@ -1046,7 +1141,7 @@ private:
             return m_root.lock();
         }
 
-        inline std::thread::id id() const {
+        inline std::thread::id get_thread_id() const {
             std::lock_guard<std::mutex> lk(m_mtx);
             return m_thread_id;
         }
@@ -1054,119 +1149,33 @@ private:
         inline weight workload() const {
             std::lock_guard<std::mutex> lk(m_mtx);
             return weight{
-                m_ch->queued(), 
-                m_ch->blocked_receivers() ? false : !m_blocked
+                m_ch.queued(), 
+                m_ch.blocked_receivers() ? false : !m_blocked
             };
         }
 
-        /*
-         * Finish initializing the `st::fiber` by allocating the FUNCTOR object and 
-         * related handlers. Should be called on the scheduled parent `st::fiber`.
-         */
-        template <typename FUNCTOR, typename... As>
-        void init(As&&... as) {
-            std::shared_ptr<FUNCTOR> f(new FUNCTOR(std::forward<As>(as)...));
-            m_hdl = [f](message& msg) -> message {
-                using ismsg = std::is_same<message,decltype((*f)(msg))>::type;
-                return fiber::execute_functor<ismsg>(*f, msg);
-            }
-        }
-
-        /*
-         * Conversion to `task` is private so only `st::fiber::launch()` 
-         * can access it, to avoid the possibility of double scheduling.
-         */
-        inline task run_task() const {
-            // hold a single copy of self to keep memory allocated during processing
-            std::shared_ptr<context> self(shared_from_this());
-            return task([&,self]() mutable { 
-                message msg;
-                detail::hold_and_restore<std::weak_ptr<context>> self_har(tl_self());
-                tl_self() = self;
-
-                std::unique_lock<std::mutex> lk(m_mtx);
-
-                // receive once if we will not block
-                if(m_ch->queued() && m_ch->recv(msg) && msg) { 
-                    lk.unlock();
-                    if(msg.is<task>())
-                       msg.data().cast_to<task>()()) {
-                        msg.reset();
-                    } else {
-                        msg = m_hdl(msg);
-                    }
-
-                    if(msg) {
-                        m_ch->send(msg);
-                    }
-                    lk.lock();
-                } 
-
-                m_blocked = !m_ch->queued(); 
-                task::complete(!m_blocked);
-            });
-        }
-
-        inline task blocking_run_task() const {
-            // hold a single copy of self to keep memory allocated during processing
-            std::shared_ptr<context> self(shared_from_this());
-            return task([&,self]() mutable { 
-                message msg;
-                detail::hold_and_restore<std::weak_ptr<context>> self_har(tl_self());
-                tl_self() = self;
-
-                std::unique_lock<std::mutex> lk(m_mtx);
-
-                m_thread_id = std::this_thread::get_id();
-                detail::hold_and_restore<std::weak_ptr<context>> root_har(tl_root());
-                tl_root() = self;
-
-                // blocking run-loop
-                while(m_ch->recv(msg) && msg) { 
-                    lk.unlock();
-                    if(msg.is<task>())
-                       msg.data().cast_to<task>()()) {
-                        msg.reset();
-                    } else {
-                        msg = m_hdl(msg);
-                    }
-
-                    if(msg) {
-                        m_ch->send(msg);
-                    }
-                    lk.lock();
-                }
-            });
-        }
-
         mutable std::mutex m_mtx;
-        mutable std::shared_ptr<channel> m_ch;
+        mutable channel m_ch;
         mutable bool m_blocked;
+        mutable std::weak_ptr<context> m_self; // weak pointer to self
         mutable std::weak_ptr<context> m_root; // weak pointer to root fiber
         mutable std::weak_ptr<context> m_parent; // weak pointer to parent fiber
         mutable std::thread::id m_thread_id;
         mutable handler m_hdl; // function wrapper utilizing functor to parse messages 
     };
 
-    fiber(std::shared_ptr<context> ctx) : m_context(std::move(ctx));
+    fiber(std::shared_ptr<context> ctx) : m_context(std::move(ctx)) { }
+    std::shared_ptr<context> m_context;
 };
-
-/**
- * @return `true` if lhs and rhs represent either the same fiber, or no fiber, else `false`
- *
- */
-inline bool operator==(fiber::id lhs, fiber::id rhs) noexcept {
-    return lhs.addr() == rhs.addr();
-}
 
 /**
  * @brief writes a textual representation of a fiber identifier id to the output stream ost.
  */
 template<class CharT, class Traits>
 std::basic_ostream<CharT,Traits>&
-operator<<(std::basic_ostream<CharT,Traits>& ost, fiber::id id) {
+operator<<(std::basic_ostream<CharT,Traits>& ost, fiber f) {
     std::stringstream ss;
-    ss << std::hex << id.addr();
+    ss << std::hex << f.get();
     ost << ss.str();
     return ost;
 }
@@ -1181,13 +1190,22 @@ operator<<(std::basic_ostream<CharT,Traits>& ost, fiber::id id) {
  * This is a useful object for storing arbitrary fibers that should be 
  * cleanly shutdown together.
  */
-struct weave : protected shared_context<weave::context> 
-               public lifecycle {
+struct weave : public lifecycle {
     weave(){}
     weave(const weave& rhs) : m_context(rhs.m_context) { }
     weave(weave&& rhs) : m_context(std::move(rhs.m_context) { }
     
     virtual ~weave() { }
+
+    inline weave& operator=(const weave& rhs) {
+        m_context = rhs.m_context;
+        return *this;
+    }
+
+    inline weave& operator=(weave&& rhs) {
+        m_context = std::move(rhs.m_context);
+        return *this;
+    }
 
     /**
      * @brief make an `st::weave` with allocated shared context to manage multiple argument `st::fiber`s
@@ -1198,8 +1216,7 @@ struct weave : protected shared_context<weave::context>
     template <typename... Fs>
     static weave make(Fs&&... fs) {
         std::vector<fiber> fibers{ std::forward<Fs>(fs)... };
-        return weave(std::shared_ptr<context>(
-            new context(std::move(fibers)));
+        return weave(std::shared_ptr<context>(new context(std::move(fibers)));
     }
 
     /**
@@ -1207,7 +1224,7 @@ struct weave : protected shared_context<weave::context>
      */
     static std::size_t concurrency() const {
         std::size_t count = std::thread::hardware_concurrency();
-        return count ? count : 1; // enforce 1
+        return count ? count : 1; // enforce at least 1
     }
 
     /**
@@ -1235,16 +1252,29 @@ struct weave : protected shared_context<weave::context>
             f = fiber::thread<FUNCTOR>(std::forward<As>(as)...);
         }
 
-        return weave(std::shared_ptr<context>(
-            new context(std::move(fibers)));
+        return weave(std::shared_ptr<context>(new context(std::move(fibers)));
     }
 
+    /**
+     * @return `true` if object is allocated, else `false`
+     */
+    inline operator bool() {
+        return m_context ? true : false;
+    }
+
+    /// implement `bool lifecycle::running() const`
     inline bool running() const {
         return m_context->running();
     }
 
+    /// implement `void lifecycle::shutdown(bool)`
     inline void shutdown(bool process_remaining_messages) const {
-        return m_context->shutdown(process_remaining_messages);
+        m_context->shutdown(process_remaining_messages);
+    }
+    
+    /// implement `void lifecycle::shutdown()`
+    inline void shutdown() const {
+        shutdown(true);
     }
 
     /**
@@ -1310,9 +1340,9 @@ struct weave : protected shared_context<weave::context>
 
 private:
     struct context {
-        template <typename... Fs>
-        context(Fs fs...) : 
-            m_fibers(fs...),
+        template <typename... As>
+        context(As as...) : 
+            m_fibers(as...),
             m_cur_idx(0)
         { }
 
@@ -1354,18 +1384,18 @@ private:
 
         template <typename... Fs>
         void inner_append(fiber& f) const {
-            m_fibers->push_back(f);
+            m_fibers.push_back(f);
         }
 
         template <typename... Fs>
         void inner_append(fiber& f, fiber& f2, Fs&&... fibers) const {
-            m_fibers->push_back(f);
+            m_fibers.push_back(f);
             append(f2, std::forward<Fs>(fibers)...);
         }
 
         template <std::size_t fiber_count, typename... Fs>
         void append(fiber& f, Fs&&... fibers) const {
-            std::lock_guard<std::mutex> lk(m_context->m_mtx);
+            std::lock_guard<std::mutex> lk(m_mtx);
             m_fibers.reserve(fiber_count + m_fibers.size());
             inner_append(f, std::forward<Fs>(fibers)...);
         }
@@ -1397,7 +1427,8 @@ private:
         mutable std::size_t m_cur_idx;
     };
     
-    weave(std::shared_ptr<context> ctx) : m_context(std::move(ctx));
+    weave(std::shared_ptr<context> ctx) : m_context(std::move(ctx)) { }
+    std::shared_ptr<context> m_context;
 };
 
 }

@@ -1,7 +1,6 @@
 //SPDX-License-Identifier: LicenseRef-Apache-License-2.0
 //Author: Blayne Dennis
 #include <gtest/gtest.h>
-#include "simple_thread.hpp"
 #include <thread>
 #include <string>
 #include <iostream>
@@ -11,6 +10,7 @@
 #include <vector>
 #include <map>
 #include <functional>
+#include "sthread"
 
 TEST(simple_thread, message) {
     enum op {
@@ -29,8 +29,8 @@ TEST(simple_thread, message) {
         EXPECT_NE(msg.id(), op::string);
         EXPECT_EQ(msg.data().type_code(), st::code<int>());
         EXPECT_NE(msg.data().type_code(), st::code<std::string>());
-        EXPECT_TRUE(msg.is<int>());
-        EXPECT_FALSE(msg.is<std::string>());
+        EXPECT_TRUE(msg.data().is<int>());
+        EXPECT_FALSE(msg.data().is<std::string>());
 
         {
             std::string s = "";
@@ -72,8 +72,8 @@ TEST(simple_thread, message) {
         EXPECT_NE(msg.id(), op::integer);
         EXPECT_EQ(msg.data().type_code(), st::code<std::string>());
         EXPECT_NE(msg.data().type_code(), st::code<int>());
-        EXPECT_TRUE(msg.is<std::string>());
-        EXPECT_FALSE(msg.is<int>());
+        EXPECT_TRUE(msg.data().is<std::string>());
+        EXPECT_FALSE(msg.data().is<int>());
 
         {
             int i = 0;
@@ -115,8 +115,8 @@ TEST(simple_thread, message) {
         EXPECT_NE(msg.id(), op::integer);
         EXPECT_EQ(msg.data().type_code(), st::code<std::string>());
         EXPECT_NE(msg.data().type_code(), st::code<int>());
-        EXPECT_TRUE(msg.is<std::string>());
-        EXPECT_FALSE(msg.is<int>());
+        EXPECT_TRUE(msg.data().is<std::string>());
+        EXPECT_FALSE(msg.data().is<int>());
 
         {
             int i = 0;
@@ -738,21 +738,21 @@ TEST(simple_thread, fiber_multiple_payload_types) {
             switch(msg.id()) {
                 case op::discern_type:
                 {
-                    if(msg.is<int>()) {
+                    if(msg.data().is<int>()) {
                         int i=0;
                         msg.data().copy_to(i);
                         std::cout << "int: " << i << std::endl;
-                    } else if(msg.is<std::string>()) {
+                    } else if(msg.data().is<std::string>()) {
                         std::string s;
                         msg.data().copy_to(s);
                         std::cout << "string: " << s << std::endl;
-                    } else if(msg.is<intstring_t>()) {
+                    } else if(msg.data().is<intstring_t>()) {
                         intstring_t is;
                         msg.data().copy_to(is);
                         std::cout << "int: " << std::get<0>(is) 
                                   << ", string: " << std::get<1>(is) 
                                   << std::endl;
-                    } else if(msg.is<stringint_t>()) {
+                    } else if(msg.data().is<stringint_t>()) {
                         stringint_t si;
                         msg.data().copy_to(si);
                         std::cout << "int: " << std::get<0>(si) 
@@ -956,4 +956,53 @@ TEST(simple_thread, weight) {
 }
 
 TEST(simple_thread_readme, example1) {
+    struct MyClass {
+        enum op {
+            hello,
+            world
+        };
+
+        void operator()(st::message msg) {
+            switch(msg.id()) {
+                case op::hello:
+                    std::cout << "hello " << std::endl;
+                    break;
+                case op::world:
+                    std::cout << "world" << std::endl;
+                    break;
+            }
+        }
+    };
+
+    st::fiber my_thread = st::fiber::thread<MyClass>();
+    my_thread.send(MyClass::op::hello);
+    my_thread.send(MyClass::op::world);
+}
+
+TEST(simple_thread_readme, example2) {
+    struct MyClass {
+        enum op {
+            print
+        };
+
+        void operator()(st::message msg) {
+            switch(msg.id()) {
+                case op::print:
+                {
+                    std::string s;
+                    if(msg.data().copy_to(s)) {
+                        std::cout << s << std::endl;
+                    } else {
+                        std::cout << "message data was not a string" << std::endl;
+                    }
+                    break;
+                }
+            }
+        }
+    };
+
+    st::fiber my_thread = st::fiber::thread<MyClass>();
+
+    my_thread.send(MyClass::op::print, std::string("hello again"));
+    my_thread.send(MyClass::op::print, 14);
 }
