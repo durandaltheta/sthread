@@ -10,7 +10,7 @@
 #include <vector>
 #include <map>
 #include <functional>
-#include "sthread"
+#include "sthread" 
 
 TEST(simple_thread, message) {
     enum op {
@@ -27,8 +27,8 @@ TEST(simple_thread, message) {
 
         EXPECT_EQ(msg.id(), op::integer);
         EXPECT_NE(msg.id(), op::string);
-        EXPECT_EQ(msg.data().type_code(), st::code<int>());
-        EXPECT_NE(msg.data().type_code(), st::code<std::string>());
+        EXPECT_EQ(msg.data().type_code(), st::type_code<int>());
+        EXPECT_NE(msg.data().type_code(), st::type_code<std::string>());
         EXPECT_TRUE(msg.data().is<int>());
         EXPECT_FALSE(msg.data().is<std::string>());
 
@@ -65,13 +65,13 @@ TEST(simple_thread, message) {
    
     // c string message
     {
-        const char* s = "codemonkey";
+        std::string s = "codemonkey";
         st::message msg = st::message::make(op::cstring,s);
 
         EXPECT_EQ(msg.id(), op::cstring);
         EXPECT_NE(msg.id(), op::integer);
-        EXPECT_EQ(msg.data().type_code(), st::code<std::string>());
-        EXPECT_NE(msg.data().type_code(), st::code<int>());
+        EXPECT_EQ(msg.data().type_code(), st::type_code<std::string>());
+        EXPECT_NE(msg.data().type_code(), st::type_code<int>());
         EXPECT_TRUE(msg.data().is<std::string>());
         EXPECT_FALSE(msg.data().is<int>());
 
@@ -113,8 +113,8 @@ TEST(simple_thread, message) {
 
         EXPECT_EQ(msg.id(), op::string);
         EXPECT_NE(msg.id(), op::integer);
-        EXPECT_EQ(msg.data().type_code(), st::code<std::string>());
-        EXPECT_NE(msg.data().type_code(), st::code<int>());
+        EXPECT_EQ(msg.data().type_code(), st::type_code<std::string>());
+        EXPECT_NE(msg.data().type_code(), st::type_code<int>());
         EXPECT_TRUE(msg.data().is<std::string>());
         EXPECT_FALSE(msg.data().is<int>());
 
@@ -161,10 +161,10 @@ TEST(simple_thread, channel) {
     };
         
     // used for fiber behavior confirmation purposes
-    ret_ch = st::channel::make();
-    ch = st::channel::make();
+    st::channel ret_ch = st::channel::make();
+    st::channel ch = st::channel::make();
 
-    std::thread thd([]( ch,  ret_ch) {
+    std::thread thd([](st::channel ch, st::channel ret_ch) {
         st::message msg;
 
         while(ch.recv(msg)) {
@@ -287,31 +287,40 @@ TEST(simple_thread, fiber_lifecycle) {
         bool* m_running_ptr;
     };
 
+    STLOG("1");
 
     // shutdown via `st::fiber::shutdown()`
     {
+    STLOG("1.1");
         // prove hdl destructor was called
         bool thread_running = true;
-        st::fiber fib = st::fiber::thread<hdl>(&thread_running);
+        st::fiber fib;
+    STLOG("1.2");
+        fib = st::fiber::thread<hdl>(&thread_running);
+    STLOG("1.3");
 
         // fill message q
         for(int i=0; i<10; i++) {
             fib.send(0,0);
         }
+    STLOG("1.4");
 
         EXPECT_TRUE(thread_running);
         EXPECT_TRUE(fib.running());
 
         fib.shutdown();
+    STLOG("1.5");
 
         EXPECT_FALSE(thread_running);
         EXPECT_FALSE(fib.running());
 
-        auto wt = fib.get_weight();
+        auto wt = fib.workload();
         EXPECT_TRUE(wt.empty());
         EXPECT_EQ(wt.queued, 0);
         EXPECT_FALSE(wt.executing);
+    STLOG("1.6");
     }
+    STLOG("2");
 
     // double shutdown (check for breakages due to incorrect state transition)
     {
@@ -333,11 +342,12 @@ TEST(simple_thread, fiber_lifecycle) {
         EXPECT_FALSE(thread_running);
         EXPECT_FALSE(fib.running());
 
-        auto wt = fib.get_weight();
+        auto wt = fib.workload();
         EXPECT_TRUE(wt.empty());
         EXPECT_EQ(wt.queued, 0);
         EXPECT_FALSE(wt.executing);
     }
+    STLOG("3");
 
     // hard shutdown via `st::fiber::shutdown(false)`
     {
@@ -358,11 +368,12 @@ TEST(simple_thread, fiber_lifecycle) {
         EXPECT_FALSE(thread_running);
         EXPECT_FALSE(fib.running());
 
-        auto wt = fib.get_weight();
+        auto wt = fib.workload();
         EXPECT_TRUE(wt.empty());
         EXPECT_EQ(wt.queued, 0);
         EXPECT_FALSE(wt.executing);
     }
+    STLOG("4");
 
     // double hard shutdown (check for breakages due to incorrect state transition)
     {
@@ -384,11 +395,12 @@ TEST(simple_thread, fiber_lifecycle) {
         EXPECT_FALSE(thread_running);
         EXPECT_FALSE(fib.running());
 
-        auto wt = fib.get_weight();
+        auto wt = fib.workload();
         EXPECT_TRUE(wt.empty());
         EXPECT_EQ(wt.queued, 0);
         EXPECT_FALSE(wt.executing);
     }
+    STLOG("5");
 
     // shutdown via `st::~fiber()`
     {
@@ -404,196 +416,12 @@ TEST(simple_thread, fiber_lifecycle) {
         EXPECT_TRUE(thread_running);
         EXPECT_TRUE(fib.running());
 
-        fib.reset();
+        fib = st::fiber();
 
         EXPECT_FALSE(thread_running);
         // cannot call `st::fiber::running()` without valid pointer
     }
-    
-    // restart via `st::fiber::restart()`
-    {
-        // prove hdl destructor was called
-        bool thread_running = true;
-        st::fiber fib = st::fiber::thread<hdl>(&thread_running);
-
-        // fill message q
-        for(int i=0; i<10; i++) {
-            fib.send(0,0);
-        }
-
-        EXPECT_TRUE(thread_running);
-        EXPECT_TRUE(fib.running());
-
-        fib.restart();
-
-        EXPECT_TRUE(thread_running);
-        EXPECT_TRUE(fib.running());
-
-        auto wt = fib.get_weight();
-        EXPECT_TRUE(wt.empty());
-        EXPECT_EQ(wt.queued, 0);
-        EXPECT_FALSE(wt.executing);
-    }
-
-    // restart & shutdown via `st::fiber::restart()`
-    {
-        // prove hdl destructor was called
-        bool thread_running = true;
-        st::fiber fib = st::fiber::thread<hdl>(&thread_running);
-
-        // fill message q
-        for(int i=0; i<10; i++) {
-            fib.send(0,0);
-        }
-
-        EXPECT_TRUE(thread_running);
-        EXPECT_TRUE(fib.running());
-
-        fib.shutdown();
-
-        EXPECT_FALSE(thread_running);
-        EXPECT_FALSE(fib.running());
-
-        {
-            auto wt = fib.get_weight();
-            EXPECT_TRUE(wt.empty());
-            EXPECT_EQ(wt.queued, 0);
-            EXPECT_FALSE(wt.executing);
-        }
-
-        fib.restart();
-
-        EXPECT_TRUE(thread_running);
-        EXPECT_TRUE(fib.running());
-
-        {
-            auto wt = fib.get_weight();
-            EXPECT_TRUE(wt.empty());
-            EXPECT_EQ(wt.queued, 0);
-            EXPECT_FALSE(wt.executing);
-        }
-    }
-
-    // double shutdown (check for breakages due to incorrect state transition) 
-    // followed by a restart
-    {
-        // prove hdl destructor was called
-        bool thread_running = true;
-        st::fiber fib = st::fiber::thread<hdl>(&thread_running);
-
-        // fill message q
-        for(int i=0; i<10; i++) {
-            fib.send(0,0);
-        }
-
-        EXPECT_TRUE(thread_running);
-        EXPECT_TRUE(fib.running());
-
-        fib.shutdown();
-        fib.shutdown();
-
-        EXPECT_FALSE(thread_running);
-        EXPECT_FALSE(fib.running());
-
-        {
-            auto wt = fib.get_weight();
-            EXPECT_TRUE(wt.empty());
-            EXPECT_EQ(wt.queued, 0);
-            EXPECT_FALSE(wt.executing);
-        }
-
-        fib.restart();
-
-        EXPECT_TRUE(thread_running);
-        EXPECT_TRUE(fib.running());
-
-        {
-            auto wt = fib.get_weight();
-            EXPECT_TRUE(wt.empty());
-            EXPECT_EQ(wt.queued, 0);
-            EXPECT_FALSE(wt.executing);
-        }
-    }
-
-    // hard restart & shutdown via `st::fiber::restart(false)`
-    {
-        // prove hdl destructor was called
-        bool thread_running = true;
-        st::fiber fib = st::fiber::thread<hdl>(&thread_running);
-
-        // fill message q
-        for(int i=0; i<10; i++) {
-            fib.send(0,0);
-        }
-
-        EXPECT_TRUE(thread_running);
-        EXPECT_TRUE(fib.running());
-
-        fib.shutdown(false);
-
-        EXPECT_FALSE(thread_running);
-        EXPECT_FALSE(fib.running());
-
-        {
-            auto wt = fib.get_weight();
-            EXPECT_TRUE(wt.empty());
-            EXPECT_EQ(wt.queued, 0);
-            EXPECT_FALSE(wt.executing);
-        }
-
-        fib.restart(false);
-
-        EXPECT_TRUE(thread_running);
-        EXPECT_TRUE(fib.running());
-
-        {
-            auto wt = fib.get_weight();
-            EXPECT_TRUE(wt.empty());
-            EXPECT_EQ(wt.queued, 0);
-            EXPECT_FALSE(wt.executing);
-        }
-    }
-
-    // double hard shutdown (check for breakages due to incorrect state 
-    // transition) followed by a restart
-    {
-        // prove hdl destructor was called
-        bool thread_running = true;
-        st::fiber fib = st::fiber::thread<hdl>(&thread_running);
-
-        // fill message q
-        for(int i=0; i<10; i++) {
-            fib.send(0,0);
-        }
-
-        EXPECT_TRUE(thread_running);
-        EXPECT_TRUE(fib.running());
-
-        fib.shutdown(false);
-        fib.shutdown(false);
-
-        EXPECT_FALSE(thread_running);
-        EXPECT_FALSE(fib.running());
-
-        {
-            auto wt = fib.get_weight();
-            EXPECT_TRUE(wt.empty());
-            EXPECT_EQ(wt.queued, 0);
-            EXPECT_FALSE(wt.executing);
-        }
-
-        fib.restart(false);
-
-        EXPECT_TRUE(thread_running);
-        EXPECT_TRUE(fib.running());
-
-        {
-            auto wt = fib.get_weight();
-            EXPECT_TRUE(wt.empty());
-            EXPECT_EQ(wt.queued, 0);
-            EXPECT_FALSE(wt.executing);
-        }
-    }
+    STLOG("6");
 }
 
 // showcase simple fiber thread launching and message handling
@@ -606,7 +434,7 @@ TEST(simple_thread, fiber_messaging) {
             unknown
         };
 
-        hdl( ret_ch) : m_ret_ch(ret_ch) { }
+        hdl(st::channel ret_ch) : m_ret_ch(ret_ch) { }
 
         inline void operator()(st::message msg) {
             switch(msg.id()) {
@@ -643,13 +471,13 @@ TEST(simple_thread, fiber_messaging) {
             }
         }
             
-         m_ret_ch; 
+        st::channel m_ret_ch; 
     };
 
     struct garbazoo { }; // random type unknown to fiber
         
     // used for fiber behavior confirmation purposes
-     ret_ch = st::channel::make();
+    st::channel ret_ch = st::channel::make();
     st::fiber fib = st::fiber::thread<hdl>(ret_ch);
     st::message msg;
     int i = 3;
@@ -732,7 +560,7 @@ TEST(simple_thread, fiber_multiple_payload_types) {
         // in this test we only want 1 valid message id
         enum op { discern_type }; 
 
-        hdl( ret_ch) : m_ret_ch(ret_ch) { }
+        hdl(st::channel ret_ch) : m_ret_ch(ret_ch) { }
 
         inline void operator()(st::message msg) {
             switch(msg.id()) {
@@ -771,11 +599,11 @@ TEST(simple_thread, fiber_multiple_payload_types) {
             }
         }
 
-         m_ret_ch;
+        st::channel m_ret_ch;
     };
 
     // used for fiber behavior confirmation purposes
-     ret_ch = st::channel::make();
+    st::channel ret_ch = st::channel::make();
     st::fiber fib = st::fiber::thread<hdl>(ret_ch);
     st::message msg;
     int i = 0;
@@ -785,75 +613,31 @@ TEST(simple_thread, fiber_multiple_payload_types) {
 
     EXPECT_TRUE(fib.send(hdl::op::discern_type, is));
     EXPECT_TRUE(ret_ch.recv(msg));
-    EXPECT_EQ(msg.id(), st::code<hdl::intstring_t>());
+    EXPECT_EQ(msg.id(), st::type_code<hdl::intstring_t>());
 
     EXPECT_TRUE(fib.send(hdl::op::discern_type, s));
     EXPECT_TRUE(ret_ch.recv(msg));
-    EXPECT_EQ(msg.id(), st::code<std::string>());
+    EXPECT_EQ(msg.id(), st::type_code<std::string>());
 
     EXPECT_TRUE(fib.send(hdl::op::discern_type, i));
     EXPECT_TRUE(ret_ch.recv(msg));
-    EXPECT_EQ(msg.id(), st::code<int>());
+    EXPECT_EQ(msg.id(), st::type_code<int>());
 
     EXPECT_TRUE(fib.send(hdl::op::discern_type, si));
     EXPECT_TRUE(ret_ch.recv(msg));
-    EXPECT_EQ(msg.id(), st::code<hdl::stringint_t>());
-}
-
-TEST(simple_thread, this_fiber) {
-    struct hdl {
-        enum op { req_self };
-
-        hdl( ret_ch) : m_ret_ch(ret_ch) { }
-
-        inline void operator()(st::message msg) {
-            switch(msg.id()) {
-                case op::req_self:
-                {
-                    std::weak_ptr<st::fiber self = st::fiber::this_fiber();
-                    m_ret_ch.send(0,self);
-                    break;
-                }
-            }
-        }
-
-         m_ret_ch;
-    };
-
-     ret_ch = st::channel::make();
-    st::fiber fib = st::fiber::thread<hdl>(ret_ch);
-    st::message msg;
-    std::weak_ptr<st::fiber wp;
-
-    EXPECT_TRUE(fib.send(hdl::op::req_self));
-    EXPECT_TRUE(ret_ch.recv(msg));
-    EXPECT_TRUE(msg.data().copy_to(wp));
-    EXPECT_EQ(wp.use_count(), 1);
-
-    st::fiber new_fib = wp.lock();
-
-    EXPECT_TRUE(fib);
-    EXPECT_TRUE(new_fib);
-    EXPECT_EQ(wp.use_count(), 2);
-    EXPECT_EQ(new_fib.use_count(), 2);
-
-    new_fib.reset();
-
-    EXPECT_TRUE(fib);
-    EXPECT_FALSE(new_fib);
-    EXPECT_EQ(wp.use_count(), 1);
-    EXPECT_EQ(new_fib.use_count(), 0);
+    EXPECT_EQ(msg.id(), st::type_code<hdl::stringint_t>());
 }
 
 TEST(simple_thread, weight) {
     struct hdl {
-        hdl( wait_ch) : m_wait_ch(wait_ch) { }
+        hdl(st::channel wait_ch) : m_wait_ch(wait_ch) { 
+        }
 
         inline void operator()(st::message msg) {
             m_wait_ch.recv(msg);
         }
 
-         m_wait_ch;
+        st::channel m_wait_ch;
     };
 
     auto wait_ch = st::channel::make();
@@ -863,7 +647,7 @@ TEST(simple_thread, weight) {
     auto fib4 = st::fiber::thread<hdl>(wait_ch);
 
     auto send_msgs = [](st::fiber fib, int max) {
-        for(int i=0; i<max; i++) {
+        for(int i=0; i<max; ++i) {
             fib.send(0);
         }
     };
@@ -872,7 +656,7 @@ TEST(simple_thread, weight) {
     send_msgs(fib2, 3);
     send_msgs(fib3, 2);
 
-    auto get_lightest_weight = [](std::vector<st::fiber::weight> weights) . int {
+    auto get_lightest_weight = [](std::vector<st::fiber::weight> weights) -> int {
         typedef std::vector<st::fiber::weight>::size_type vint;
         vint lightest_index = 0;
         auto lightest_weight = weights[0];
@@ -887,68 +671,68 @@ TEST(simple_thread, weight) {
         return lightest_index;
     };
 
-    auto get_lightest = [](std::vector<st::fiber*> fibs) . st::fiber* {
-        std::map<st::fiber::weight, st::fiber*> fib_map;
+    auto get_lightest = [](std::vector<st::fiber> fibs) -> st::fiber {
+        std::map<st::fiber::weight, st::fiber> fib_map;
 
-        for(auto& w : fibs) {
-            fib_map[w.get_weight()] = w;
+        for(auto& f : fibs) {
+            fib_map[f.workload()] = f;
         }
 
-        return fib_map.begin().second;
+        return fib_map.begin()->second;
     };
 
     {
         std::vector<st::fiber::weight> v{
-            fib1.get_weight(), 
-            fib2.get_weight(),
-            fib3.get_weight(),
-            fib4.get_weight()
+            fib1.workload(), 
+            fib2.workload(),
+            fib3.workload(),
+            fib4.workload()
         };
         EXPECT_EQ(get_lightest_weight(v), 3);
     }
 
     {
         std::vector<st::fiber::weight> v{
-            fib1.get_weight(), 
-            fib2.get_weight(),
-            fib3.get_weight()
+            fib1.workload(), 
+            fib2.workload(),
+            fib3.workload()
         };
         EXPECT_EQ(get_lightest_weight(v), 0);
     }
 
     {
         std::vector<st::fiber::weight>v{
-            fib2.get_weight(),
-            fib3.get_weight()
+            fib2.workload(),
+            fib3.workload()
         };
         EXPECT_EQ(get_lightest_weight(v), 1);
     }
 
     {
-        std::vector<st::fiber*> v{
-            fib1.get(), 
-            fib2.get(),
-            fib3.get(),
-            fib4.get()
+        std::vector<st::fiber> v{
+            fib1, 
+            fib2,
+            fib3,
+            fib4
         };
-        EXPECT_EQ(get_lightest(v), fib4.get());
+        EXPECT_EQ(get_lightest(v), fib4);
     }
 
     {
-        std::vector<st::fiber*> v{
-            fib1.get(), 
-            fib2.get(),
-            fib3.get()
+        std::vector<st::fiber> v{
+            fib1, 
+            fib2,
+            fib3
         };
-        EXPECT_EQ(get_lightest(v), fib1.get());
+        EXPECT_EQ(get_lightest(v), fib1);
     }
 
     {
-        std::vector<st::fiber*> v{
-            fib2.get(),
-            fib3.get()
+        std::vector<st::fiber> v{
+            fib2,
+            fib3
         };
-        EXPECT_EQ(get_lightest(v), fib3.get());
+        EXPECT_EQ(get_lightest(v), fib3);
     }
 
     wait_ch.close();

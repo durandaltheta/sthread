@@ -1,5 +1,7 @@
 set(BINARY ${CMAKE_PROJECT_NAME}_tst)
 set(SOURCES ${TEST_SOURCES})
+set(CMAKE_BUILD_TYPE Debug) 
+set(ENABLE_SIMPLE_THREAD_LOGGING)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/googletest EXCLUDE_FROM_ALL)
 add_executable(${BINARY} ${HEADER_FILES} ${BINARY}.cpp)
 add_test(simple_thread_unit_test ${BINARY} COMMAND ${BINARY}) 
