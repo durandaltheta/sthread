@@ -3,7 +3,7 @@
 
 [Documentation](https://durandaltheta.github.io/sthread/)
 
-[Unit Test and Example Code](tst/simple_thread_tst.cpp)
+[Unit Test and Example Code](tst/sthread_tst.cpp)
 
 #### Usage:
 [Creating Threads from Objects](#creating-threads-from-objects)
@@ -52,20 +52,20 @@ are needed try cloning this project with submodules:
 - git clone --recurse-submodules https://github.com/durandaltheta/sthread
 
 ## Installation
-- cmake .
-- make install
+- `cmake .`
+- `make install`
 
 If building on linux, may have to `sudo make install`.
 
 ## Build Unit Tests 
-- cmake .
-- make sthread_tst 
+- `cmake .`
+- `make sthread_tst`
 
-sthread_tst binary will be placed in tst/ 
+`sthread_tst` binary will be placed in tst/ 
 
 ## Usage 
 ### Creating Threads from Objects
-- Install the library and include the header `sthread` or `simple_thread.hpp`
+- Install the library and include the header `sthread`
 - Create a class or struct and implement method `void recv(st::message)` to handle received messages 
 - Define some enum to distinguish different messages 
 - Launch your thread with `st::thread::make<YourClassNameHere>()`
