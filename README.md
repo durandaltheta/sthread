@@ -482,9 +482,14 @@ struct MyClass {
                 st::thread::self().async(op::slow_result, slow_function);
                 break;
             case op::slow_result:
-                st::thread::self().send(op::print, msg);
+            {
+                std::string s;
+                if(msg.data().copy_to(s) {
+                    std::cout << s << std::endl;
+                }
                 main_ch.send(0); // unblock main
                 break;
+            }
         }
     }
 
