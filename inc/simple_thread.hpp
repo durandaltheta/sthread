@@ -346,18 +346,6 @@ struct message {
         return m_context->m_data;
     }
 
-    /**
-     * Generic function wrapper for executing arbitrary code
-     *
-     * Used to convert and wrap any code to a generically executable type. Is 
-     * a new definition instead of a typedef so that it can be distinguished by 
-     * receiving code.
-     */
-    struct task : public std::function<void()> { 
-        template <typename F, typename... As>
-        task(As&&... as) : std::function<void()>(std::forward<As>(as)...) { }
-    };
-
 private:
     struct context {
         context(const std::size_t c) : m_id(c) { }
@@ -381,7 +369,7 @@ private:
  *
  * The internal mechanism used by this library to communicate between managed 
  * system threads. Provided here as a convenience for communicating from managed 
- * system threads to other user `st::fiber`s. All methods in this object are 
+ * system threads to other user `st::thread`s. All methods in this object are 
  * threadsafe.
  */
 struct channel {
@@ -458,7 +446,7 @@ struct channel {
     }
 
     /**
-     * @return count of `st::fiber`s blocked on `recv()` or are listening to this `st::channel`
+     * @return count of `st::thread`s blocked on `recv()` or are listening to this `st::channel`
      */
     inline std::size_t blocked_receivers() const {
         return m_context->blocked_receivers();
@@ -496,38 +484,43 @@ struct channel {
     }
 
     /**
-     * @brief interface for objects registered as a listeners to this channel  
+     * @brief wrap user function and arguments then asynchronous execute them on a dedicated system thread and send the result of the operation to this `st::channel`
      *
-     * `receiver`s can receive `st::message`s from this `st::channel`
+     * Internally calls `std::async` to asynchronously execute user function.
+     * If function returns no value, then `st::message::data()` will be 
+     * unallocated.
+     *
+     * @param resp_id id of message that will be sent back to the this `st::thread` when `std::async` completes 
+     * @param f function to execute on another system thread
+     * @param as arguments for argument function
+     */
+    template <typename F, typename... As>
+    bool async(std::size_t resp_id, F&& f, As&&... as) {
+        using isv = typename std::is_void<detail::function_return_type<F,A...>>;
+        return async_impl(std::integral_constant<bool,isv::value>(),
+                          ch,
+                          resp_id,
+                          std::forward<F>(f),
+                          std::forward<As>(as)...);
+    }
+
+private:
+    /*
+     * interface for objects registered as a listeners to this channel  
      */
     struct receiver {
         virtual ~receiver(){}
 
-        /**
-         * @brief interface for receiver to receive a message
+        /*
+         * interface for receiver to receive a message
          *
          * If the reference `msg` is still allocated after `handle()` returns,
          * the `msg` will be treated as unhandled, the failed 
          * `st::channel::receiver` removed from the receiver queue, and the 
          * `msg` pushed to the front of the `st::channel::queue` to be handled 
          * by the next available `st::channel::receiver`.
-         *
-         * @param msg message to be received by the receiver implementation
-         * @return if `true` requeue receiver to handle further messages, else throw out receiver
          */
         virtual bool handle(message& msg) = 0;
-       
-        /**
-         * @brief allocate a new receiver from inheritor type `RECEIVER`
-         * @param as optional constructor arguments for type `RECEIVER` 
-         * @return an allocated receiver
-         */
-        template <typename RECEIVER, typename.. As>
-        static std::unique_ptr<receiver> make(As&&... as) {
-            return std::unique_ptr<receiver>(
-                std::dynamic_cast<receiver*>(new RECEIVER(
-                    std::forward<As>(as)...)));
-        }
     };
 
     /**
@@ -544,86 +537,12 @@ struct channel {
         return m_context->listener(std::move(rcv));
     }
 
-    /**
-     * @brief register another `st::channel` as a receiver of `st::message`s sent to this `st::channel`
-     *
-     * The argument `st::channel` registered as a listener to this `st::channel` 
-     * will be placed in the receiver queue for messages sent through this 
-     * `st::channel`. 
-     *
-     * Listening channels are queued in the same fashion as calls to `recv()`,
-     * executing in the order called. However, listening channels differ from 
-     * calls to `recv()` in that they are immediately requeued internally to
-     * receive further messages.
-     *
-     * If a call to a listening `st::channel`'s `send()` fails, the 
-     * `st::channel` will be removed from the receiver queue and another 
-     * `st::channel::receiver` for the message will be retrieved if available.
-     *
-     * WARNING: `st::channel`s should never be set as listeners to each 
-     * other, as this will create an infinite loop once an `st::message` is sent 
-     * to one.
-     *
-     * @param ch other channel to set as a listener
-     * @return `true` on success, `false` if channel is closed
-     */
-    inline bool listener(st::channel ch) {
-        return listener(receiver::make<redirect>(ch));
-    }
-
-    /**
-     * @brief typedef of callback function used by `st::channel`
-     */
-    typedef std::function<void(message)> callback;
-
-    /**
-     * @brief register a channel as a listener with a callback that will be forwarded to the listener as an `st::message::task` on `st::message` receipt
-     *
-     * An `st::message::task` will be forwarded to the listening channel 
-     * whenever an `st::message` would be forwarded to the listening channel. 
-     * When the `st::message::task` is executed the given 
-     * `st::channel::callback` will be called with the received `st::message`.
-     *
-     * If a call to a listening `st::channel`'s `send()` fails, the 
-     * `st::channel` will be removed from the receiver queue and another 
-     * `st::channel::receiver` for the message will be retrieved if available.
-     *
-     * @param ch other channel to set as a listener
-     * @param cb callback function to be forwarded for execution to listening channel 
-     * @return `true` on success, `false` if channel is closed
-     */
-    inline bool listener(channel ch, callback cb) {
-        return listener(receiver::make<redirect_callback>(std::move(ch), std::move(cb)));
-    }
-
-    /**
-     * @brief wrap user function and arguments then asynchronous execute them on a dedicated system thread and send the result of the operation to this `st::channel`
-     *
-     * Internally calls `std::async` to asynchronously execute user function.
-     * If function returns no value, then `st::message::data()` will be 
-     * unallocated.
-     *
-     * @param resp_id id of message that will be sent back to the this `st::fiber` when `std::async` completes 
-     * @param f function to execute on another system thread
-     * @param as arguments for argument function
-     */
-    template <typename F, typename... As>
-    bool async(std::size_t resp_id, F&& f, As&&... as) {
-        using isv = typename std::is_void<detail::function_return_type<F,A...>>;
-        return async_impl(std::integral_constant<bool,isv::value>(),
-                          ch,
-                          resp_id,
-                          std::forward<F>(f),
-                          std::forward<As>(as)...);
-    }
-
-private:
     template <typename F, typename... As>
     bool async_impl(std::true_type, std::size_t resp_id, F&& f, As&&... as) {
         channel self = *this;
 
         // launch a thread with a default functor and schedule the call
-        std::async([=]{ // capture a copy of the fiber
+        std::async([=]{ // capture a copy of the thread
              f(std::forward<As>(as)...);
              self.send(resp_id);
         }); 
@@ -634,25 +553,13 @@ private:
         channel self = *this;
 
         // launch a thread with a default functor and schedule the call
-        std::async([=]{ // capture a copy of the fiber
+        std::async([=]{ // capture a copy of the thread
              auto result = f(std::forward<As>(as)...);
              self.send(resp_id, result);
         }); 
     }
 
-    struct redirect : public receiver {
-        bool handle(message&);
-        channel ch;
-    };
-
-    struct redirect_callback : public receiver {
-        virtual ~callback(){}
-        bool handle(message&);
-        channel ch;
-        std::function<void(message)> cb;
-    };
-
-    struct blocker : public receiver {
+    struct blocker {
         struct data {
             data() = delete;
             data(message* m) : msg(m) { }
@@ -663,10 +570,14 @@ private:
                 } while(!flag);
             }
 
-            inline void signal(message& m) {
-                *msg = std::move(m);
+            inline void signal() {
                 flag = true;
                 cv.notify_one(); 
+            }
+
+            inline void signal(message& m) {
+                *msg = std::move(m);
+                signal();
             }
 
             bool flag = false;
@@ -674,12 +585,11 @@ private:
             message* msg;
         };
 
-        blocker(data* d) : m_data { }
-        virtual ~blocker();
-
-        bool handle(message&);
+        ~blocker(){ m_data.signal(); }
+        inline void handle(message&){ m_data->signal(msg); }
     
     private:
+        blocker(data* d) : m_data { }
         data* m_data;
     };
 
@@ -705,12 +615,12 @@ private:
         void handle_queued_messages(std::unique_lock<std::mutex>& lk);
         bool send(message msg);
         bool recv(message& msg);
-        bool listener(std::unique_ptr<receiver> rcv);
+        bool listener(std::unique_ptr<blocker> rcv);
 
         bool m_closed;
         std::mutex m_mtx;
         std::deque<message> m_msg_q;
-        std::deque<std::unique_ptr<receiver>> m_recv_q;
+        std::deque<std::unique_ptr<blocker>> m_recv_q;
     };
 
     channel(std::shared_ptr<context> ctx) : m_context(std::move(ctx)) { }
@@ -718,40 +628,11 @@ private:
 };
 
 /**
- * @brief a coroutine intended to run on either a system thread or another executing `st::fiber`
+ * @brief a thread object managing its own system thread
  *
- * According to wikipedia: Coroutines are computer program components that 
- * generalize subroutines for non-preemptive multitasking, by allowing 
- * execution to be suspended and resumed.
- *
- * The general advantages of using coroutines compared to thread`s:
- * - changing which coroutine is running by suspending its execution is 
- *   exponentially faster than changing which system thread is running. IE, the 
- *   more concurrent operations need to occur, the more efficient coroutines 
- *   become in comparison to threads.
- * - faster context switching results in faster communication between code
- * - coroutines take less memory than threads 
- * - the number of coroutines is not limited by the operating system
- * - coroutines do not require system level calls to create
- *
- * The general disadvantages of using coroutines:
- * - coroutines are expected to use only non-blocking operations to avoid
- *   blocking their parent thread.
- *
- * While more powerful coroutines are possible in computing, particularly with 
- * assembler level support which allocates stacks for coroutines, the best that 
- * can be accomplished at present in C++ is stackless coroutines. This means 
- * that code cannot be *arbitrarily* suspended and resumed at will (although 
- * this can be simulated with some complicated `switch` based hacks which add  
- * significant complexity, and also come with their own limitations. Further 
- * support for this kind of coroutine is provided in C++20 and onwards). 
- *
- * Instead this library allows the user to create `st::fiber` instances 
- * with user defined objects as a template argument. This is the case in 
- * these functions: 
- * `st::fiber::thread<OBJECT>(...)`
- * `st::fiber::threadpool<OBJECT>(...)`
- * `st::fiber::coroutine<OBJECT>(...)`
+ * This library allows the user to create `st::thread` instances with user 
+ * defined objects as a template argument with a call to static function:
+ * `st::thread::make<OBJECT>(...)`
  *
  * Type `OBJECT` should be a class implementing the method 
  * `void recv(st::message msg)`:
@@ -768,34 +649,30 @@ private:
  * };
  * ```
  *
- * Note: `st::fibers`s automatically throw out any unallocated messages 
+ * Note: `st::threads`s automatically throw out any unallocated messages 
  * received over their internal `st::channel` instead of passing them to the 
  * `OBJECT`'s `recv()` implementation.
  *
- * Note: Any `st::message` received by an `st::fiber` that contains an 
- * `st::message::task()` will have its payload immediately executed and 
- * skip passing the messsage to the `OBJECT`'s `recv()` implementation.
- *
  * Objects instead of functions are useful for interthread message handling 
  * because they allow member data to persist between calls to 
- * `recv(st::message)` without any additional management and for all member data 
- * to be easily accessible without dealing with global variables or void* 
- * pointers.
+ * `OBJECT::recv(st::message)` without any additional management and for all 
+ * `OBJECT` member data to be easily accessible without dealing with global 
+ * variables, void* pointers, or `std::thread` arguments.
  *
  * Another distinct advantage is objects are able to make intelligent use 
  * of C++ RAII semantics, as the objects can specify constructors and 
  * destructors as normal. In fact, the user's `OBJECT` is constructed on the 
- * target `st::fiber`'s thread, instead of the calling thread, allowing for 
+ * target `st::thread`'s thread, instead of the calling thread, allowing for 
  * `thread_local` data to be safely used by the user `OBJECT`.
  *
- * Because `st::fiber`s are designed to run in a non-blocking fashion, any 
- * message whose processing blocks an `st::fiber` indefinitely can cause all 
+ * Because `st::thread`s are designed to run in a non-blocking fashion, any 
+ * message whose processing blocks an `st::thread` indefinitely can cause all 
  * sorts of bad effects, including deadlock. In a scenario where a long running 
  * or indefinite call needs to be made, it may be better to call `std::async` 
  * to execute the function on a dedicated system thread, then send a message 
- * back to the originating fiber with the result. 
+ * back to the originating thread with the result. 
  *
- * `st::channel::async(...)` and `st::fiber::async(...)` are provided to do 
+ * `st::channel::async(...)` and `st::thread::async(...)` are provided to do 
  * exactly this operation:
  * ```
  * // given some type `result_t`
@@ -803,7 +680,7 @@ private:
  *     ...
  * }
  *
- * struct MyFiberObject {
+ * struct MythreadObject {
  *     enum op {
  *         // ...
  *         long_running_result,
@@ -814,8 +691,8 @@ private:
  *         switch(msg.id()) {
  *             // ...
  *                 // execute the given function on another system thread and
- *                 // `send(...)` the result back to this `st::fiber` as a message.
- *                 st::fiber::self().async(long_running_result, long_running_call);
+ *                 // `send(...)` the result back to this `st::thread` as a message.
+ *                 st::thread::self().async(long_running_result, long_running_call);
  *                 break;
  *             case op::long_running_result: 
  *                 // do something with message containing result_t
@@ -826,119 +703,66 @@ private:
  * };
  * ```
  */
-struct fiber {
+struct thread {
     //--------------------------------------------------------------------------
     // construction & assignment
 
-    inline fiber(){}
-    inline fiber(const fiber& rhs) : m_context(rhs.m_context) { }
-    inline fiber(fiber&& rhs) : m_context(std::move(rhs.m_context)) { }
-    virtual ~fiber();
+    inline thread(){}
+    inline thread(const st::thread& rhs) : m_context(rhs.m_context) { }
+    inline thread(st::thread&& rhs) : m_context(std::move(rhs.m_context)) { }
+    virtual ~thread();
 
-    inline const fiber& operator=(const fiber& rhs) {
+    inline const st::thread& operator=(const st::thread& rhs) {
         m_context = rhs.m_context;
         return *this;
     }
 
-    inline const fiber& operator=(fiber&& rhs) {
+    inline const st::thread& operator=(st::thread&& rhs) {
         m_context = std::move(rhs.m_context);
         return *this;
     }
 
     /**
-     * @return an approximation of maximum concurrent threads on the executing hardware
-     */
-    static std::size_t concurrency() {
-        std::size_t count = std::thread::hardware_concurrency();
-        return count ? count : 1; // enforce at least 1
-    }
-
-    /**
-     * Empty `OBJECT` which only processes messages sent via `schedule()` (and
-     * therefore implicitly `listen(ch, cbk)`), ignoring all other messages.
+     * Empty `OBJECT` which only processes messages sent via `schedule()` 
+     * ignoring all other messages.
      */
     struct processor { 
         inline void recv(message& msg) { }
     };
 
     /**
-     * @brief statically construct a new system thread running user `OBJECT` associated with returned `st::fiber`
+     * @brief statically construct a new system thread running user `OBJECT` associated with returned `st::thread`
      *
-     * Because `st::fiber`s allocation constructors are private, either this 
-     * function or `st::fiber::threadpool<...>(...)` must be called to generate 
-     * an initial, allocated root `st::fiber`. This mechanism ensures that
-     * whenever an `st::fiber` is constructed its `OBJECT` will be immediately 
+     * Because `st::thread`s allocation constructors are private, either this 
+     * function or `st::thread::threadpool<...>(...)` must be called to generate 
+     * an initial, allocated root `st::thread`. This mechanism ensures that
+     * whenever an `st::thread` is constructed its `OBJECT` will be immediately 
      * running and capable of receiving `st::message`s.
      *
-     * `st::fiber`'s `OBJECT` will be allocated on the scheduled thread, not the 
+     * `st::thread`'s `OBJECT` will be allocated on the scheduled thread, not the 
      * calling thread. This allows usage of `thread_local` data where necessary.
      *
-     * The user is responsible for holding a copy of the returned `st::fiber`
+     * The user is responsible for holding a copy of the returned `st::thread`
      * to ensure the system thread does not shutdown and user `OBJECT` is kept 
      * in memory.
      *
      * @param as optional arguments to the constructor of type `OBJECT`
      */
     template <typename OBJECT=processor, typename... As>
-    static fiber thread(As&&... as) {
-        return fiber(context::thread<OBJECT>(std::forward<As>(as)...));
-    }
-
-    /**
-     * @brief construct a root `st::fiber` managing a prescribed number of child `st::fiber` system threads listening to the root's internal `st::channel`
-     *
-     * This is useful for generating an efficient multi-thread executor for 
-     * `st::fiber::schedule()`ing tasks or `st::fiber::coroutine()`ing new 
-     * `st::fiber`s by executing those functions on a listening child fiber 
-     * system thread.
-     *
-     * A default attempt at generating an executor with maximal processing 
-     * throughput can be acquired by calling this function with all default 
-     * arguments:
-     * `st::fiber::threadpool<>()`
-     *
-     * The user is responsible for holding a copy of the root `st::fiber` 
-     * returned by this function to keep it in memory, The root fiber holds 
-     * copies of its children to keep them in memory, but the root `st::fiber` 
-     * itself has no such protection.
-     *
-     * Similarly when the root `st::fiber` is `shutdown()` or the last copy goes 
-     * out of scope, all child `st::fiber`s will be `shutdown()` alongside it.
-     *
-     * @param count the number of worker `fiber` threads in the pool 
-     * @param as optional arguments for type `OBJECT`
-     * @return a `st::fiber` with count number of child `fiber` system threads
-     */
-    template <typename OBJECT=processor, typename... As>
-    static fiber threadpool(std::size_t count=fiber::concurrency(), As&&... as) {
-        return fiber(context::threadpool<OBJECT>(count, std::forward<As>(as)...));
-    }
-
-    /**
-     * @brief construct and launch a non-blocking, cooperative `st::fiber` created with user `OBJECT` as a child of the calling st::fiber`
-     *
-     * `st::fiber`'s `OBJECT` will be allocated on the scheduled thread, not the 
-     * calling thread. This allows usage of `thread_local` data where necessary.
-     *
-     * The user is responsible for holding a copy of the returned `st::fiber`
-     * to ensure user `OBJECT` is kept in memory.
-     *
-     * `st::fiber` coroutines gain a significant communication speed boost when 
-     * communicating with other `st::fiber`s executing on the same system thread 
-     * compared to communicating with `st::fiber`s running on different system 
-     * threads.
-     *
-     * @param as optional arguments to the constructor of type `OBJECT`
-     * @return allocated `st::fiber` if successfully launched, else empty pointer
-     */
-    template <typename OBJECT=processor, typename... As>
-    fiber coroutine(As&&... as) {
-        return fiber(m_context->launch_coroutine<OBJECT>(std::forward<As>(as)...));
+    static st::thread make(As&&... as) {
+        return st::thread(context::thread<OBJECT>(std::forward<As>(as)...));
     }
 
     //--------------------------------------------------------------------------
     // state
-
+   
+    /** 
+     * @return context pointer 
+     */
+    inline void* get() {
+        return m_context.get();
+    }
+    
     /**
      * @return `true` if object is allocated, else `false`
      */
@@ -947,21 +771,21 @@ struct fiber {
     }
 
     /**
-     * @return `true` if argument fiber represents this fiber (or no fiber), else `false`
+     * @return `true` if argument thread represents this thread (or no thread), else `false`
      */
-    inline bool operator==(const fiber& rhs) const noexcept {
+    inline bool operator==(const st::thread& rhs) const noexcept {
         return m_context.get() == rhs.m_context.get();
     }
 
     /**
-     * @return `true` if argument fiber represents this fiber (or no fiber), else `false`
+     * @return `true` if argument thread represents this thread (or no thread), else `false`
      */
-    inline bool operator==(fiber&& rhs) const noexcept {
+    inline bool operator==(st::thread&& rhs) const noexcept {
         return m_context.get() == rhs.m_context.get();
     }
 
     /**
-     * @return the `std::thread::id` of the system thread this `st::fiber` is running on
+     * @return the `std::thread::id` of the system thread this `st::thread` is running on
      */
     inline std::thread::id get_id() const {
         return m_context ? m_context->get_thread_id() : std::thread::id();
@@ -969,27 +793,12 @@ struct fiber {
 
     /**
      * This static function is intended to be called from within an `OBJECT` 
-     * running in an `st::fiber`.
+     * running in an `st::thread`.
      *
-     * @return a copy of the `st::fiber` currently running on the calling thread, if none is running will return an unallocated `st::fiber`
+     * @return a copy of the `st::thread` currently running on the calling thread, if none is running will return an unallocated `st::thread`
      */
-    static inline fiber self() {
-        return fiber(context::tl_self().lock());
-    }
-
-    /**
-     * @brief return the parent `st::fiber` of this instance
-     * @return allocated `st::fiber` if this object has a parent, else the root `st::fiber`
-     */
-    inline fiber parent() const {
-        return fiber(m_context->parent());
-    }
-
-    /**
-     * @return allocated root `st::fiber` at the top of the family tree
-     */
-    inline fiber root() const {
-        return m_context ? fiber(m_context->root()) : fiber();
+    static inline st::thread self() {
+        return st::thread(context::tl_self().lock());
     }
 
     //--------------------------------------------------------------------------
@@ -1005,8 +814,8 @@ struct fiber {
     /** 
      * @brief shutdown the object (running() == `false`)
      *
-     * Any threadpool child `st::fiber`s of this `st::fiber` will also have 
-     * `st::fiber::shutdown(process_remaining_messages)` called on them.
+     * Any threadpool child `st::thread`s of this `st::thread` will also have 
+     * `st::thread::shutdown(process_remaining_messages)` called on them.
      *
      * @param process_remaining_messages if true allow recv() to succeed until message queue is empty
      */
@@ -1026,7 +835,7 @@ struct fiber {
      * @brief send a message with given parameters
      *
      * The `st::message` sent by this function will be passed to this
-     * `st::fiber`'s `OBJECT` `recv()` method.
+     * `st::thread`'s `OBJECT` `recv()` method.
      *
      * @param as arguments passed to `message::make()`
      * @return `true` on success, `false` on failure due to object being shutdown 
@@ -1034,17 +843,6 @@ struct fiber {
     template <typename... As>
     bool send(As&&... as) {
         return m_context->send(message::make(std::forward<As>(as)...));
-    }
-   
-    /**
-     * @brief schedule a generic task for execution 
-     * @param t `message::task` to execute on target sender
-     * @return `true` on success, `false` on failure due to object being shutdown 
-     */
-    inline bool schedule(message::task t) {
-     * @param t std::function to execute on target sender
-     * @return `true` on success, `false` on failure due to object being shutdown 
-        return m_context->schedule(std::move(t));
     }
 
     /**
@@ -1056,7 +854,7 @@ struct fiber {
      * @return `true` on success, `false` on failure due to object being shutdown 
      */
     inline bool schedule(std::function<void()> f) {
-        return schedule(message::task(std::move(f)));
+        return schedule(task(std::move(f)));
     }
 
     /**
@@ -1068,13 +866,13 @@ struct fiber {
      */
     template <typename F, typename... As>
     bool schedule(F&& f, As&&... as) {
-        return schedule(message::task([=]() mutable { f(std::forward<As>(as)...); }));
+        return schedule(task([=]() mutable { f(std::forward<As>(as)...); }));
     }
 
     /**
-     * @brief wrap user function and arguments then schedule them on a different, dedicated system thread and send the result of the operation back to this `st::fiber`
+     * @brief wrap user function and arguments then schedule them on a different, dedicated system thread and send the result of the operation back to this `st::thread`
      *
-     * @param resp_id id of message that will be sent back to the this `st::fiber` when `std::async` completes 
+     * @param resp_id id of message that will be sent back to the this `st::thread` when `std::async` completes 
      * @param f function to execute on another system thread
      * @param as arguments for argument function
      */
@@ -1082,70 +880,21 @@ struct fiber {
     bool async(std::size_t resp_id, F&& f, As&&... as) {
         return m_context->m_ch.async(resp_id, std::forward<F>(f), std::forward<As>(as)...);
     }
-   
-    /**
-     * @brief register this `st::fiber` to listen for `st::message`s through an additional, external `st::channel`
-     *
-     * This functionality is useful for abstracting communications between 
-     * `st::fiber`s or system threads using an `st::channel` as a shared 
-     * interface.
-     *
-     * `st::message`s received from the external `st::channel` will be forwarded 
-     * to this `st::fiber` `OBJECT`'s `recv()` method as if the message had been 
-     * sent with `st::fiber::send()`.
-     *
-     * @param ch channel to forward messages from to this `st::fiber`
-     * @return `true` if registration as a listener succeeded, else `false`
-     */
-    inline bool listen(st::channel ch) {
-        return ch.listener(m_context->m_ch);
-    }
-
-    /**
-     * @brief register this `st::fiber` to listen for `st::message`s through an additional, external `st::channel` and evaluate the received `st::message`s via a callback
-     *
-     * This functionality is useful for abstracting communications between 
-     * `st::fiber`s or system threads using an `st::channel` as a shared 
-     * interface.
-     *
-     * `st::message`s received from the external `st::channel` will be handled 
-     * by the argument `st::channel::callback` function on the system thread the 
-     * `OBJECT` is running on, making this callback inherently threadsafe. This 
-     * callback will only be executed by it's originating `st::fiber`, ensuring 
-     * that `OBJECT` will be in memory when the callback executes. Because of 
-     * this, the callback function can wrap any other operation, including calls 
-     * to `OBJECT` methods by reference.
-     *
-     * This callback mechanism allows the user to handle `st::message`s separate 
-     * from the main `OBJECT` `recv(...)` handler. Reasons for such behavior 
-     * include:
-     * - Handling messages from channels with only one message type, 
-     *   particularly from `st::channel`s with a limited lifetime where usage 
-     *   of an enumeration id is unnecessary.
-     * - Dealing with messages which use `id()` enumerations that conflict with 
-     *   the enumeration definition used in the `OBJECT`'s `recv(...)` message 
-     *   handler.
-     *
-     * @param ch channel to forward messages from to this `st::fiber`
-     * @param cb a callback function to be executed with the received message
-     * @return `true` if registration as a listener succeeded, else `false`
-     */
-    inline bool listen(st::channel ch, st::channel::callback cb) {
-        return ch.listener(m_context->m_ch, std::move(cb));
-    }
 
 private:
-    struct context : public std::enable_shared_from_this<context> {
-        context(std::weak_ptr<context> root = std::weak_ptr<context>(), 
-                std::weak_ptr<context> parent = std::weak_ptr<context>(),
-                std::thread::id thread_id = std::thread::id()) : 
-            m_shutdown(false),
-            m_ch(channel::make()),
-            m_root(root),
-            m_parent(parent),
-            m_thread_id(thread_id)
-        { }
+    /*
+     * Generic function wrapper for executing arbitrary code
+     *
+     * Used to convert and wrap any code to a generically executable type. Is 
+     * a new definition instead of a typedef so that it can be distinguished by 
+     * receiving code.
+     */
+    struct task : public std::function<void()> { 
+        template <typename F, typename... As>
+        task(As&&... as) : std::function<void()>(std::forward<As>(as)...) { }
+    };
 
+    struct context : public std::enable_shared_from_this<context> {
         context() : 
             m_shutdown(false),
             m_ch(channel::make()),
@@ -1153,19 +902,11 @@ private:
 
         virtual ~context();
        
-        // static fiber thread constructor function
+        // static thread thread constructor function
         template <typename OBJECT, typename... As>
-        static std::shared_ptr<context> thread(As&&... as) {
+        static std::shared_ptr<context> make(As&&... as) {
             std::shared_ptr<context> c(new context);
             c->launch_thread<OBJECT>(std::forward<As>(as)...);
-            return c;
-        }
-        
-        // static fiber threadpool constructor function
-        template <typename OBJECT, typename... As>
-        static std::shared_ptr<context> threadpool(As&&... as) {
-            std::shared_ptr<context> c(new context);
-            c->launch_threadpool<OBJECT>(std::forward<As>(as)...);
             return c;
         }
 
@@ -1173,17 +914,15 @@ private:
         static std::weak_ptr<context>& tl_self();
         static std::weak_ptr<context>& tl_root();
        
-        // looping recv function executed by a root fiber
+        // looping recv function executed by a root thread
         void thread_loop(const std::shared_ptr<context>& self, 
                          const std::function<void()>& do_late_init);
 
-        // construct a fiber running on a dedicated system thread
+        // construct a thread running on a dedicated system thread
         template <typename OBJECT, typename... As>
         void launch_thread(As&&... as) {
             std::shared_ptr<context> self = shared_from_this();
             m_self = self;
-            m_root = self;
-            m_parent = self;
 
             std::function<void()> do_late_init = [=]() mutable { 
                 late_init<OBJECT>(std::forward<As>(as)...); 
@@ -1195,81 +934,14 @@ private:
             thd.detach();
         }
 
-        // construct a threadpool of fibers running on dedicated system threads
-        template <typename OBJECT, typename... As>
-        void launch_threadpool(As&&... as) {
-            std::shared_ptr<context> self = shared_from_this();
-            m_self = self;
-            m_root = self;
-            m_parent = self;
-
-            // storage location for threadpool child fibers
-            m_threadpool_children = std::unique_ptr<std::vector<fiber>>(
-                new std::vector<fiber>(count)); 
-
-            // Create `count` number of `st::fiber`s into the root `st::fiber`. 
-            // All `st::fiber`s will be created on their own system thread and 
-            // as listeners to the root `st::fiber`s `st::channel`.
-            for(std::size_t i=0; i<count; ++i) {
-                fiber f = fiber::thread<OBJECT>(std::forward<As>(as)...);
-                f.listen(m_ch);
-                m_threadpool_children[i] = std::move(f);
-            }
-        }
-
-        // object which initially receives messages over the fiber's channel
-        struct fiber_receiver : public channel::receiver {
-            virtual ~fiber_receiver(){}
-            bool handle(message msg);
-            std::weak_ptr<context> weak_ctx;
-        };
-
-        // handle a message received by fiber_receiver
-        bool handle_received_message(message& msg);
-
-        // requeue fiber on its parent for message processing
-        bool wakeup(std::unique_lock<std::mutex>&);
-
-        // construct a fiber as a coroutine
-        template <typename OBJECT, typename... As>
-        std::shared_ptr<context> launch_coroutine(As&&... as) {
-            std::shared_ptr<context> c = new context(root(), 
-                                                     m_self.lock(), 
-                                                     get_thread_id());
-            // self must be set before this function returns
-            c->m_self = c->shared_from_this();
-
-            // create a task to run on the parent to finish initialization
-            message::task t([=]() mutable { 
-                c->late_init_coroutine<OBJECT>(std::forward<As>(as)...);
-            });
-
-            return schedule(std::move(t))) ? c : std::shared_ptr<context>();
-        }
-
-        // finish coroutine initialization on its parent's system thread
-        template <typename OBJECT, typename... As>
-        void late_init_coroutine(As&&... as) {
-            // construct `OBJECT`
-            late_init<OBJECT>(std::forward<As>(as)...); 
-
-            // setup this fiber as a receiver to its internal channel
-            m_ch.listener(
-                channel::receiver::make<fiber_receiver>(
-                    m_self.lock()));
-
-            // schedule the fiber for execution on its parent
-            parent()->schedule(nonblocking_fiber_task());
-        }
-
         /*
-         * Finish initializing the `st::fiber` by allocating the `OBJECT` object 
+         * Finish initializing the `st::thread` by allocating the `OBJECT` object 
          * and related handlers. Should be called on the scheduled parent 
-         * `st::fiber`.
+         * `st::thread`.
          */
         template <typename OBJECT, typename... As>
         void late_init(As&&... as) {
-            // properly set the thread_local self `st::fiber` before `OBJECT` construction
+            // properly set the thread_local self `st::thread` before `OBJECT` construction
             detail::hold_and_restore<std::weak_ptr<context>> self_har(tl_self());
             tl_self() = m_self.lock();
 
@@ -1285,13 +957,6 @@ private:
                 }
             };
         }
-        
-        // return a task capable of processing a received message which will 
-        // keep this fiber in memory for its lifetime
-        message::task nonblocking_fiber_task() const;
-
-        // process a received message in a nonblocking manner
-        void nonblocking_process_message();
 
         inline bool running() const {
             std::lock_guard<std::mutex> lk(m_mtx);
@@ -1304,20 +969,9 @@ private:
             return m_ch.send(std::move(msg));
         }
 
-        inline bool schedule(message::task&& t) {
+        inline bool schedule(task&& t) {
             std::lock_guard<std::mutex> lk(m_mtx);
             return send(message::make(0,std::move(t)));
-        }
-
-        inline std::shared_ptr<context> parent() const {
-            std::lock_guard<std::mutex> lk(m_mtx);
-            std::shared_ptr<context> parent = m_parent.lock();
-            return parent ? parent : m_root.lock();
-        }
-
-        inline std::shared_ptr<context> root() const {
-            std::lock_guard<std::mutex> lk(m_mtx);
-            return m_root.lock();
         }
 
         inline std::thread::id get_thread_id() const {
@@ -1327,30 +981,27 @@ private:
 
         std::mutex m_mtx;
         bool m_shutdown;
-        channel m_ch; // internal fiber channel
-        std::deque<message> m_received_msgs; // queue of messages received by receiver
+        channel m_ch; // internal thread channel
         std::weak_ptr<context> m_self; // weak pointer to self
-        std::weak_ptr<context> m_root; // weak pointer to root fiber
-        std::weak_ptr<context> m_parent; // weak pointer to parent fiber
         std::thread::id m_thread_id; // thread id the user object is executing on
         data m_object; // user object data
         std::function<void(message&)> m_hdl; // function wrapper utilizing user object to parse messages 
-        std::unique_ptr<std::vector<fiber>> m_threadpool_children; // storage location for threadpool child fibers
+        std::unique_ptr<std::vector<thread>> m_threadpool_children; // storage location for threadpool child threads
     };
 
-    fiber(std::shared_ptr<context> ctx) : m_context(std::move(ctx)) { }
+    thread(std::shared_ptr<context> ctx) : m_context(std::move(ctx)) { }
     std::shared_ptr<context> m_context;
 };
 
 /**
- * @brief writes a textual representation of a fiber to the output stream
+ * @brief writes a textual representation of a thread to the output stream
  * @return a reference to the argument ostream reference
  */
 template<class CharT, class Traits>
 std::basic_ostream<CharT,Traits>&
-operator<<(std::basic_ostream<CharT,Traits>& ost, fiber f) {
+operator<<(std::basic_ostream<CharT,Traits>& ost, st::thread thd) {
     std::stringstream ss;
-    ss << std::hex << f.get();
+    ss << std::hex << thd.get();
     ost << ss.str();
     return ost;
 }
