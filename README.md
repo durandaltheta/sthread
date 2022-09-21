@@ -57,9 +57,9 @@ are needed try cloning this project with submodules:
 
 ## Build Unit Tests 
 - cmake .
-- make simple_thread_tst 
+- make sthread_tst 
 
-simple_thread_tst binary will be placed in tst/ 
+sthread_tst binary will be placed in tst/ 
 
 ## Usage 
 ### Creating Threads from Objects

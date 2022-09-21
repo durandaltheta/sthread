@@ -17,13 +17,15 @@
 #include <functional>
 #include <ostream>
 #include <sstream>
-#include <stdio.h>
-#include <string>
-#include <vector>
+#include <iostream>
+#include <future>
 
 namespace st { // simple thread
 
 namespace detail {
+
+template <typename T>
+using unqualified = typename std::decay<T>::type;
 
 // handle pre and post c++17 
 #if __cplusplus >= 201703L
@@ -71,14 +73,22 @@ struct hold_and_restore {
  */
 std::mutex& log_mutex();
 
+inline void inner_log(){}
+
+template <typename A, typename... As>
+inline void inner_log(A&& a, As&&... as) {
+    std::cout << a;
+    inner_log(std::forward<As>(as)...);
+}
+
 template <typename... As>
-void log(const char* file, std::size_t line_num, const char* func, const char* fmt, As&&... as) {
+void log(const char* file, std::size_t line_num, const char* func, As&&... as) {
     std::lock_guard<std::mutex> lk(log_mutex());
     std::stringstream ss;
     ss << file << ":line" << line_num << ":" << func << ":";
-    printf(ss.c_str());
-    printf(fmt, as...);
-    printf("\n"); 
+    std::cout << ss.str();
+    inner_log(std::forward<As>(as)...);
+    std::cout << std::endl;
 }
 
 }
@@ -143,9 +153,9 @@ struct data {
         return data(hint<T>(), std::forward<As>(as)...);
     }
 
-    data& operator(const data&) = delete; // cannot lvalue copy
+    data& operator=(const data&) = delete; // cannot lvalue copy
     
-    inline data& operator(data&& rhs) {
+    inline data& operator=(data&& rhs) {
         m_data = std::move(rhs.m_data);
         m_type_code = std::move(rhs.m_type_code);
         return *this;
@@ -154,7 +164,7 @@ struct data {
     /**
      * @return `true` if the object represents an allocated data payload, else `false`
      */
-    inline operator bool() {
+    inline operator bool() const {
         return m_data ? true : false;
     }
 
@@ -495,106 +505,71 @@ struct channel {
      * @param as arguments for argument function
      */
     template <typename F, typename... As>
-    bool async(std::size_t resp_id, F&& f, As&&... as) {
-        using isv = typename std::is_void<detail::function_return_type<F,A...>>;
-        return async_impl(std::integral_constant<bool,isv::value>(),
-                          ch,
-                          resp_id,
-                          std::forward<F>(f),
-                          std::forward<As>(as)...);
+    void async(std::size_t resp_id, F&& f, As&&... as) {
+        using isv = typename std::is_void<detail::function_return_type<F,As...>>;
+        async_impl(std::integral_constant<bool,isv::value>(),
+                   resp_id,
+                   std::forward<F>(f),
+                   std::forward<As>(as)...);
     }
 
 private:
-    /*
-     * interface for objects registered as a listeners to this channel  
-     */
-    struct receiver {
-        virtual ~receiver(){}
-
-        /*
-         * interface for receiver to receive a message
-         *
-         * If the reference `msg` is still allocated after `handle()` returns,
-         * the `msg` will be treated as unhandled, the failed 
-         * `st::channel::receiver` removed from the receiver queue, and the 
-         * `msg` pushed to the front of the `st::channel::queue` to be handled 
-         * by the next available `st::channel::receiver`.
-         */
-        virtual bool handle(message& msg) = 0;
-    };
-
-    /**
-     * @brief register a implementer of receiver interface as a listener to this channel 
-     *
-     * All `st::channel::receiver`s registered as listener are kept by the 
-     * `st::channel` and will go out of scope when the last copy of the 
-     * `st::channel` goes out of scope. 
-     *
-     * Registered `st::channel::receiver` objects will compete to receive 
-     * `st::message`s sent to this `st::channel`.
-     */
-    inline bool listener(std::unique_ptr<receiver> rcv) {
-        return m_context->listener(std::move(rcv));
-    }
-
     template <typename F, typename... As>
-    bool async_impl(std::true_type, std::size_t resp_id, F&& f, As&&... as) {
+    void async_impl(std::true_type, std::size_t resp_id, F&& f, As&&... as) {
         channel self = *this;
 
         // launch a thread with a default functor and schedule the call
-        std::async([=]{ // capture a copy of the thread
+        std::async([=]() mutable { // capture a copy of the thread
              f(std::forward<As>(as)...);
              self.send(resp_id);
         }); 
     }
     
     template <typename F, typename... As>
-    bool async_impl(std::false_type, std::size_t resp_id, F&& f, As&&... as) {
+    void async_impl(std::false_type, std::size_t resp_id, F&& f, As&&... as) {
         channel self = *this;
 
         // launch a thread with a default functor and schedule the call
-        std::async([=]{ // capture a copy of the thread
+        std::async([=]() mutable { // capture a copy of the thread
              auto result = f(std::forward<As>(as)...);
              self.send(resp_id, result);
         }); 
     }
 
-    struct blocker {
-        struct data {
-            data() = delete;
-            data(message* m) : msg(m) { }
+    struct context {
+        struct blocker {
+            struct data {
+                data(message* m) : msg(m) { }
 
-            inline void wait(std::unique_lock<std::mutex>& lk) {
-                do {
-                    cv.wait(lk);
-                } while(!flag);
-            }
+                inline void wait(std::unique_lock<std::mutex>& lk) {
+                    do {
+                        cv.wait(lk);
+                    } while(!flag);
+                }
 
-            inline void signal() {
-                flag = true;
-                cv.notify_one(); 
-            }
+                inline void signal() {
+                    flag = true;
+                    cv.notify_one(); 
+                }
 
-            inline void signal(message& m) {
-                *msg = std::move(m);
-                signal();
-            }
+                inline void signal(message& m) {
+                    *msg = std::move(m);
+                    signal();
+                }
 
-            bool flag = false;
-            std::condition_variable cv;
-            message* msg;
+                bool flag = false;
+                std::condition_variable cv;
+                message* msg;
+            };
+
+            blocker(data* d) : m_data(d) { }
+            ~blocker(){ m_data->signal(); }
+            inline void handle(message& msg){ m_data->signal(msg); }
+        
+            data* m_data;
         };
 
-        ~blocker(){ m_data.signal(); }
-        inline void handle(message&){ m_data->signal(msg); }
-    
-    private:
-        blocker(data* d) : m_data { }
-        data* m_data;
-    };
-
-    struct context {
-        context() : m_closed(false), m_cur_key(1) { }
+        context() : m_closed(false) { }
 
         inline bool closed() const { 
             std::lock_guard<std::mutex> lk(m_mtx);
@@ -615,10 +590,9 @@ private:
         void handle_queued_messages(std::unique_lock<std::mutex>& lk);
         bool send(message msg);
         bool recv(message& msg);
-        bool listener(std::unique_ptr<blocker> rcv);
 
         bool m_closed;
-        std::mutex m_mtx;
+        mutable std::mutex m_mtx;
         std::deque<message> m_msg_q;
         std::deque<std::unique_ptr<blocker>> m_recv_q;
     };
@@ -710,7 +684,15 @@ struct thread {
     inline thread(){}
     inline thread(const st::thread& rhs) : m_context(rhs.m_context) { }
     inline thread(st::thread&& rhs) : m_context(std::move(rhs.m_context)) { }
-    virtual ~thread();
+
+    virtual ~thread() {
+        // explicitly shutdown root thread channel because a system thread 
+        // holds a copy of this thread which keeps the channel alive even 
+        // though the root thread is no longer reachable
+        if(m_context && m_context.use_count() < 3) {
+            shutdown();
+        }
+    }
 
     inline const st::thread& operator=(const st::thread& rhs) {
         m_context = rhs.m_context;
@@ -750,7 +732,7 @@ struct thread {
      */
     template <typename OBJECT=processor, typename... As>
     static st::thread make(As&&... as) {
-        return st::thread(context::thread<OBJECT>(std::forward<As>(as)...));
+        return st::thread(context::make<OBJECT>(std::forward<As>(as)...));
     }
 
     //--------------------------------------------------------------------------
@@ -877,8 +859,8 @@ struct thread {
      * @param as arguments for argument function
      */
     template <typename F, typename... As>
-    bool async(std::size_t resp_id, F&& f, As&&... as) {
-        return m_context->m_ch.async(resp_id, std::forward<F>(f), std::forward<As>(as)...);
+    void async(std::size_t resp_id, F&& f, As&&... as) {
+        m_context->m_ch.async(resp_id, std::forward<F>(f), std::forward<As>(as)...);
     }
 
 private:
@@ -890,17 +872,13 @@ private:
      * receiving code.
      */
     struct task : public std::function<void()> { 
-        template <typename F, typename... As>
+        template <typename... As>
         task(As&&... as) : std::function<void()>(std::forward<As>(as)...) { }
     };
 
     struct context : public std::enable_shared_from_this<context> {
-        context() : 
-            m_shutdown(false),
-            m_ch(channel::make()),
-        { }
-
-        virtual ~context();
+        context() : m_shutdown(false), m_ch(channel::make()) { }
+        ~context() { shutdown(false); }
        
         // static thread thread constructor function
         template <typename OBJECT, typename... As>
@@ -912,7 +890,6 @@ private:
 
         // thread local data
         static std::weak_ptr<context>& tl_self();
-        static std::weak_ptr<context>& tl_root();
        
         // looping recv function executed by a root thread
         void thread_loop(const std::shared_ptr<context>& self, 
@@ -979,14 +956,13 @@ private:
             return m_thread_id;
         }
 
-        std::mutex m_mtx;
+        mutable std::mutex m_mtx;
         bool m_shutdown;
         channel m_ch; // internal thread channel
         std::weak_ptr<context> m_self; // weak pointer to self
         std::thread::id m_thread_id; // thread id the user object is executing on
         data m_object; // user object data
         std::function<void(message&)> m_hdl; // function wrapper utilizing user object to parse messages 
-        std::unique_ptr<std::vector<thread>> m_threadpool_children; // storage location for threadpool child threads
     };
 
     thread(std::shared_ptr<context> ctx) : m_context(std::move(ctx)) { }
