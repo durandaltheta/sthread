@@ -41,7 +41,7 @@ Thread objects (as used by this library) have several advantages over raw functi
 - Objects allow for inheritance
 - Objects allow for public enumerations and child classes to be defined as part of its namespace, which is useful for organizing what messages and message payload data types the thread will listen for.
 - Objects allow for class method definitions, instead of forcing the user to rely on lambdas, local objects or global namespace functions if further function calls are desired.
-- Initialization (constructor), runtime execution (`void recv(st::message`), and deinitialization (destructor) are broken in to separate functions, which I think makes them more readable. A thread running only a raw function requires everything be managed within that function or within child objects managed by that function. 
+- Initialization (constructor), runtime execution (`void recv(st::message`), and deinitialization (destructor) are broken into separate functions, which I think makes them more readable. A thread running only a raw function requires everything be managed within that function or within child objects managed by that function. 
 
 ## Requirements
 - C++11 
