@@ -330,7 +330,7 @@ and I say hello
 [Back To Top](#simple-threading-and-communication)
 
 ### Sending Messages Between Threads
-`st::thread`s can hold copies of other `st::thread`s or `st::channel`s and use these copies to `st::thread::send()` functions to communicate with each other. Alternatively the user can store all `st::fiber`s in a globally accessible singleton object so `st::fiber`s can access each other as necessary. The design is entirely up to the user.
+`st::thread`s can hold copies of other `st::thread`s or `st::channel`s and use these copies' `send()` functions to communicate with each other. Alternatively the user can store all `st::fiber`s in a globally accessible singleton object so `st::fiber`s can access each other as necessary. The design is entirely up to the user.
 
 *WARNING*: `OBJECT`s running in an `st::thread` need to be careful to *NOT* hold a copy of that `st::thread` as a member variable, as this can create a memory leak. Instead, static function `st::thread st::thread::self()` should be called from within the running `OBJECT` when accessing the `OBJECT`'s associated `st::thread` is necessary.
 
