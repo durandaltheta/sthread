@@ -290,7 +290,7 @@ The default behavior for `st::channel::shutdown()` is to cause all current and f
 
 The user can call `bool st::channel::closed()`/`bool st::fiber::running()` respectively on these objects to check if an object has been closed or shutdown. 
 
-#### Example 9
+#### Example 5
 ```
 #include <iostream>
 #include <string>
@@ -332,7 +332,7 @@ and I say hello
 ### Sending Messages Between Threads
 The object that `st::thread`s uses for communication in their `send()` methods is called `st::channel`. `st::channel`s can be created and used outside of `st::thread` objects if desired. This allows the user to send messages to threads which were not launched with `st::thread::make()`.
 
-#### Example 5
+#### Example 6
 ```
 #include <iostream>
 #include <string>
@@ -370,7 +370,7 @@ forward this string to main
 
 *WARNING*: `OBJECT`s running in an `st::thread` need to be careful to *NOT* hold a copy of that `st::thread` as a member variable, as this can create a memory leak. Instead, static function `st::thread st::thread::self()` should be called from within the running `OBJECT` when accessing the `OBJECT`'s associated `st::thread` is necessary.
 
-#### Example 6
+#### Example 7
 ```
 #include <iostream>
 #include <string>
@@ -479,7 +479,7 @@ what a beautiful sunset
 ### Dealing with Blocking Functions 
 To ensure messages are processed in a timely manner, and to avoid deadlock in general, it is important to avoid calling functions which will block for indeterminate periods within an `st::thread`. If the user needs to call such a function, a solution is to make use of the standard library's `std::async()` feature to execute arbitrary code on a dedicated system thread, then `send()` the result back to the `st::thread` when the call completes. As a convenience, `st::fiber::async(std::size_t resp_id, ...)` and `st::channel::async(std::size_t resp_id, ...)` are provided for exactly this purpose:
 
-#### Example 7
+#### Example 9
 ```
 #include <iostream>
 #include <string>
