@@ -271,12 +271,12 @@ Many objects in this library are actually shared pointers to some shared context
 - `st::channel`
 - `st::thread`
 
-The user can check if these objects contain an allocated shared context with their `bool` conversion. This is easiest to do by using the object as the argument to an `if()` statement. Given an `st::thread` named 'my_fib':
+The user can check if these objects contain an allocated shared context with their `bool` conversion. This is easiest to do by using the object as the argument to an `if()` statement. Given an `st::thread` named 'my_thd':
 ```
-if(my_fib) {
-    // my_fib is allocated
+if(my_thd) {
+    // my_thd is allocated
 } else {
-    // my_fib is not allocated
+    // my_thd is not allocated
 }
 ```
 
