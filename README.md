@@ -122,8 +122,8 @@ Arguments passed to `send(/* ... */)` are subsequently passed to `st::message st
 - `st::message st::message::make(st::message)`: Returns its argument immediately with no changes 
 
 `st::message`s have 2 important methods:
-`std::size_t st::message::id()`: Return the unsigned integer id value stored in the messsage
-`st::data& st::message::data()`: Return a reference to the payload `st::data` stored in the message
+- `std::size_t st::message::id()`: Return the unsigned integer id value stored in the messsage
+- `st::data& st::message::data()`: Return a reference to the payload `st::data` stored in the message
 
 `st::data()` can story any type and that data can be copied to an argument of templated type `T` with `st::data::copy_to(T& t)` or rvalue swapped with `st::data::move_to(T& t)`. Said functions will return `true` if their argument `T` matches the type `T` originally stored in the `st::data`, otherwise they will return `false`.
 
