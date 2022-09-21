@@ -111,8 +111,6 @@ world
 
 The code that calls `st::thread::make()` to create a thread is responsible for keeping a copy of the resulting `st::thread` object. Otherwise the launched `st::thread` may stop executing because it will go out of scope.
 
-[Back To Top](#simple-threading-and-communication)
-
 ### Send Operations
 Several classes in this library support the ability to send messages:
 - `st::channel::send(/* ... *)`
@@ -171,8 +169,6 @@ hello again
 message data was not a string
 ```
 
-[Back To Top](#simple-threading-and-communication)
-
 ### Type Checking
 Payload `st::data` types can also be checked with `st::data::is<T>()` (returns `true` if types match, else `false`) which is useful if a message's data might contain several different potential types. 
 
@@ -222,8 +218,6 @@ Terminal output might be:
 $./a.out
 hello 1 more time
 ```
-
-[Back To Top](#simple-threading-and-communication)
 
 ### Thread Constructor Arguments
 `st::thread`s can be passed `OBJECT` constructor arguments `as...` in `st::thread::make<OBJECT>(As&& as...)`. The `OBJECT` class will be created on a new system thread and destroyed before said thread ends.
@@ -329,8 +323,6 @@ you say goodbye
 and I say hello
 ```
 
-[Back To Top](#simple-threading-and-communication)
-
 ### Sending Messages Between Threads
 `st::thread`s can hold copies of other `st::thread`s or `st::channel`s and use these copies' `send()` functions to communicate with each other. Alternatively the user can store all `st::thread`s in a globally accessible singleton object so `st::thread`s can access each other as necessary. The design is entirely up to the user.
 
@@ -400,8 +392,6 @@ My name is MyThread1
 My name is MyThread2
 ```
 
-[Back To Top](#simple-threading-and-communication)
-
 ### Scheduling Functions on Threads 
 `st::thread`s provide the ability to enqueue arbitrary code for asynchronous execution with `st::thread::schedule(...)` API. Any `st::thread` can be used for this purpose, though the default `st::thread::make<>()` `OBJECT` template type `st::thread::processor` is useful for generating worker `st::thread`s dedicated to scheduling other code.
 
@@ -439,8 +429,6 @@ what a beautiful day
 looks like rain 
 what a beautiful sunset
 ```
-
-[Back To Top](#simple-threading-and-communication)
 
 ### Dealing with Blocking Functions 
 To ensure messages are processed in a timely manner, and to avoid deadlock in general, it is important to avoid calling functions which will block for indeterminate periods within an `st::thread`. If the user needs to call such a function, a solution is to make use of the standard library's `std::async()` feature to execute arbitrary code on a dedicated system thread, then `send()` the result back to the `st::thread` when the call completes. As a convenience, `st::thread::async(std::size_t resp_id, ...)` and `st::channel::async(std::size_t resp_id, ...)` are provided for exactly this purpose:
@@ -519,5 +507,3 @@ $./a.out
 3
 that's all folks!
 ```
-
-[Back To Top](#simple-threading-and-communication)
