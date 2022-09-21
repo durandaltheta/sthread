@@ -290,7 +290,7 @@ In `st::channel`'s case, blocking `st::channel::recv()` operations can be stoppe
 
 The default behavior for `st::channel::shutdown()` is to cause all current and future all `st::channel::send()` operations to fail early but to allow `st::channel::recv()` to continue succeeding until the internal message queue is empty. Alternatively, the user can call `st::channel::close(false)`/`st::thread::shutdown(false)` to immediately end all operations on the `st::channel`/`st::thread`.
 
-The user can call `bool st::channel::closed()`/`bool st::fiber::running()` respectively on these objects to check if an object has been closed or shutdown. 
+The user can call `bool st::channel::closed()`/`bool st::thread::running()` respectively on these objects to check if an object has been closed or shutdown. 
 
 #### Example 5
 ```
@@ -332,7 +332,7 @@ and I say hello
 [Back To Top](#simple-threading-and-communication)
 
 ### Sending Messages Between Threads
-`st::thread`s can hold copies of other `st::thread`s or `st::channel`s and use these copies' `send()` functions to communicate with each other. Alternatively the user can store all `st::fiber`s in a globally accessible singleton object so `st::fiber`s can access each other as necessary. The design is entirely up to the user.
+`st::thread`s can hold copies of other `st::thread`s or `st::channel`s and use these copies' `send()` functions to communicate with each other. Alternatively the user can store all `st::thread`s in a globally accessible singleton object so `st::thread`s can access each other as necessary. The design is entirely up to the user.
 
 *WARNING*: `OBJECT`s running in an `st::thread` need to be careful to *NOT* hold a copy of that `st::thread` as a member variable, as this can create a memory leak. Instead, static function `st::thread st::thread::self()` should be called from within the running `OBJECT` when accessing the `OBJECT`'s associated `st::thread` is necessary.
 
@@ -443,7 +443,7 @@ what a beautiful sunset
 [Back To Top](#simple-threading-and-communication)
 
 ### Dealing with Blocking Functions 
-To ensure messages are processed in a timely manner, and to avoid deadlock in general, it is important to avoid calling functions which will block for indeterminate periods within an `st::thread`. If the user needs to call such a function, a solution is to make use of the standard library's `std::async()` feature to execute arbitrary code on a dedicated system thread, then `send()` the result back to the `st::thread` when the call completes. As a convenience, `st::fiber::async(std::size_t resp_id, ...)` and `st::channel::async(std::size_t resp_id, ...)` are provided for exactly this purpose:
+To ensure messages are processed in a timely manner, and to avoid deadlock in general, it is important to avoid calling functions which will block for indeterminate periods within an `st::thread`. If the user needs to call such a function, a solution is to make use of the standard library's `std::async()` feature to execute arbitrary code on a dedicated system thread, then `send()` the result back to the `st::thread` when the call completes. As a convenience, `st::thread::async(std::size_t resp_id, ...)` and `st::channel::async(std::size_t resp_id, ...)` are provided for exactly this purpose:
 
 #### Example 8
 ```
