@@ -55,7 +55,7 @@ are needed try cloning this project with submodules:
 - cmake .
 - make install
 
-If building on linux, will have to `sudo make install`.
+If building on linux, may have to `sudo make install`.
 
 ## Build Unit Tests 
 - cmake .
