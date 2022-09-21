@@ -330,47 +330,11 @@ and I say hello
 [Back To Top](#simple-threading-and-communication)
 
 ### Sending Messages Between Threads
-The object that `st::thread`s uses for communication in their `send()` methods is called `st::channel`. `st::channel`s can be created and used outside of `st::thread` objects if desired. This allows the user to send messages to threads which were not launched with `st::thread::make()`.
-
-#### Example 6
-```
-#include <iostream>
-#include <string>
-#include <sthread>
-
-struct MyClass {
-    MyClass(st::channel ch) { 
-        ch.send(std::string("forward this string to main"));
-    }
-
-    void recv(st::message msg) { }
-};
-
-int main() {
-    st::channel my_channel = st::channel::make();
-    st::thread my_thread = st::thread::make<MyClass>(my_channel);
-    
-    st::message msg;
-    my_channel.recv(msg); // main blocks to listen on the channel
-
-    std::string s;
-    if(msg.data().copy_to(s)) {
-        std::cout << s << std::endl;
-    }
-}
-```
-
-Terminal output might be:
-```
-$./a.out 
-forward this string to main
-```
-
-`st::thread`s can hold copies of other `st::thread`s and use these copies to `st::thread::send()` functions to communicate with each other. Alternatively the user can store all `st::fiber`s in a globally accessible singleton object so `st::fiber`s can access each other as necessary. The design is entirely up to the user.
+`st::thread`s can hold copies of other `st::thread`s or `st::channel`s and use these copies to `st::thread::send()` functions to communicate with each other. Alternatively the user can store all `st::fiber`s in a globally accessible singleton object so `st::fiber`s can access each other as necessary. The design is entirely up to the user.
 
 *WARNING*: `OBJECT`s running in an `st::thread` need to be careful to *NOT* hold a copy of that `st::thread` as a member variable, as this can create a memory leak. Instead, static function `st::thread st::thread::self()` should be called from within the running `OBJECT` when accessing the `OBJECT`'s associated `st::thread` is necessary.
 
-#### Example 7
+#### Example 6
 ```
 #include <iostream>
 #include <string>
@@ -441,7 +405,7 @@ My name is MyThread2
 
 `st::thread::schedule()` can accept a function, functor, or lambda function, alongside optional arguments, in a similar fashion to standard library features `std::async()` and `std::thread()`.
 
-#### Example 8
+#### Example 7
 ```
 #include <iostream>
 #include <string>
@@ -479,7 +443,7 @@ what a beautiful sunset
 ### Dealing with Blocking Functions 
 To ensure messages are processed in a timely manner, and to avoid deadlock in general, it is important to avoid calling functions which will block for indeterminate periods within an `st::thread`. If the user needs to call such a function, a solution is to make use of the standard library's `std::async()` feature to execute arbitrary code on a dedicated system thread, then `send()` the result back to the `st::thread` when the call completes. As a convenience, `st::fiber::async(std::size_t resp_id, ...)` and `st::channel::async(std::size_t resp_id, ...)` are provided for exactly this purpose:
 
-#### Example 9
+#### Example 8
 ```
 #include <iostream>
 #include <string>
