@@ -1,6 +1,9 @@
 # Simple Threading and Communication
 ## Quick Links
 
+The overall design of code in this library relies heavily on virtual
+interfaces to implement behavior. Visit the documentation for information on 
+interfaces and various other features not detailed in this README.
 [Documentation](https://durandaltheta.github.io/sthread/)
 
 [Unit Test and Example Code](tst/sthread_tst.cpp)
@@ -20,12 +23,18 @@
 
 [Scheduling Functions on Threads](#scheduling-functions-on-threads)
 
+[Scheduling Fibers on Threads](#Scheduling-fibers-on-threads)
+
 [Dealing with Blocking Functions](#dealing-with-blocking-functions)
+
+[Abstracting Message Senders and Code Schedulers](#abstracting-message-senders)
+
+[Abstracting Message Replies](#abstracting-message-senders)
 
 ## Purpose 
 This library's purpose is to make setting up useful c++ threading simple.
 
-The main thread-like object provided by the library is `st::thread`, an object which can manage a system thread and process incoming messages.
+The library provides a thread-like object named `st::thread`, an object which can manage a system thread and process incoming messages.
 
 Instead of functions `st::thread`s execute an object's `recv()` method:
 ```
@@ -34,14 +43,16 @@ struct MyClass {
 };
 ```
 
-Thread objects (as used by this library) have several advantages over raw functions. 
-- The thread's message receive loop is managed by the library 
-- The thread's lifecycle is managed by the library 
+`st::thread`s running user objects have several advantages over system threads running raw functions. 
 - Sending messages to the thread is provided by the library 
+- The system thread's message receive loop is managed by the library 
+- The System thread's lifecycle is managed by the library 
 - Objects allow for inheritance
 - Objects allow for public enumerations and child classes to be defined as part of its namespace, which is useful for organizing what messages and message payload data types the thread will listen for.
-- Objects allow for class method definitions, instead of forcing the user to rely on lambdas, local objects or global namespace functions if further function calls are desired.
-- Initialization (constructor), runtime execution (`void recv(st::message`), and deinitialization (destructor) are broken into separate functions, which I think makes them more readable. A thread running only a raw function requires everything be managed within that function or within child objects managed by that function. 
+- Objects allow for member data to be used like local variables within the `st::thread`'s receive loop
+- Objects allow for use of local namespace methods, instead of forcing the user to rely on lambdas, local objects or global namespace functions if further function calls are desired.
+- Objects enable RAII (Resource Acquisition is Initialization) semantics
+- Object's constructors, runtime execution (`void recv(st::message`), and destructor are broken into separate functions, which I think makes them more readable than most alternatives when dealing with system threads.
 
 ## Requirements
 - C++11 
@@ -113,10 +124,14 @@ The code that calls `st::thread::make()` to create a thread is responsible for k
 
 ### Send Operations
 Several classes in this library support the ability to send messages:
-- `st::channel::send(/* ... *)`
-- `st::thread::send(/* ... *)`
+- `st::channel::send(...)`
+- `st::thread::send(...)`
+- `st::fiber::send(...)`
+- `st::sender::send(...)`
 
-Arguments passed to `send(/* ... */)` are subsequently passed to `st::message st::message::make(/* ... */)` before the resulting `st::message` is passed to its destination thread and object. The summary of the 3 basic overloads of `st::message st::message::make(/* ... */)` are:
+Arguments passed to `send(...)` are subsequently passed to `st::message st::message::make(...)` before the resulting `st::message` is passed to its destination thread and object. The summary of the 4 basic overloads of `st::message st::message::make(...)` are:
+
+- `st::message st::message::make()`: Returns a default allocated `st::message`
 - `st::message st::message st::message::make(ID id)`: Returns a constructed message which returns argument unsigned integer `id` as `st::message::id()`.
 - `st::message st::message st::message::make(ID id, T&& t)`: Same as the previous invocation but additionally accepts and stores a payload `t` of any type (compiler deduced) `T`. The will be stored in the message as a type erased `st::data`. 
 - `st::message st::message::make(st::message)`: Returns its argument immediately with no changes 
@@ -125,7 +140,7 @@ Arguments passed to `send(/* ... */)` are subsequently passed to `st::message st
 - `std::size_t st::message::id()`: Return the unsigned integer id value stored in the messsage
 - `st::data& st::message::data()`: Return a reference to the payload `st::data` stored in the message
 
-`st::data()` can story any type and that data can be copied to an argument of templated type `T` with `st::data::copy_to(T& t)` or rvalue swapped with `st::data::move_to(T& t)`. Said functions will return `true` if their argument `T` matches the type `T` originally stored in the `st::data`, otherwise they will return `false`.
+`st::data()` can store any data type. The stored data can be copied to an argument of templated type `T` with `st::data::copy_to(T& t)` or rvalue swapped with `st::data::move_to(T& t)`. Said functions will return `true` if their argument `T` matches the type `T` originally stored in the `st::data`, otherwise they will return `false`.
 
 #### Example 2
 ```
@@ -170,7 +185,9 @@ message data was not a string
 ```
 
 ### Type Checking
-Payload `st::data` types can also be checked with `st::data::is<T>()` (returns `true` if types match, else `false`) which is useful if a message's data might contain several different potential types. 
+Payload `st::data` types can also be checked with `bool st::data::is<T>()` (returns `true` if types match, else `false`) which is useful if a message's data might contain several different potential types. 
+
+Additionally, the type stored in `st::data` can be cast to a reference with a call to `T& st::data::cast_to<T>()`. However, this functionality is only safe when used inside of an `st::data::is<T>()` check.
 
 WARNING: `st::data` can store a payload of any type. However, this behavior can be confusing with regard to c-style `char*` strings. c-style strings are just pointers to memory, and the user is responsible for ensuring that said memory is accessible outside of the scope when the message is sent. Typically, it is safe to send c-style strings with a hardcoded value, as this is normally stored in the program's data. However, local stack arrays of characters, or, even worse, allocated c-strings must be carefully considered when sending over a message. 
 
@@ -191,13 +208,9 @@ struct MyClass {
         switch(msg.id()) {
             case op::print:
                 if(msg.data().is<std::string>()) {
-                    std::string s;
-                    msg.data().copy_to(s);
-                    std::cout << s;
+                    std::cout << msg.data().cast_to<std::string>();
                 } else if(msg.data().is<int>()) {
-                    int i = 0;
-                    msg.data().copy_to(i);
-                    std::cout << i;
+                    std::cout << msg.data().cast_to<int>();
                 }
                 break;
         }
@@ -264,8 +277,11 @@ Many objects in this library are actually shared pointers to some shared context
 - `st::message`
 - `st::channel`
 - `st::thread`
+- `st::fiber`
+- `st::sender`
+- `st::reply`
 
-The user can check if these objects contain an allocated shared context with their `bool` conversion. This is easiest to do by using the object as the argument to an `if()` statement. Given an `st::thread` named 'my_thd':
+The user can check if these objects contain an allocated shared context with their `bool` conversion. This is easiest to do by using the object as the argument to an `if()` statement. Given an `st::thread` named `my_thd`:
 ```
 if(my_thd) {
     // my_thd is allocated
@@ -276,15 +292,15 @@ if(my_thd) {
 
 Attempting to use API of these objects when they are *NOT* allocated (other than static allocation functions or the `bool` conversion) will typically raise an exception.
 
-When the last object holding a copy of some shared context goes out of scope, that object will be neatly shutdown and be destroyed. As such, the user is responsible for keeping copies of the above objects when they are created with an allocator function (`make()`), otherwise they may unexpectedly shut down.
+When the last object holding a copy of some shared context goes out of scope, that object will be neatly shutdown and be destroyed. As such, the user is responsible for keeping copies of the above objects when they are created with an allocator function (`make()`), otherwise they may unexpectedly shutdown.
 
-In some cases, object's shared context can be shutdown early with a call to `st::channel::close()` or `st::thread::shutdown()` API respectively.
+In some cases, object's shared context can be shutdown early with a call to `terminate()`, causing operations on that object's which use that shared context to fail.
 
-In `st::channel`'s case, blocking `st::channel::recv()` operations can be stopped and made to return `false` by calling `st::channel::close()`. `st::thread` uses an `st::channel` internally for receiving `st::message`s, and it uses this behavior in order to determine when it should stop processing messages and go out of scope.
+For example, the default behavior for `st::channel::terminate()` is to cause all current and future all `st::channel::send()` operations to fail early but to allow `st::channel::recv()` to continue succeeding until the internal message queue is empty. This behavior is similar in `st::thread`, `st::fiber` and `st::sender`.
 
-The default behavior for `st::channel::shutdown()` is to cause all current and future all `st::channel::send()` operations to fail early but to allow `st::channel::recv()` to continue succeeding until the internal message queue is empty. Alternatively, the user can call `st::channel::close(false)`/`st::thread::shutdown(false)` to immediately end all operations on the `st::channel`/`st::thread`.
+Alternatively, the user can call `terminate(false)`to immediately end all operations on the object.
 
-The user can call `bool st::channel::closed()`/`bool st::thread::running()` respectively on these objects to check if an object has been closed or shutdown. 
+The user can call `bool alive()`on these objects to check if an object has been terminated or is still running. 
 
 #### Example 5
 ```
@@ -311,7 +327,7 @@ int main() {
 
     my_channel.send(0, "you say goodbye");
     my_channel.send(0, "and I say hello");
-    my_channel.shutdown(); // end thread looping 
+    my_channel.terminate(); // end thread looping 
     my_thread.join(); // join thread
 }
 ```
@@ -355,7 +371,7 @@ struct Childthread {
                 if(m_next) {
                     m_next.send(op::say_name);
                 } else {
-                    m_done_ch.send(0);
+                    m_done_ch.send();
                 }
                 break;
             }
@@ -393,7 +409,7 @@ My name is MyThread2
 ```
 
 ### Scheduling Functions on Threads 
-`st::thread`s provide the ability to enqueue arbitrary code for asynchronous execution with `st::thread::schedule(...)` API. Any `st::thread` can be used for this purpose, though the default `st::thread::make<>()` `OBJECT` template type `st::thread::processor` is useful for generating worker `st::thread`s dedicated to scheduling other code.
+`st::thread`s provide the ability to enqueue arbitrary code for asynchronous execution with `st::thread::schedule(...)` API. Any `st::thread` can be used for this purpose, though the default `st::thread::make<>()` `OBJECT` template type `st::thread::processor` is a useful default for generating worker `st::thread`s dedicated to scheduling other code.
 
 `st::thread::schedule()` can accept a function, functor, or lambda function, alongside optional arguments, in a similar fashion to standard library features `std::async()` and `std::thread()`.
 
@@ -430,10 +446,76 @@ looks like rain
 what a beautiful sunset
 ```
 
-### Dealing with Blocking Functions 
-To ensure messages are processed in a timely manner, and to avoid deadlock in general, it is important to avoid calling functions which will block for indeterminate periods within an `st::thread`. If the user needs to call such a function, a solution is to make use of the standard library's `std::async()` feature to execute arbitrary code on a dedicated system thread, then `send()` the result back to the `st::thread` when the call completes. As a convenience, `st::thread::async(std::size_t resp_id, ...)` and `st::channel::async(std::size_t resp_id, ...)` are provided for exactly this purpose:
+### Scheduling Fibers on Threads
+`st::fiber` is an object very similar to `st::thread` in that it can process `st::message`s sent to it via `st::fiber::send(...)` and that it is uses an `OBJECT` template to handle the received message.
 
-#### Example 8
+The main difference between `st::fiber` and `st::thread` is that an `st::fiber` scheduled on an `st::thread` and cannot run on their own. `st::fiber`s running on an `st::thread` take turns executing, allowing for very fast concurrency/message passing between multiple `st::fiber`s. `st::fiber`s are a type of stackless coroutine.
+
+Static function `st::fiber st::fiber::self()` can be called within an `OBJECT` running in an `st::fiber` to retrieve c copy of that `st::fiber`. As usual, this copy should not be saved as an `OBJECT` member to prevent a memory leak.
+
+`st::fiber`s support the ability to schedule code for execution like an `st::thread` with `st::fiber::schedule(...)`. Calls to this function will internally call `st::thread::schedule(...).` on the `st::fiber`'s parent `st::thread`.
+
+Example 8
+```
+#include <iostream>
+struct MyFiber {
+    MyFiber(st::channel ch = st::channel()) : m_ch(ch) { }
+
+    ~MyFiber() {
+        if(ch) {
+            ch.send();
+        }
+    }
+
+    void recv(st::message msg) {
+        std::string s;
+        if(msg.data().copy_to(s)) {
+            std::cout << s << std::endl;
+        }
+    }
+
+    st::channel m_ch;
+};
+
+int main() {
+    st::chanel ch = st::channel::make();
+
+    // create `st::thread` with default `OBJECT` `st::thread::processor`
+    st::thread thd = st::thread::make<>(); 
+    st::fiber fib1 = st::fiber::make<MyFiber>(thd);
+    st::fiber fib2 = st::fiber::make<MyFiber>(thd);
+    st::fiber fib3 = st::fiber::make<MyFiber>(thd);
+    st::fiber fib4 = st::fiber::make<MyFiber>(thd, ch);
+
+    fib1.send(0,std::string("hello"));
+    fib2.send(0,std::string(" my"));
+    fib3.send(0,std::string(" name"));
+    fib4.send(0,std::string(" is"));
+    fib5.send(0,std::string(" foo\n"));
+
+    st::message msg;
+    ch.recv(msg); // wait for last fiber to process 
+    return 0;
+}
+```
+
+Terminal output might be:
+```
+$./a.out 
+hello my name is foo
+$
+```
+
+### Dealing with Blocking Functions 
+To ensure messages are processed in a timely manner, and to avoid deadlock in general, it is important to avoid calling functions which will block for indeterminate periods within an `st::thread`. If the user needs to call such a function, a solution is to make use of the standard library's `std::async()` feature to execute arbitrary code on a dedicated system thread, then `send()` the result back to the `st::thread` when the call completes. 
+
+As a convenience these member functions are provided for exactly this purpose:
+- `st::channel::async(std::size_t resp_id, ...)` 
+- `st::thread::async(std::size_t resp_id, ...)`
+- `st::fiber::async(std::size_t resp_id, ...)`
+- `st::sender::async(std::size_t resp_id, ...)`
+
+#### Example 9
 ```
 #include <iostream>
 #include <string>
@@ -473,9 +555,9 @@ struct MyClass {
             {
                 std::string s;
                 if(msg.data().copy_to(s) {
-                    std::cout << s << std::endl;
+                    st::thread::self().send(op::print, s);
                 }
-                main_ch.send(0); // unblock main
+                main_ch.send(); // unblock main
                 break;
             }
         }
@@ -506,4 +588,220 @@ $./a.out
 2
 3
 that's all folks!
+```
+
+### Abstracting Message Senders and Code Schedulers
+`st::sender` is an object which can represent any implementor of the interface `st::shared_send_context`. Implementors of said interface include:
+- `st::channel`
+- `st::thread`
+- `st::fiber` 
+- `st::sender`
+
+This means that an `st::sender` can be created to represent either an `st::channel`, `st::thread`, or `st::fiber`.
+
+These objects are trivially convertable to `st::sender` with a simple `=` operation:
+
+#### Example 10
+```
+#include <iostream>
+#include <sthread>
+
+struct MyObject {
+    MyObject(st::channel main_ch) : m_main_ch(main_ch) { }
+
+    void recv(st::message msg) {
+        std::cout << "Hello this is MyObject" << std::endl;
+        m_main_ch.send();
+    }
+
+    st::channel m_main_ch;
+};
+
+struct MyFiber {
+    MyObject(st::channel main_ch) : m_main_ch(main_ch) { }
+
+    void recv(st::message msg) {
+        std::cout << "Hello this is MyFiber" << std::endl;
+        m_main_ch.send();
+    }
+
+    st::channel m_main_ch;
+};
+
+void MyThread(st::channel ch, st::channel main_ch) {
+    st::message msg;
+
+    while(ch.recv(msg)) {
+        std::cout << "Hello this is MyThread" << std::endl;
+        main_ch.send();
+    }
+}
+
+int main() {
+    st::message msg;
+    st::channel main_ch = st::channel::make();
+
+    // construct an abstracted message sending object `st::sender`
+    st::sender snd(st::thread::make<MyObject>(main_ch));
+    snd.send();
+    main_ch.recv(msg); // block waiting for response message
+   
+    snd = st::fiber::make<MyFiber>(thd, main_ch);
+    snd.send();
+    main_ch.recv(msg); // block waiting for response message
+
+    st::channel thd_ch = st::channel::make();
+    std::thread thd(MyThread, thd_ch, main_ch);
+    snd = thd_ch;
+    snd.send();
+    main_ch.recv(msg); // block waiting for response message
+
+    thd_ch.close();
+    thd.join();
+
+    return 0;
+}
+```
+
+Terminal output might be:
+```
+$./a.out
+Hello this is MyObject
+Hello this is MyFiber
+Hello this is MyThread
+```
+
+`st::scheduler` is another abstraction object (similar to `st::sender`) that can represent an implementor of `st::shared_scheduler_context`, including:
+- `st::thread`
+- `st::fiber`
+- `st::scheduler`
+
+`st::scheduler` shares all the API of `st::sender` but additionally can schedule arbitrary code with `st::scheduler::schedule(...)`. 
+
+These objects are trivially convertable to `st::scheduler` with a simple `=` operation:
+
+#### Example 11
+```
+#include <iostream>
+#include <sthread>
+
+void print(const char* s) {
+    std::cout << "printing: " << s << std::endl;
+}
+
+struct MyFiber {
+    void recv(st::message msg) { 
+        if(msg.data().is<const char*>()) {
+            std::cout << "MyFiber printing: " << msg.data.cast_to<const char*>() << std::endl;
+        }
+    };
+};
+
+int main() {
+    // default st::thread `OBJECT` is st::thread::processor
+    st::thread thd = st::thread::make<>();
+    st::scheduler sch = thd;
+
+    sch.schedule(print, "one");
+
+    // default st::fiber `OBJECT` is also st::thread::processor
+    sch = st::fiber::make<>(thd);
+    sch.schedule(print, "two");
+
+    sch = st::fiber::make<MyFiber>(thd);
+    sch.schedule(print, "three");
+    sch.send(0, "four");
+
+    return 0;
+}
+```
+
+Terminal output might be:
+```
+$./a.out 
+printing: one
+printing: two
+printing: three
+MyFiber printing: four
+```
+
+### Abstracting Message Replies 
+Dealing with enumerations when message passing can be painful when enumerations conflict with each other.
+
+Instead, the user can create an `st::reply` object to abstract sending a response back over an `st::channel` or `st::thread`.
+
+`st::reply::make(...)` will take an `st::sender` (or an argument convertable to an `st::sender` like `st::channel` or `st::thread`) and an unsigned integer `st::message` id. 
+
+When `st::reply::send(T t)` is called, an `st::message` containing the previously given `st::message` id and the argument `t` is sent to the stored `st::sender`. 
+
+#### Example 12
+```
+#include <iostream>
+#include <string>
+#include <sthread>
+
+struct ObjA {
+    ObjA() : m_str("foofaa") { }
+
+    enum op {
+        request_value = 0;
+    };
+
+    void recv(st::message msg) {
+        switch(msg.id()) {
+            case op::request_value:
+            {
+                st::reply r;
+                if(msg.data().copy_to(r)) {
+                    r.send(m_str);
+                }
+                break;
+            }
+        }
+    }
+
+    std::string m_str
+};
+
+struct ObjB {
+    ObjB(st::channel main_ch) : m_main_ch(main_ch) { }
+
+    enum op {
+        receive_value = 0; // same value as ObjA::op::request_value
+    };
+
+    void recv(st::message msg) {
+        switch(msg.id()) {
+            case op::receive_value:
+            {
+                std::string s;
+                if(msg.data().copy_to(s)) {
+                    std::cout << "received " << s << "!" std::endl;
+                    m_main_ch.send();
+                }
+                break;
+            }
+        }
+    }
+
+    st::channel m_main_ch;
+};
+
+int main() {
+    st::channel main_ch = st::channel::make();
+    st::thread thd_a = st::thread::make<ObjA>();
+    st::thread thd_b = st::thread::make<ObjB>(main_ch);
+
+    thd_a.send(ObjA::op::request_value, st::reply(thd_b, ObjB::op::receive_value));
+
+    st::message msg;
+    main_ch.recv(msg);
+    return 0;
+}
+```
+
+Terminal output might be:
+```
+$./a.out 
+received foofaa!
 ```
