@@ -1,5 +1,72 @@
 #include "simple_thread.hpp"
 
+bool& tl_fiber_printing() {
+    thread_local bool printing=false;
+    return printing;
+}
+
+std::string st::printable::value() const {
+    return std::string("?");
+}
+
+const std::string st::channel::context::value() const { 
+    std::stringstream ss;
+    std::deque<message> msg_q;
+    std::deque<std::weak_ptr<st::sender_context>> listeners;
+
+    ss << "alive:(";
+
+    {
+        std::lock_guard<std::mutex> lk(m_mtx);
+        ss << m_closed ? "false" : "true";
+
+        // copy data to avoid both potential deadlock 
+        for(auto& msg : m_msg_q) {
+            // deep copy messages to avoid memory errors if messages are rvalue
+            // manipulated 
+            msg_q.push_back(msg.copy());
+        }
+
+        listeners = m_listeners;
+    }
+
+    {
+        std::function<void(st::message&)> print = [&](st::message& msg) { 
+            ss << msg;
+            print = [&](st::message& msg) { ss << ", " << msg; };
+        };
+
+        ss << "), messages:(";
+
+        for(auto& msg : msg_q) {
+            print(msg);
+        }
+
+        ss << ")";
+    }
+
+    {
+        std::function<void(st::sender_context&)> print = [&](st::sender_context& snd) { 
+            ss << msg;
+            print = [&](st::sender_context& msg) { ss << ", " << msg; };
+        }
+
+        ss << ", listeners:(";
+
+        for(auto& weak_listener : listeners) {
+            auto listener = weak_listener.lock();
+            if(listener) {
+                print(*listener);
+            }
+        }
+        
+        ss << ")";
+    }
+    
+    return ss.str();
+}
+
+
 void st::channel::context::terminate(bool soft) {
     std::unique_lock<std::mutex> lk(m_mtx);
     if(!m_closed) {
@@ -72,12 +139,104 @@ bool st::channel::context::recv(message& msg) {
         // block until message is available or channel termination
         while(!msg && !m_closed) { 
             std::shared_ptr<st::channel::blocker> bd(new st::channel::blocker(&msg));
-            register_listener(bd);
+            listener(bd);
             bd->wait(lk);
         }
 
         return msg ? true : false;
     } 
+}
+        
+bool st::channel::context::listener(std::weak_ptr<st::sender_context> snd) {
+    std::lock_guard<std::mutex> lk(m_mtx);
+    if(m_closed) { 
+        return false;
+    } else {
+        m_listeners.push_back(std::move(snd));
+        return true;
+    }
+}
+
+const std::string st::broadcast::context::value() const { 
+    std::stringstream ss;
+    st::broadcast::context::listener_map_t listeners;
+
+    ss << "alive:(";
+
+    {
+        std::lock_guard<std::mutex> lk(m_mtx);
+        ss << m_closed ? "false" : "true";
+        listeners = m_listeners;
+    }
+
+    std::function<void(st::sender_context&)> print = [&](st::sender_context& snd) { 
+        ss << msg;
+        print = [&](st::sender_context& msg) { ss << ", " << msg; };
+    }
+
+    ss << "), listeners:(";
+
+    for(auto& listener : listeners) {
+        auto strong_listener = listener.second.lock();
+        if(strong_listener) {
+            print(*strong_listener);
+        }
+    }
+    
+    ss << ")";
+    
+    return ss.str();
+}
+
+bool st::broadcast::context::send(message msg) {
+    std::unique_lock<std::mutex> lk(m_mtx);
+
+    if(m_closed) {
+        return false;
+    } else {
+        // copy listeners so that send can happen outside of lock ot avoid 
+        // potential deadlock scenarios
+        auto listeners = m_listeners;
+        std::vector<void*> dead_listeners;
+
+        lk.unlock();
+
+        for(auto it = listeners.begin(); it != listeners.end(); ++it) {
+            auto strong_listener = it->second.lock();
+            if(strong_listener) {
+                if(!strong_listener->send(msg.copy())) {
+                    dead_listeners.push_back(it->first);
+                }
+            } else {
+                dead_listeners.push_back(it->first);
+            }
+
+        }
+
+        lk.lock();
+
+        // cleanup any dead listeners
+        for(auto listener_addr : dead_listeners) {
+            auto it = m_listeners.find(listener_addr);
+            if(it != m_listeners.end()) {
+                m_listeners.erase(it);
+            }
+        }
+
+        return true;
+    } 
+}
+
+bool st::broadcast::context::listener(std::weak_ptr<st::sender_context> snd) {
+    auto strong_snd = snd.lock();
+
+    std::unique_lock<std::mutex> lk(m_mtx);
+    if(m_closed || !strong_snd) {
+        return false;
+    } else {
+        m_listeners.insert(strong_snd.get(), strong_snd);
+        return true;
+    }
 }
 
 std::weak_ptr<st::thread::context>& st::thread::context::tl_self() {
@@ -85,9 +244,32 @@ std::weak_ptr<st::thread::context>& st::thread::context::tl_self() {
     return wp;
 }
 
-void st::thread::context::thread_loop(
-        const std::function<void(message&)& msg_hdl
-        const std::function<void()& blk_hdl) {
+const std::string st::thread::context::value() const { 
+    // only print detailed information if fiber is not printing
+    bool print_detail = tl_fiber_printing() ? false : true;
+    std::stringstream ss;
+
+    if(print_detail) {
+        st::channel ch;
+
+        {
+            std::lock_guard<std::mutex> lk(m_mtx);
+            ss << "alive:(" << m_shutdown ? "false" : "true";
+            ss << "), thread id:(" << m_thread_id << ")";
+            ch = m_ch;
+        }
+
+        ss << ", channel:(" << ch << ")";
+    } else {
+        std::lock_guard<std::mutex> lk(m_mtx);
+        ss << "alive:(" << m_shutdown ? "false" : "true";
+        ss << "), thread id:(" << m_thread_id << ")";
+    }
+
+    return ss.str();
+}
+
+void st::thread::context::thread_loop(const std::function<void(message&)& hdl)
     // set thread local state
     detail::hold_and_restore<std::weak_ptr<context>> self_har(tl_self());
     tl_self() = m_self.lock();
@@ -99,11 +281,7 @@ void st::thread::context::thread_loop(
         if(msg.data().is<task>()) {
             msg.data().cast_to<task>()(); // evaluate task immediately
         } else {
-            msg_hdl(msg); // process message 
-        }
-
-        if(!m_ch.queued()) {
-            blk_hdl(); // handle no message state
+            hdl(msg); // process message 
         }
     }
 }
@@ -126,6 +304,25 @@ void st::thread::context::terminate(bool soft) {
 std::weak_ptr<st::fiber::context>& st::fiber::context::tl_self() {
     thread_local std::weak_ptr<st::fiber::context> wp;
     return wp;
+}
+
+const std::string st::fiber::context::value() const { 
+    detail::hold_and_restore<bool> fiber_printing_har(tl_fiber_printing());
+
+    std::stringstream ss;
+    st::channel ch;
+    st::thread parent;
+
+    {
+        std::lock_guard<std::mutex> lk(m_mtx);
+        ss << "alive:(" << m_shutdown ? "false" : "true";
+        ch = m_ch;
+        parent = m_parent;
+    }
+
+    ss << "), parent:(" << parent() << ")";
+    ss << ", channel:(" << ch << ")";
+    return ss.str();
 }
 
 bool st::fiber::listener::context::send(st::message msg) {
