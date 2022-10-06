@@ -7,16 +7,23 @@ set(CMAKE_BUILD_TYPE Release)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -O3 -Wall")
 
 set(HEADER_FILES 
+    ${CMAKE_CURRENT_LIST_DIR}/inc/utility.hpp
+    ${CMAKE_CURRENT_LIST_DIR}/inc/context.hpp
+    ${CMAKE_CURRENT_LIST_DIR}/inc/sender.hpp
+    ${CMAKE_CURRENT_LIST_DIR}/inc/scheduler.hpp
+    ${CMAKE_CURRENT_LIST_DIR}/inc/data.hpp
+    ${CMAKE_CURRENT_LIST_DIR}/inc/message.hpp
+    ${CMAKE_CURRENT_LIST_DIR}/inc/channel.hpp
+    ${CMAKE_CURRENT_LIST_DIR}/inc/reply.hpp
+    ${CMAKE_CURRENT_LIST_DIR}/inc/thread.hpp
+    ${CMAKE_CURRENT_LIST_DIR}/inc/fiber.hpp
     ${CMAKE_CURRENT_LIST_DIR}/inc/sthread
-    ${CMAKE_CURRENT_LIST_DIR}/inc/simple_threading_utility.hpp
-    ${CMAKE_CURRENT_LIST_DIR}/inc/simple_threading_message.hpp
-    ${CMAKE_CURRENT_LIST_DIR}/inc/simple_threading_sender.hpp
-    ${CMAKE_CURRENT_LIST_DIR}/inc/simple_threading_scheduler.hpp
     )
 
 set(SOURCE_FILES
-    ${CMAKE_CURRENT_LIST_DIR}/src/simple_threading_sender.cpp
-    ${CMAKE_CURRENT_LIST_DIR}/src/simple_threading_scheduler.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/src/channel.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/src/thread.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/src/fiber.cpp
     )
 
 add_library(${LIBRARY} STATIC ${SOURCE_FILES})

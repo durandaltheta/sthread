@@ -1,41 +1,4 @@
-#include "simple_threading_scheduler.hpp"
-
-std::weak_ptr<st::thread::context>& st::thread::context::tl_self() {
-    thread_local std::weak_ptr<st::thread::context> wp;
-    return wp;
-}
-
-void st::thread::context::thread_loop(const std::function<void(message&)& hdl)
-    // set thread local state
-    detail::hold_and_restore<std::weak_ptr<context>> self_har(tl_self());
-    tl_self() = m_self.lock();
-
-    message msg;
-
-    // block thread and listen for messages in a loop
-    while(m_ch.recv(msg) && msg) { 
-        if(msg.data().is<task>()) {
-            msg.data().cast_to<task>()(); // evaluate task immediately
-        } else {
-            hdl(msg); // process message 
-        }
-    }
-}
-
-void st::thread::context::terminate(bool soft) {
-    std::unique_lock<std::mutex> lk(m_mtx);
-    if(m_shutdown) {
-        return;
-    } else {
-        m_shutdown = true; 
-        st::channel ch = m_ch;
-
-        lk.unlock();
-    
-        // terminate channel outside of lock
-        ch.terminate(soft);
-    } 
-}
+#include "fiber.hpp"
 
 std::weak_ptr<st::fiber::context>& st::fiber::context::tl_self() {
     thread_local std::weak_ptr<st::fiber::context> wp;
@@ -46,7 +9,7 @@ bool st::fiber::listener::context::send(st::message msg) {
     std::shared_ptr<st::fiber::context> fib_ctx = m_fib_ctx.lock();
     
     if(fib_ctx && m_parent) {
-        return parent.schedule([ctx]() mutable { fib_ctx->wakeup(fib_ctx); });
+        return fib_ctx->wakeup(fib_ctx, std::move(msg));
     } else {
         return false;
     }
@@ -76,6 +39,12 @@ void st::fiber::context::terminate(bool soft) {
    
     // clear outside of lock to prevent deadlock
     received_msgs.clear();
+}
+
+bool st::fiber::context::wakeup(std::shared_ptr<fiber::context>& self, message msg) {
+    std::lock_guard<std::mutex> lk(m_mtx);
+    m_received_msgs.push_back(std::move(msg));
+    return m_parent.schedule([self]() mutable { self->process_message(); });
 }
 
 void st::fiber::context::process_message() {
