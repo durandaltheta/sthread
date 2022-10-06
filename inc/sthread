@@ -1,5 +1,6 @@
 //SPDX-License-Identifier: LicenseRef-Apache-License-2.0
 //Author: Blayne Dennis
+#include "simple_threading_utility.hpp"
 #include "simple_threading_message.hpp"
 #include "simple_threading_sender.hpp"
 #include "simple_threading_scheduler.hpp"

@@ -11,6 +11,7 @@
 #include <future>
 #include <deque>
 
+#include "simple_threading_utility.hpp"
 #include "simple_threading_message.hpp"
 #include "simple_threading_sender.hpp"
 

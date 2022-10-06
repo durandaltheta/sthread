@@ -8,6 +8,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -O3 -Wall")
 
 set(HEADER_FILES 
     ${CMAKE_CURRENT_LIST_DIR}/inc/sthread
+    ${CMAKE_CURRENT_LIST_DIR}/inc/simple_threading_utility.hpp
     ${CMAKE_CURRENT_LIST_DIR}/inc/simple_threading_message.hpp
     ${CMAKE_CURRENT_LIST_DIR}/inc/simple_threading_sender.hpp
     ${CMAKE_CURRENT_LIST_DIR}/inc/simple_threading_scheduler.hpp
