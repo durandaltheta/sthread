@@ -26,12 +26,12 @@ void st::channel::context::handle_queued_messages(std::unique_lock<std::mutex>& 
 
         lk.unlock();
 
-        bool success = s.send(msg);
+        bool success = s->send(msg);
 
         lk.lock();
 
         if(success) {
-            if(!m_closed && s.requeue()) {
+            if(!m_closed && s->requeue()) {
                 m_listeners.push_back(std::move(s));
             }
         } else {
@@ -71,9 +71,10 @@ bool st::channel::context::recv(message& msg) {
     } else {
         // block until message is available or channel termination
         while(!msg && !m_closed) { 
-            std::shared_ptr<st::channel::blocker> bd(new st::channel::blocker(&msg));
+            st::channel::blocker::data d(&msg);
+            std::shared_ptr<st::channel::blocker> bd(new st::channel::blocker(&d));
             listener(bd);
-            bd->wait(lk);
+            d.wait(lk);
         }
 
         return msg ? true : false;

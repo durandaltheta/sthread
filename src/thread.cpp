@@ -5,9 +5,9 @@ std::weak_ptr<st::thread::context>& st::thread::context::tl_self() {
     return wp;
 }
 
-void st::thread::context::thread_loop(const std::function<void(message&)& hdl)
+void st::thread::context::thread_loop(const std::function<void(message&)>& hdl) {
     // set thread local state
-    detail::hold_and_restore<std::weak_ptr<context>> self_har(tl_self());
+    st::detail::hold_and_restore<std::weak_ptr<context>> self_har(tl_self());
     tl_self() = m_self.lock();
 
     message msg;

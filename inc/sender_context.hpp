@@ -4,19 +4,23 @@
 #ifndef __SIMPLE_THREADING_SENDER__
 #define __SIMPLE_THREADING_SENDER__
 
+#include <type_traits>
+#include <future>
+
 #include "utility.hpp"
 #include "context.hpp"
+#include "message.hpp"
 
 namespace st { // simple thread
 
 /**
- * @brief interface for objects that can have their execution terminated
+ * @brief parent of `st::context`s which can be sent messages
  */
-struct lifecycle {
-    virtual ~lifecycle(){ }
+struct sender_context : public context {
+    virtual ~sender_context(){ terminate(); }
 
     /**
-     * @return `false` if object is unallocated or has been terminated, else `true`
+     * @return `false` if object has been terminated, else `true`
      */
     virtual bool alive() const = 0;
 
@@ -32,27 +36,11 @@ struct lifecycle {
     virtual inline void terminate() {
         terminate(true);
     }
-};
-
-/**
- * @brief parent of `st::context`s which can be sent messages
- */
-struct sender_context : public context, public lifecycle {
-    sender_context() = delete;
-    sender_context(const context&) = delete;
-    sender_context(context&&) = delete;
-
-    template <typename PARENT, typename SELF>
-    sender_context(context::type_info<PARENT,SELF> ti) : st::context(ti) { }
-
-    virtual ~sender_context(){ 
-        terminate();
-    }
 
     /** 
      * @return count of messages in the `st::shared_sender_context's queue
      */
-    virtual inline std::size_t queued() const = 0;
+    virtual std::size_t queued() const = 0;
 
     /**
      * @brief send an `st::message` to the implementor 
@@ -81,23 +69,24 @@ struct sender_context : public context, public lifecycle {
  *
  * CRTP: Curiously Recurring Template Pattern
  */
-template <CRTP>
-struct shared_sender_context : public shared_context<CRTP>, public lifecycle {
+template <typename CRTP>
+struct shared_sender_context : public shared_context<CRTP> {
     virtual ~shared_sender_context(){ }
 
-    virtual inline bool alive() const {
-        return context() && context()->cast<st::sender_context>().alive();
+    inline bool alive() const {
+        return this->ctx()->template cast<st::sender_context>().alive();
     }
 
-    virtual inline void terminate(bool soft) {
-        return context()->cast<st::sender_context>().terminate(soft);
+    template <typename... As>
+    inline void terminate(As&&... as) {
+        return this->ctx()->template cast<st::sender_context>().terminate(std::forward<As>(as)...);
     }
    
     /** 
      * @return count of messages sent to the `st::shared_sender_context's queue
      */
     inline std::size_t queued() const {
-        return context()->cast<st::sender_context>().queued();
+        return this->ctx()->template cast<st::sender_context>().queued();
     }
 
     /**
@@ -108,7 +97,7 @@ struct shared_sender_context : public shared_context<CRTP>, public lifecycle {
      * */
     template <typename... As>
     bool send(As&&... as) {
-        return context()->cast<st::sender_context>().send(
+        return this->ctx()->template cast<st::sender_context>().send(
             st::message::make(std::forward<As>(as)...));
     }
 
@@ -142,7 +131,7 @@ struct shared_sender_context : public shared_context<CRTP>, public lifecycle {
      * @return `true` on success, `false` if sender_context is terminated
      */
     inline bool listener(std::weak_ptr<st::sender_context> snd) {
-        return context()->cast<st::sender_context>().listener(std::move(snd));
+        return this->ctx()->template cast<st::sender_context>().listener(std::move(snd));
     }
   
     /**
@@ -156,7 +145,7 @@ struct shared_sender_context : public shared_context<CRTP>, public lifecycle {
      */
     template <typename RHS_CRTP>
     inline bool listener(shared_sender_context<RHS_CRTP>& snd) {
-        return listener(snd.context()->cast<st::sender_context>());
+        return listener(snd.ctx()->template cast<st::sender_context>());
     }
 
 private:
@@ -181,7 +170,7 @@ private:
              self.send(resp_id, result);
         }); 
     }
-}
+};
 
 }
 

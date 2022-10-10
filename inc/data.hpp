@@ -21,10 +21,10 @@ namespace st { // simple thread
  */
 struct data {
     /// default constructor
-    data() : m_data(data_pointer_t(nullptr, data::no_delete)), m_code(0) { }
+    data() : m_code(0), m_data(data_pointer_t(nullptr, data::no_delete)){ }
 
     /// rvalue constructor
-    data(data&& rhs) : m_data(std::move(rhs.m_data)), m_code(rhs.m_code) { }
+    data(data&& rhs) : m_code(rhs.m_code), m_data(std::move(rhs.m_data)) { }
 
     /// type `T` deduced constructor
     template <typename T>
@@ -37,7 +37,8 @@ struct data {
      *
      * This function is the most flexible way to construct data, as it does not 
      * rely on being given a pre-constructed payload `T` and can invoke any 
-     * arbitrary constructor for type `T` based on arguments `as`.
+     * arbitrary constructor for type `T` based on arguments `as`, including 
+     * storing an `st::data` inside an `st::data`.
      *
      * @param as optional constructor parameters 
      * @return an allocated data object
@@ -71,7 +72,7 @@ struct data {
      */
     template <typename T>
     bool is() const {
-        return m_code() == st::type_code<T>();
+        return m_code == st::type_code<T>();
     }
 
     /**

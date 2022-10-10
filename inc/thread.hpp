@@ -11,7 +11,8 @@
 #include <deque>
 
 #include "message.hpp"
-#include "scheduler.hpp"
+#include "channel.hpp"
+#include "scheduler_context.hpp"
 
 namespace st { // simple thread
 
@@ -37,10 +38,6 @@ namespace st { // simple thread
  * All methods in this object are threadsafe.
  */
 struct thread : public shared_scheduler_context<st::thread> {
-    inline thread(){}
-    inline thread(const st::thread& rhs) { context() = rhs.context(); }
-    inline thread(st::thread&& rhs) { context() = std::move(rhs.context()); }
-
     virtual ~thread() {
         // Explicitly terminate the `st::thread` because a system thread 
         // holds a copy of this `st::thread` which keeps the channel alive even 
@@ -49,7 +46,7 @@ struct thread : public shared_scheduler_context<st::thread> {
         // Because this logic only triggers on `st::thread` destructor, we are 
         // fine to destroy excess `st::thread::context`s during initialization 
         // until `st::thread::make<...>(...)` returns.
-        if(context() && context().use_count() <= 2) {
+        if(this->ctx() && this->ctx().use_count() <= 2) {
             terminate();
         }
     }
@@ -82,8 +79,8 @@ struct thread : public shared_scheduler_context<st::thread> {
     template <typename OBJECT=processor, typename... As>
     static st::thread make(As&&... as) {
         st::thread thd;
-        thd.context() = st::context::make<st::thread::context>();
-        thd.context()->cast<st::thread::context>().launch_async<OBJECT>(std::forward<As>(as)...);
+        thd.ctx(st::context::make<st::thread::context>());
+        thd.ctx()->template cast<st::thread::context>().launch_async<OBJECT>(std::forward<As>(as)...);
         return thd;
     }
 
@@ -91,7 +88,7 @@ struct thread : public shared_scheduler_context<st::thread> {
      * @return the `std::thread::id` of the system thread this `st::thread` is running on
      */
     inline std::thread::id get_id() const {
-        return context() ? context()->cast<st::thread::context>().get_thread_id() : std::thread::id();
+        return this->ctx() ? this->ctx()->template cast<st::thread::context>().get_thread_id() : std::thread::id();
     }
 
     /**
@@ -101,7 +98,9 @@ struct thread : public shared_scheduler_context<st::thread> {
      * @return a copy of the `st::thread` currently running on the calling thread, if none is running will return an unallocated `st::thread`
      */
     static inline st::thread self() {
-        return st::thread(context::tl_self().lock());
+        st::thread t;
+        t.ctx(context::tl_self().lock());
+        return t;
     }
 
 private:
@@ -139,7 +138,7 @@ private:
             data d = data::make<OBJECT>(std::forward<As>(as)...);
             
             // cast once to skip some processing indirection during msg handling
-            OBJECT* obj = &(d->cast_to<OBJECT>());
+            OBJECT* obj = &(d.cast_to<OBJECT>());
             thread_loop([obj](message& msg) mutable { obj->recv(msg); });
         }
 
@@ -173,10 +172,10 @@ private:
         }
         
         inline bool listener(std::weak_ptr<st::sender_context> snd) {
-            m_ch.listener(std::move(snd));
+            return m_ch.listener(std::move(snd));
         }
     
-        inline bool schedule(std::function<void()> f) {
+        virtual inline bool schedule(std::function<void()> f) {
             return m_ch.send(0, task(std::move(f)));
         }
 

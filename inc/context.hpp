@@ -25,7 +25,7 @@ struct context {
     template <typename CONTEXT, typename... As>
     static std::shared_ptr<st::context> make(As&&... as) {
         std::shared_ptr<st::context> ctx(
-            dynamic_cast<st::context*>(new CONTEXT(std::forward<as>(as)...)));
+            dynamic_cast<st::context*>(new CONTEXT(std::forward<As>(as)...)));
         return ctx;
     }
 
@@ -33,9 +33,9 @@ struct context {
      * @brief convenience method to cast context to descendant type 
      * @return reference to descendant type
      */
-    template <typename context>
-    constexpr context& cast() {
-        return *(dynamic_cast<context*>(this));
+    template <typename CONTEXT>
+    CONTEXT& cast() {
+        return *(dynamic_cast<CONTEXT*>(this));
     }
 };
 
@@ -47,26 +47,13 @@ struct context {
 template <typename CRTP>
 struct shared_context {
     virtual ~shared_context() { }
-   
-    /**
-     * WARNING: Blind manipulation of this value is dangerous.
-     *
-     * @return reference to shared context
-     */
-    inline std::shared_ptr<st::context>& context() const {
+
+    inline std::shared_ptr<st::context>& ctx() const {
         return m_context;
     }
-
-    /// lvalue CRTP assignment
-    inline CRTP& operator=(const CRTP& rhs) {
-        context() = rhs.context();
-        return *(dynamic_cast<CRTP*>(this));
-    }
-
-    /// rvalue CRTP assignment
-    inline CRTP& operator=(CRTP&& rhs) {
-        context() = std::move(rhs.context());
-        return *(dynamic_cast<CRTP*>(this));
+    
+    inline void ctx(std::shared_ptr<st::context> new_ctx) {
+        m_context = new_ctx;
     }
     
     /// type conversion to base shared_context<CRTP> type
@@ -78,24 +65,29 @@ struct shared_context {
      * @return `true` if object is allocated, else `false`
      */
     inline operator bool() const {
-        return context() ? true : false;
+        return this->ctx() ? true : false;
     }
 
     /**
      * @return `true` if argument CRTP represents this CRTP (or no CRTP), else `false`
      */
     inline bool operator==(const CRTP& rhs) const noexcept {
-        return context() == rhs.context();
+        return this->ctx() == rhs.ctx();
     }
 
     /**
      * @return `true` if `this` is less than `rhs`, else `false`
      */
     inline bool operator<(const CRTP& rhs) const noexcept {
-        return context() < rhs.context();
+        return this->ctx() < rhs.ctx();
     }
 
-private: 
+private:
+    /**
+     * WARNING: Blind manipulation of this value is dangerous.
+     *
+     * @return reference to shared context
+     */
     mutable std::shared_ptr<st::context> m_context;
 };
 

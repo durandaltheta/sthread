@@ -10,7 +10,9 @@
 #include <deque>
 
 #include "message.hpp"
-#include "scheduler.hpp"
+#include "channel.hpp"
+#include "scheduler_context.hpp"
+#include "thread.hpp"
 
 namespace st { // simple thread
 
@@ -60,9 +62,6 @@ namespace st { // simple thread
  * All methods in this object are threadsafe.
  */
 struct fiber : public shared_scheduler_context<fiber> {
-    inline fiber(){}
-    inline fiber(const fiber& rhs) { context() = rhs.context(); }
-    inline fiber(fiber&& rhs) { context() = std::move(rhs.context()); }
     virtual ~fiber() { }
 
     /**
@@ -89,8 +88,8 @@ struct fiber : public shared_scheduler_context<fiber> {
     template <typename OBJECT=st::thread::processor, typename... As>
     static fiber make(st::thread parent, As&&... as) {
         fiber f;
-        f.context() = st::context::make<fiber::context>(std::move(parent));
-        f.context()->cast<fiber::context>().launch_fiber<OBJECT>(std::forward<As>(as)...);
+        f.ctx(st::context::make<fiber::context>(std::move(parent)));
+        f.ctx()->template cast<fiber::context>().launch_fiber<OBJECT>(std::forward<As>(as)...);
         return f;
     }
 
@@ -101,46 +100,24 @@ struct fiber : public shared_scheduler_context<fiber> {
      * @return a copy of the `st::fiber` currently running on the calling thread, if none is running will return an unallocated `st::fiber`
      */
     static inline fiber self() {
-        return fiber(context::tl_self().lock());
+        fiber f;
+        f.ctx(context::tl_self().lock());
+        return f;
     }
 
     /**
      * @return the `st::fiber`'s parent `st::thread`
      */
     inline st::thread parent() const {
-        return context()->cast<fiber::context>().parent();
+        return this->ctx()->template cast<fiber::context>().parent();
     }
 
 private:
-    // private assistance sender to wakeup `st::fiber` 
-    struct listener : public st::sender_context {
-        context(std::weak_ptr<fiber::context> self, st::thread parent) : 
-            m_ctx(std::move(self)),
-            m_parent(std::move(parent))
-        { }
-    
-        inline bool alive() const {
-            return m_fib_ctx.lock();
-        }
-
-        inline void terminate(bool soft) {
-            m_fib_ctx = std::shared_ptr<st::sender_context>();
-        }
-
-        bool send(st::message msg);
-        
-        // do nothing
-        inline bool listener(std::weak_ptr<st::sender_context> snd) { } 
-
-        std::weak_ptr<fiber::context> m_fib_ctx;
-        st::thread m_parent;
-    };
-
     struct context : public st::scheduler_context, 
-                     public std::enable_shared_from_this<st::thread::context> {
+                     public std::enable_shared_from_this<st::fiber::context> {
         context(st::thread thd) : 
             m_alive_guard(true),
-            m_thd(std::move(thd)),
+            m_parent(std::move(thd)),
             m_ch(st::channel::make())
         { }
 
@@ -150,72 +127,96 @@ private:
         template <typename OBJECT, typename... As>
         inline void launch_fiber(As&&... as) {
             // properly set the thread_local self `st::thread` before `OBJECT` construction
-            st::shared_ptr<fiber::context> self = shared_from_this();
+            std::shared_ptr<fiber::context> self = shared_from_this();
             m_self = self;
 
             // finish initialization on parent thread
-            if(!schedule([self,&]{
+            if(!schedule([&,self]{
                 // construct the `OBJECT` 
-                m_data = std::shared_ptr<data>(new data(
-                    data::make<OBJECT>(std::forward<As>(as)...)));
+                m_data = data::make<OBJECT>(std::forward<As>(as)...);
 
                 // cast once to skip some processing indirection during msg handling
-                OBJECT* obj = &(m_data->cast_to<OBJECT>());
+                OBJECT* obj = &(m_data.cast_to<OBJECT>());
 
                 // generate a message handler wrapper for `OBJECT`
                 m_msg_hdl = [obj](message& msg) mutable { obj->recv(msg); };
 
                 // register a listener to wakeup fiber 
-                auto snd = st::context::make<fiber::listener>(m_self, m_thd);
-                listener(snd->cast<st::sender_context>());
+                auto snd = st::context::make<fiber::wakeup>(m_self, m_parent);
+                listener(std::dynamic_pointer_cast<st::sender_context>(snd));
             })) {
                 m_ch.terminate();
             }
         }
-        
-        // overload 
-        virtual const std::string value() const;
 
-        inline bool alive() const {
-            return m_ch.alive();
-        }
+        //inline bool alive() const {
+            //return m_ch.alive();
+        //}
+        inline bool alive() const { return true; }
 
         void terminate(bool soft);
 
-        inline bool send(st::message msg) {
-            m_ch.send(std::move(msg));
-        }
+        //inline bool send(st::message msg) {
+            //return m_ch.send(std::move(msg));
+        //}
+        inline bool send(st::message msg) { return true; }
         
-        inline bool listener(std::weak_ptr<st::sender_context> snd) {
-            m_ch.listener(std::move(snd));
-        }
+        //inline bool listener(std::weak_ptr<st::sender_context> snd) {
+            //return m_ch.listener(std::move(snd));
+        //}
+        inline bool listener(std::weak_ptr<st::sender_context> snd) { return true; }
     
-        inline bool schedule(std::function<void()> f) {
-            return m_parent.schedule([f]{
-                // set thread_local fiber context 
-                detail::hold_and_restore<std::weak_ptr<context>> self_har(tl_self());
-                tl_self() = m_self.lock();
-                f();
-            });
-        }
-
+        bool schedule(std::function<void()> f);
+        bool wakeup(message msg);
         void process_message();
-
-        bool wakeup(std::shared_ptr<fiber::context>& self, message msg);
         
-        inline st::thread parent() const {
-            return m_parent;
-        }
+        //inline st::thread parent() const {
+            //return m_parent;
+        //}
+        inline st::thread parent() const { return st::thread(); }
 
         mutable std::mutex m_mtx;
         bool m_alive_guard;
         st::thread m_parent; // written once before message processing
         st::channel m_ch; // written once before message processing
         std::weak_ptr<fiber::context> m_self; // written once before message processing
-        std::shared_ptr<data> m_data;
+        data m_data;
         std::function<void(message&)> m_msg_hdl; // written once before message processing
         std::deque<st::message> m_received_msgs;
         friend st::shared_scheduler_context<st::fiber>;
+    };
+
+    // private assistance sender to wakeup `st::fiber` 
+    struct wakeup : public st::sender_context {
+        wakeup(std::weak_ptr<st::fiber::context> self, st::thread parent) : 
+            m_fib_ctx(std::move(self)),
+            m_parent(std::move(parent))
+        { }
+   
+        // is only alive if parent `st::fiber` is still alive
+        inline bool alive() const {
+            auto fib = m_fib_ctx.lock();
+            return fib ? fib->alive() : false;
+        }
+
+        // only terminates this object, which we do by clearing context
+        inline void terminate(bool soft) {
+            m_fib_ctx = std::shared_ptr<fiber::context>();
+            m_parent = st::thread();
+        }
+
+        // forwards the message to the `st::fiber` internal `st::message` queue 
+        // and schedules the `st::fiber` on its parent `st::thread` to process 
+        // the message
+        bool send(st::message msg);
+        
+        // do nothing as this class is only used privately
+        inline bool listener(std::weak_ptr<st::sender_context> snd) { 
+            return true;
+        } 
+
+        std::weak_ptr<fiber::context> m_fib_ctx;
+        st::thread m_parent;
     };
 };
 

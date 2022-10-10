@@ -8,7 +8,7 @@
 #include <deque>
 
 #include "utility.hpp"
-#include "sender.hpp"
+#include "sender_context.hpp"
 
 namespace st { // simple thread
 
@@ -20,9 +20,6 @@ namespace st { // simple thread
  * the payload `st::data` of an `st::message`.
  */
 struct reply : public shared_context<reply> {
-    reply() : m_id(0) { }
-    reply(const reply& rhs) { context() = rhs.context(); }
-    reply(reply&& rhs) { context() = std::move(rhs.context()); }
     virtual ~reply(){ }
 
     /**
@@ -33,7 +30,7 @@ struct reply : public shared_context<reply> {
     template <typename CRTP>
     static inline reply make(shared_sender_context<CRTP>& snd, std::size_t id) { 
         reply r;
-        r.context() = st::context::make<reply::context>(snd.context(), id);
+        r.ctx(st::context::make<reply::context>(snd.ctx(), id));
         return r;
     }
 
@@ -44,7 +41,7 @@ struct reply : public shared_context<reply> {
      */
     template <typename T>
     bool send(T&& t) {
-        return context()->cast<reply::context>().send(std::forward<T>(t));
+        return this->ctx()->template cast<reply::context>().send(std::forward<T>(t));
     }
 
 private:
@@ -55,11 +52,11 @@ private:
             st::context(st::context::type_info<reply, reply::context>())
         { }
 
-        virtual ~context(){ }
+        virtual ~ctx(){ }
     
         template <typename T>
         bool send(T&& t) {
-            return m_snd_ctx.cast<st::sender_context>().send(m_id, std::forward<T>(t));
+            return m_snd_ctx.template cast<st::sender_context>().send(m_id, std::forward<T>(t));
         }
 
         std::shared_ptr<st::context> m_snd_ctx;

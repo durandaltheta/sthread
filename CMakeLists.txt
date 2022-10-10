@@ -9,8 +9,8 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -O3 -Wall")
 set(HEADER_FILES 
     ${CMAKE_CURRENT_LIST_DIR}/inc/utility.hpp
     ${CMAKE_CURRENT_LIST_DIR}/inc/context.hpp
-    ${CMAKE_CURRENT_LIST_DIR}/inc/sender.hpp
-    ${CMAKE_CURRENT_LIST_DIR}/inc/scheduler.hpp
+    ${CMAKE_CURRENT_LIST_DIR}/inc/sender_context.hpp
+    ${CMAKE_CURRENT_LIST_DIR}/inc/scheduler_context.hpp
     ${CMAKE_CURRENT_LIST_DIR}/inc/data.hpp
     ${CMAKE_CURRENT_LIST_DIR}/inc/message.hpp
     ${CMAKE_CURRENT_LIST_DIR}/inc/channel.hpp

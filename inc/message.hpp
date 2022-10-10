@@ -15,9 +15,6 @@ namespace st { // simple thread
  * this object is *not* mutex locked.
  */
 struct message : public shared_context<message> {
-    inline message(){}
-    inline message(const message& rhs) { context() = rhs.context(); }
-    inline message(message&& rhs) { context() = std::move(rhs.context()); }
     inline virtual ~message() { }
 
     /** 
@@ -39,10 +36,10 @@ struct message : public shared_context<message> {
     template <typename T>
     static message make(std::size_t id, T&& t) {
         message msg;
-        msg.context() = st::context::make<message::context>(
+        msg.ctx(st::context::make<message::context>(
             id, 
-            std::forward<t>(t));
-        return msg
+            std::forward<T>(t)));
+        return msg;
     }
 
     /**
@@ -53,8 +50,8 @@ struct message : public shared_context<message> {
      */
     static message make(std::size_t id) {
         message msg;
-        msg.context() = st::context::make<message::context>(id, 0);
-        return msg
+        msg.ctx(st::context::make<message::context>(id, 0));
+        return msg;
     }
 
     /** 
@@ -73,43 +70,30 @@ struct message : public shared_context<message> {
      * specific request, response, or notification operation.
      */
     const std::size_t id() const {
-        return context()->cast<message::context>().m_id;
-    }
+        return this->ctx()->template cast<message::context>().m_id; }
 
     /**
      * @brief optional type erased payload data
      */
     inline st::data& data() {
-        return context()->cast<message::context>().m_data;
+        return this->ctx()->template cast<message::context>().m_data;
     }
 
 private:
     struct context : public st::context {
-        context(const std::size_t c) : 
-            m_id(c), 
-            st::context(st::context::type_info<message, message::context>())
-        { }
+        context(const std::size_t c) : m_id(c) { }
 
         template <typename T>
         context(const std::size_t c, T&& t) :
             m_id(c),
-            m_data(std::forward<t>(t)),
-            st::context(st::context::type_info<message, message::context>())
+            m_data(std::forward<T>(t))
         { }
 
         virtual ~context() { }
 
-        inline std::shared_ptr<message::context> copy() const {
-            std::shared_ptr<message::context> c(new message::context(m_id));
-            c->m_data = m_data; // lvalue copy
-            return c;
-        }
-
         std::size_t m_id;
         st::data m_data;
     };
-
-    message(std::shared_ptr<st::context> ctx) { context()(std::move(ctx)); }
 };
 
 }

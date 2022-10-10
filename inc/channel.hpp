@@ -10,7 +10,7 @@
 #include <deque>
 
 #include "utility.hpp"
-#include "sender.hpp"
+#include "sender_context.hpp"
 
 namespace st { // simple thread
 
@@ -27,9 +27,6 @@ namespace st { // simple thread
  * All methods in this object are threadsafe.
  */
 struct channel : public shared_sender_context<channel> {
-    inline channel(){}
-    inline channel(const channel& rhs) { context() = rhs.context(); }
-    inline channel(channel&& rhs) { context() = std::move(rhs.context()); }
     inline virtual ~channel() { }
 
     /**
@@ -38,7 +35,7 @@ struct channel : public shared_sender_context<channel> {
      */
     static inline channel make() {
         channel ch;
-        ch.context() = st::context::make<channel::context>();
+        ch.ctx(st::context::make<channel::context>());
         return ch;
     }
 
@@ -46,15 +43,16 @@ struct channel : public shared_sender_context<channel> {
      * @return count of `st::thread`s blocked on `recv()` or are listening to this `st::channel`
      */
     inline std::size_t blocked_receivers() const {
-        return context()->cast<channel::context>().blocked_receivers();
+        return this->ctx()->template cast<channel::context>().blocked_receivers();
     }
 
     /**
-     * @brief optionally enqueue the argument message and receive a message over the channel
+     * @brief receive a message over the channel
      *
      * This is a blocking operation that will not complete until there is a 
      * value in the message queue, after which the argument message reference 
-     * will be overwritten by the front of the queue.
+     * will be overwritten by the front of the queue. This will only return
+     * early if `st::channel::terminate()` is called.
      *
      * A successful call to `recv()` will remove a message queued by `send()` 
      * from the internal channel message queue.
@@ -62,17 +60,18 @@ struct channel : public shared_sender_context<channel> {
      * Multiple simultaneous `recv()` calls will be served in the order they 
      * were called.
      *
-     * `recv()` is a simplified, more direct, and more limited, implementation 
-     * of `st::shared_sender_context<st::channel>::listener(...)`.
+     * `recv()` is a simplified, direct, and more limited, implementation of 
+     * `st::shared_sender_context<st::channel>::listener(...)`.
      *
      * @param msg interprocess message object reference to contain the received message 
      * @return `true` on success, `false` if channel is terminated
      */
     inline bool recv(message& msg) {
-        return context()->cast<channel::context>().recv(msg);
+        return this->ctx()->template cast<channel::context>().recv(msg);
     }
 
 private:
+    // private class used to implement `recv()` behavior
     struct blocker : public st::sender_context {
         struct data {
             data(message* m) : msg(m) { }
@@ -102,7 +101,7 @@ private:
         ~blocker(){ m_data->signal(); }
     
         inline bool alive() const {
-            return !flag;
+            return !m_data->flag;
         }
 
         inline void terminate(bool soft) {
@@ -118,8 +117,10 @@ private:
             return true;
         }
         
-        // do nothing
-        inline bool listener(std::weak_ptr<st::sender_context> snd) { } 
+        // do nothing as this class is only used privately
+        inline bool listener(std::weak_ptr<st::sender_context> snd) { 
+            return true;
+        } 
 
         // override requeue
         inline bool requeue() const {

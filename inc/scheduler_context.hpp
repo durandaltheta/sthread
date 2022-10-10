@@ -4,7 +4,7 @@
 #ifndef __SIMPLE_THREADING_SCHEDULER__
 #define __SIMPLE_THREADING_SCHEDULER__
 
-#include "sender.hpp"
+#include "sender_context.hpp"
 
 namespace st { // simple thread
 
@@ -42,19 +42,22 @@ struct shared_scheduler_context : public shared_sender_context<CRTP> {
      * @return `true` on success, `false` on failure due to object being terminated
      */
     inline bool schedule(std::function<void()> f) {
-        return context()->cast<scheduler_context>().schedule(std::move(f));
+        return this->ctx()->template cast<scheduler_context>().schedule(std::move(f));
     }
 
     /**
      * @brief wrap user function and arguments then schedule as a generic task for execution
      *
      * @param f function to execute on target sender 
-     * @param as arguments for argument function
+     * @param a first argument for argument function
+     * @param as optional remaining arguments for argument function
      * @return `true` on success, `false` on failure due to object being terminated
      */
-    template <typename F, typename... As>
-    bool schedule(F&& f, As&&... as) {
-        return schedule([=]() mutable { f(std::forward<As>(as)...); });
+    template <typename F, typename A, typename... As>
+    bool schedule(F&& f, A&& a, As&&... as) {
+        return schedule(std::function<void()>([=]() mutable { 
+            f(std::forward<A>(a), std::forward<As>(as)...); 
+        }));
     }
 };
 
