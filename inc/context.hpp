@@ -55,17 +55,12 @@ struct shared_context {
     inline void ctx(std::shared_ptr<st::context> new_ctx) {
         m_context = new_ctx;
     }
-    
-    /// type conversion to base shared_context<CRTP> type
-    inline operator CRTP() const {
-        return *(dynamic_cast<CRTP*>(this));
-    }
 
     /**
      * @return `true` if object is allocated, else `false`
      */
     inline operator bool() const {
-        return this->ctx() ? true : false;
+        return this->ctx().operator bool();
     }
 
     /**
@@ -73,6 +68,13 @@ struct shared_context {
      */
     inline bool operator==(const CRTP& rhs) const noexcept {
         return this->ctx() == rhs.ctx();
+    }
+
+    /**
+     * @return `true` if argument CRTP represents this CRTP (or no CRTP), else `false`
+     */
+    inline bool operator!=(const CRTP& rhs) const noexcept {
+        return this->ctx() != rhs.ctx();
     }
 
     /**

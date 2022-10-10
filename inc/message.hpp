@@ -33,13 +33,24 @@ struct message : public shared_context<message> {
      * @param t arbitrary typed data to be stored as the message data 
      * @return an allocated `st::message`
      */
-    template <typename T>
-    static message make(std::size_t id, T&& t) {
+    static inline message make(std::size_t id, st::data&& d) {
         message msg;
         msg.ctx(st::context::make<message::context>(
             id, 
-            std::forward<T>(t)));
+            std::move(d)));
         return msg;
+    }
+
+    /**
+     * @brief construct a message
+     *
+     * @param id an unsigned integer representing which type of message
+     * @param t arbitrary typed data to be stored as the message data 
+     * @return an allocated `st::message`
+     */
+    template <typename T>
+    static message make(std::size_t id, T&& t) {
+        return st::message::make(id, st::data::make<T>(std::forward<T>(t)));
     }
 
     /**
@@ -48,9 +59,9 @@ struct message : public shared_context<message> {
      * @param id an unsigned integer representing which type of message
      * @return an allocated `st::message`
      */
-    static message make(std::size_t id) {
+    static inline message make(std::size_t id) {
         message msg;
-        msg.ctx(st::context::make<message::context>(id, 0));
+        msg.ctx(st::context::make<message::context>(id));
         return msg;
     }
 
@@ -83,10 +94,9 @@ private:
     struct context : public st::context {
         context(const std::size_t c) : m_id(c) { }
 
-        template <typename T>
-        context(const std::size_t c, T&& t) :
+        context(const std::size_t c, st::data&& d) :
             m_id(c),
-            m_data(std::forward<T>(t))
+            m_data(std::move(d))
         { }
 
         virtual ~context() { }

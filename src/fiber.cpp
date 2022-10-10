@@ -31,6 +31,17 @@ void st::fiber::context::terminate(bool soft) {
     received_msgs.clear();
 }
 
+std::size_t st::fiber::context::queued() const {
+    std::size_t recvd = 0;
+
+    {
+        std::lock_guard<std::mutex> lk(m_mtx);
+        recvd = m_received_msgs.size();
+    }
+
+    return m_ch.queued() + recvd;
+}
+
 bool st::fiber::context::schedule(std::function<void()> f) {
     auto self = m_self.lock(); // hold a copy of self to keep fiber in memory
     return m_parent.schedule([self,f]() mutable {

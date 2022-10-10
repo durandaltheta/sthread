@@ -24,6 +24,9 @@ struct reply : public shared_context<reply> {
 
     /**
      * @brief main constructor 
+     *
+     * lvalue make
+     *
      * @param snd any object implementing `st::shared_sender_context` to send `st::message` back to 
      * @param id unsigned int id of `st::message` sent back over `ch`
      */
@@ -31,6 +34,21 @@ struct reply : public shared_context<reply> {
     static inline reply make(shared_sender_context<CRTP>& snd, std::size_t id) { 
         reply r;
         r.ctx(st::context::make<reply::context>(snd.ctx(), id));
+        return r;
+    }
+
+    /**
+     * @brief main constructor 
+     *
+     * rvalue make
+     *
+     * @param snd any object implementing `st::shared_sender_context` to send `st::message` back to 
+     * @param id unsigned int id of `st::message` sent back over `ch`
+     */
+    template <typename CRTP>
+    static inline reply make(shared_sender_context<CRTP>&& snd, std::size_t id) { 
+        reply r;
+        r.ctx(st::context::make<reply::context>(std::move(snd.ctx()), id));
         return r;
     }
 
@@ -48,15 +66,14 @@ private:
     struct context : public st::context {
         context(std::shared_ptr<st::context> snd_ctx, std::size_t id) :
             m_snd_ctx(std::move(snd_ctx)),
-            m_id(id),
-            st::context(st::context::type_info<reply, reply::context>())
+            m_id(id)
         { }
 
-        virtual ~ctx(){ }
+        virtual ~context(){ }
     
         template <typename T>
         bool send(T&& t) {
-            return m_snd_ctx.template cast<st::sender_context>().send(m_id, std::forward<T>(t));
+            return m_snd_ctx->template cast<st::sender_context>().send(m_id, std::forward<T>(t));
         }
 
         std::shared_ptr<st::context> m_snd_ctx;

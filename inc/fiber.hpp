@@ -149,31 +149,28 @@ private:
             }
         }
 
-        //inline bool alive() const {
-            //return m_ch.alive();
-        //}
-        inline bool alive() const { return true; }
+        inline bool alive() const {
+            return m_ch.alive();
+        }
 
         void terminate(bool soft);
+        std::size_t queued() const;
 
-        //inline bool send(st::message msg) {
-            //return m_ch.send(std::move(msg));
-        //}
-        inline bool send(st::message msg) { return true; }
+        inline bool send(st::message msg) {
+            return m_ch.send(std::move(msg));
+        }
         
-        //inline bool listener(std::weak_ptr<st::sender_context> snd) {
-            //return m_ch.listener(std::move(snd));
-        //}
-        inline bool listener(std::weak_ptr<st::sender_context> snd) { return true; }
+        inline bool listener(std::weak_ptr<st::sender_context> snd) {
+            return m_ch.listener(std::move(snd));
+        }
     
         bool schedule(std::function<void()> f);
         bool wakeup(message msg);
         void process_message();
         
-        //inline st::thread parent() const {
-            //return m_parent;
-        //}
-        inline st::thread parent() const { return st::thread(); }
+        inline st::thread parent() const {
+            return m_parent;
+        }
 
         mutable std::mutex m_mtx;
         bool m_alive_guard;
@@ -203,6 +200,11 @@ private:
         inline void terminate(bool soft) {
             m_fib_ctx = std::shared_ptr<fiber::context>();
             m_parent = st::thread();
+        }
+
+        inline std::size_t queued() const {
+            auto fib_ctx = m_fib_ctx.lock();
+            return fib_ctx ? fib_ctx->queued() : 0;
         }
 
         // forwards the message to the `st::fiber` internal `st::message` queue 

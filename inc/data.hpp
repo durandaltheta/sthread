@@ -26,19 +26,10 @@ struct data {
     /// rvalue constructor
     data(data&& rhs) : m_code(rhs.m_code), m_data(std::move(rhs.m_data)) { }
 
-    /// type `T` deduced constructor
-    template <typename T>
-    data(T&& t) : data(detail::hint<T>(), std::forward<T>(t)) { }
-
     virtual ~data() { }
 
     /**
      * @brief construct a data payload using explicit template typing instead of by deduction
-     *
-     * This function is the most flexible way to construct data, as it does not 
-     * rely on being given a pre-constructed payload `T` and can invoke any 
-     * arbitrary constructor for type `T` based on arguments `as`, including 
-     * storing an `st::data` inside an `st::data`.
      *
      * @param as optional constructor parameters 
      * @return an allocated data object
@@ -64,6 +55,13 @@ struct data {
      */
     inline operator bool() const {
         return m_data ? true : false;
+    }
+
+    /**
+     * @return stored payload type code
+     */
+    inline std::size_t type_code() const {
+        return m_code;
     }
 
     /**
