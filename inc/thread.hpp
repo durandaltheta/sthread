@@ -104,18 +104,6 @@ struct thread : public shared_scheduler_context<st::thread> {
     }
 
 private:
-    /*
-     * Generic function wrapper for executing arbitrary code
-     *
-     * Used to convert and wrap any code to a generically executable type. Is 
-     * a new definition instead of a typedef so that it can be distinguished by 
-     * receiving code.
-     */
-    struct task : public std::function<void()> { 
-        template <typename... As>
-        task(As&&... as) : std::function<void()>(std::forward<As>(as)...) { }
-    };
-
     struct context : public st::scheduler_context, 
                      public std::enable_shared_from_this<st::thread::context> {
         context() : m_shutdown(false), m_ch(channel::make()){ }
@@ -156,7 +144,7 @@ private:
             thd.detach();
         }
 
-        inline bool alive() const {
+        virtual inline bool alive() const {
             std::lock_guard<std::mutex> lk(m_mtx);
             return !m_shutdown;
         }
@@ -176,7 +164,7 @@ private:
         }
     
         virtual inline bool schedule(std::function<void()> f) {
-            return m_ch.send(0, task(std::move(f)));
+            return m_ch.send(0, detail::task(std::move(f)));
         }
 
         inline std::thread::id get_thread_id() const {
@@ -184,12 +172,55 @@ private:
             return m_thread_id;
         }
 
+        bool wakeup(st::message msg);
+
+        inline bool requeue() { 
+            return true; 
+        }
+
         mutable std::mutex m_mtx;
+        std::condition_variable m_wakeup_cond;
         bool m_shutdown;
         channel m_ch; // internal thread channel
+        std::deque<st::message> m_received_msgs;
         std::weak_ptr<st::thread::context> m_self; // weak pointer to self
         std::thread::id m_thread_id; // thread id the user object is executing on
         friend st::shared_scheduler_context<st::thread>;
+    };
+    
+    struct listener_context : public st::sender_context {
+        listener_context(std::weak_ptr<st::thread::context> weak_ctx) : 
+            m_weak_ctx(weak_ctx) 
+        { }
+
+        virtual bool alive() const {
+            auto strong_ctx = m_weak_ctx.lock();
+            return strong_ctx ? strong_ctx->alive() : false;
+        }
+    
+        virtual void terminate(bool soft) { 
+            // only reset members
+            m_weak_ctx.reset();
+        }
+
+        virtual std::size_t queued() const {
+            return 0;
+        }
+
+        virtual bool send(st::message msg) {
+            auto strong_ctx = m_weak_ctx.lock();
+            return strong_ctx ? strong_ctx->wakeup(msg) : false;
+        }
+    
+        virtual bool listener(std::weak_ptr<st::sender_context> snd) {
+            return true; // do nothing
+        }
+
+        virtual bool requeue() const {
+            return true;
+        }
+
+        std::weak_ptr<st::thread::context> m_weak_ctx;
     };
 };
 

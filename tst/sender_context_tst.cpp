@@ -63,22 +63,12 @@ struct shared_sender_context_test {
             EXPECT_TRUE(ssc.async(op::Integer,[]{ return 1; }));
             EXPECT_TRUE(ssc.async(op::String,[]{ return std::string("world"); }));
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
-
-            // timer 
-            std::chrono::milliseconds ms(100);
-            EXPECT_TRUE(ssc.timer(op::Default,ms));
-            EXPECT_TRUE(ssc.timer(op::Default,std::chrono::seconds(1)));
-            std::this_thread::sleep_for(std::chrono::milliseconds(1500));
-
-            ssc.terminate(); 
-            EXPECT_FALSE(ssc.alive());
-            EXPECT_FALSE(ssc.send());
         }
     };
 
     struct api_test_object {
         ~api_test_object() {
-            EXPECT_EQ(10, m_msg_received_cnt);
+            EXPECT_EQ(8, m_msg_received_cnt);
         }
 
         void recv(st::message msg) {
@@ -212,12 +202,4 @@ TEST(simple_thread, sender_context) {
             []{ return st::thread::make<stt::api_test_object>(); },
             []{ return true; },
             []{ return st::thread::make<stt::listener_api_test_object>(); });
-
-    {
-        st::thread thd = st::thread::make<>(); // shared fiber parent thread
-        stt::shared_sender_context_test<st::fiber>(
-                [thd]{ return st::fiber::make<stt::api_test_object>(thd); },
-                []{ return true; },
-                [thd]{ return st::fiber::make<stt::listener_api_test_object>(thd); });
-    }
 }

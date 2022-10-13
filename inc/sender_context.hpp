@@ -5,16 +5,19 @@
 #define __SIMPLE_THREADING_SENDER__
 
 #include <type_traits>
+#include <thread>
 #include <future>
 
 #include "utility.hpp"
 #include "context.hpp"
 #include "message.hpp"
 
-namespace st { // simple thread
+namespace st { // simple thread 
 
 /**
  * @brief parent of `st::context`s which can be sent messages
+ *
+ * Adds the ability to manage the context's lifecycle 
  */
 struct sender_context : public context {
     virtual ~sender_context(){ terminate(); }
@@ -41,9 +44,9 @@ struct sender_context : public context {
      * @return count of messages in the `st::shared_sender_context's queue
      */
     virtual std::size_t queued() const = 0;
-
+    
     /**
-     * @brief send an `st::message` to the implementor 
+     * @brief directly send an `st::message` to the implementor 
      * @param msg `st::message` to send to the implementor
      * @return `true` on success, `false` if sender_context is terminated
      */
@@ -72,6 +75,22 @@ struct sender_context : public context {
 template <typename CRTP>
 struct shared_sender_context : public shared_context<CRTP> {
     virtual ~shared_sender_context(){ }
+
+    /**
+     * @brief conversion operator to context shared pointer
+     * @return shared pointer to `st::sender_context`
+     */
+    inline operator std::shared_ptr<st::sender_context>() const {
+        return std::dynamic_pointer_cast<st::sender_context>(ctx());
+    }
+
+    /**
+     * @brief conversion operator to context weak pointer
+     * @return shared pointer to `st::sender_context`
+     */
+    inline operator std::weak_ptr<st::sender_context>() const {
+        return std::dynamic_pointer_cast<st::sender_context>(ctx());
+    }
 
     inline bool alive() const {
         return this->ctx()->template cast<st::sender_context>().alive();
@@ -106,11 +125,12 @@ struct shared_sender_context : public shared_context<CRTP> {
      *
      * Internally calls `std::async` to asynchronously execute user function.
      * If function returns no value, then `st::message::data()` will be 
-     * unallocated.
+     * unallocated. Otherwise, `st::message::data()` will contain the value 
+     * returned by Callable `f`.
      *
      * @param resp_id id of message that will be sent back to the this `st::shared_sender_context<CRTP>` when `std::async` completes 
      * @param f function to execute on another system thread
-     * @param as arguments for argument function
+     * @param as optional arguments for `f`
      */
     template <typename F, typename... As>
     void async(std::size_t resp_id, F&& f, As&&... as) {
@@ -124,28 +144,16 @@ struct shared_sender_context : public shared_context<CRTP> {
     /**
      * @brief register a weak pointer of a `st::sender_context` as a listener to this object 
      *
-     * NOTE: `std::weak_ptr<T>` can be created directly from a `st::shared_ptr<T>`. 
-     * IE, the user can pass an `std::shared_ptr<st::context>` to this function.
+     * NOTE: implementors of `st::shared_sender_context` can be trivially 
+     * converted to `std::shared_ptr<st::sender_context>` or 
+     * `std::weak_ptr<st::sender_context>`, meaning said objects can be passed 
+     * directly to this function.
      *
      * @param snd a shared_ptr to an object implementing `st::sender_context` to send `st::message` back to 
      * @return `true` on success, `false` if sender_context is terminated
      */
     inline bool listener(std::weak_ptr<st::sender_context> snd) {
         return this->ctx()->template cast<st::sender_context>().listener(std::move(snd));
-    }
-  
-    /**
-     * @brief register an `st::shared_sender_context` as a listener to this object 
-     *
-     * WARNING: An object should never register itself as a listener to itself,
-     * (even implicitly) as this can create an infinite loop.
-     *
-     * @param snd an object implementing `st::shared_sender_context` to send `st::message` back to 
-     * @return `true` on success, `false` if sender_context is terminated
-     */
-    template <typename RHS_CRTP>
-    inline bool listener(shared_sender_context<RHS_CRTP>& snd) {
-        return listener(snd.ctx()->template cast<st::sender_context>());
     }
 
 private:

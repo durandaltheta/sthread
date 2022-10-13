@@ -48,8 +48,27 @@ template <typename CRTP>
 struct shared_context {
     virtual ~shared_context() { }
 
+    /**
+     * @return context shared pointer reference
+     */
     inline std::shared_ptr<st::context>& ctx() const {
         return m_context;
+    }
+
+    /**
+     * @brief conversion operator to context shared pointer
+     * @return shared pointer to `st::context`
+     */
+    inline operator std::shared_ptr<st::context>() const {
+        return ctx();
+    }
+
+    /**
+     * @brief conversion operator to context weak pointer
+     * @return shared pointer to `st::context`
+     */
+    inline operator std::weak_ptr<st::context>() const {
+        return ctx();
     }
     
     inline void ctx(std::shared_ptr<st::context> new_ctx) {

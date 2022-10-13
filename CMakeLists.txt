@@ -16,14 +16,12 @@ set(HEADER_FILES
     ${CMAKE_CURRENT_LIST_DIR}/inc/channel.hpp
     ${CMAKE_CURRENT_LIST_DIR}/inc/reply.hpp
     ${CMAKE_CURRENT_LIST_DIR}/inc/thread.hpp
-    ${CMAKE_CURRENT_LIST_DIR}/inc/fiber.hpp
     ${CMAKE_CURRENT_LIST_DIR}/inc/sthread
     )
 
 set(SOURCE_FILES
     ${CMAKE_CURRENT_LIST_DIR}/src/channel.cpp
     ${CMAKE_CURRENT_LIST_DIR}/src/thread.cpp
-    ${CMAKE_CURRENT_LIST_DIR}/src/fiber.cpp
     )
 
 add_library(${LIBRARY} STATIC ${SOURCE_FILES})

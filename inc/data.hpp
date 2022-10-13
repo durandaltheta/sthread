@@ -54,7 +54,7 @@ struct data {
      * @return `true` if the object represents an allocated data payload, else `false`
      */
     inline operator bool() const {
-        return m_data ? true : false;
+        return m_data;
     }
 
     /**
@@ -70,7 +70,7 @@ struct data {
      */
     template <typename T>
     bool is() const {
-        return m_code == st::type_code<T>();
+        return m_data && m_code == st::type_code<T>();
     }
 
     /**

@@ -90,6 +90,42 @@ struct message : public shared_context<message> {
         return this->ctx()->template cast<message::context>().m_data;
     }
 
+    /**
+     * @brief generic function wrapper for executing arbitrary code
+     *
+     * Used to convert and wrap any code to a generically executable type. Is 
+     * a new definition instead of a typedef so that it can be distinguished by 
+     * receiving code. Messages processed by `st::message::handle(...)` will 
+     * automatically execute any `st::message::task`s passed to it that are 
+     * stored in the `st::message::data()` payload instead of passing the
+     * message to be processed by the user handler.
+     */
+    struct task : public std::function<void()> { 
+        template <typename... As>
+        task(As&&... as) : std::function<void()>(std::forward<As>(as)...) { }
+    };
+
+    /**
+     * @brief this function should be always be called to properly process received messages 
+     *
+     * This only needs to be called once per message, can generally should *NOT* 
+     * be called in user code, instead should be called by some higher level 
+     * library object like `st::thread`.
+     *
+     * @param hdl Callable capable of accepting an `st::message` as an argument 
+     * @param msg `st::message` to be passed to `hdl`
+     */
+    template <typename CUSTOM_HANDLER>
+    static void handle(CUSTOM_HANDLER& hdl, st::message& msg) {
+        if(msg) { // throw out any empty messages
+            if(msg.data().is<task>()) { // check if payload is an `st::message::task`
+                msg.data().cast_to<task>()(); // evaluate task immediately
+            } else {
+                hdl(msg); // otherwise allow handler to process message 
+            }
+        }
+    }
+
 private:
     struct context : public st::context {
         context(const std::size_t c) : m_id(c) { }
