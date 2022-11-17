@@ -38,7 +38,7 @@ struct shared_scheduler_context : public shared_sender_context<CRTP> {
      * @return shared pointer to `st::scheduler_context`
      */
     inline operator std::shared_ptr<st::scheduler_context>() const {
-        return std::dynamic_pointer_cast<st::scheduler_context>(ctx());
+        return std::dynamic_pointer_cast<st::scheduler_context>(this->ctx());
     }
 
     /**
@@ -46,7 +46,7 @@ struct shared_scheduler_context : public shared_sender_context<CRTP> {
      * @return shared pointer to `st::scheduler_context`
      */
     inline operator std::weak_ptr<st::scheduler_context>() const {
-        return std::dynamic_pointer_cast<st::scheduler_context>(ctx());
+        return std::dynamic_pointer_cast<st::scheduler_context>(this->ctx());
     }
 
     /**

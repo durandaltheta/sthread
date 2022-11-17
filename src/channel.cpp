@@ -31,7 +31,7 @@ void st::channel::context::handle_queued_messages(std::unique_lock<std::mutex>& 
         lk.lock();
 
         if(success) {
-            if(!m_closed && s->requeue()) {
+            if(s->requeue()) {
                 m_listeners.push_back(std::move(s));
             }
         } else {
@@ -62,7 +62,7 @@ bool st::channel::context::recv(message& msg) {
     std::unique_lock<std::mutex> lk(m_mtx);
 
     if(!m_msg_q.empty()) {
-        // retrieve message 
+        // retrieve message immediately
         msg = std::move(m_msg_q.front());
         m_msg_q.pop_front();
         return true;

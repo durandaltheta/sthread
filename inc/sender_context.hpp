@@ -81,7 +81,7 @@ struct shared_sender_context : public shared_context<CRTP> {
      * @return shared pointer to `st::sender_context`
      */
     inline operator std::shared_ptr<st::sender_context>() const {
-        return std::dynamic_pointer_cast<st::sender_context>(ctx());
+        return std::dynamic_pointer_cast<st::sender_context>(this->ctx());
     }
 
     /**
@@ -89,7 +89,7 @@ struct shared_sender_context : public shared_context<CRTP> {
      * @return shared pointer to `st::sender_context`
      */
     inline operator std::weak_ptr<st::sender_context>() const {
-        return std::dynamic_pointer_cast<st::sender_context>(ctx());
+        return std::dynamic_pointer_cast<st::sender_context>(this->ctx());
     }
 
     inline bool alive() const {
@@ -102,7 +102,7 @@ struct shared_sender_context : public shared_context<CRTP> {
     }
    
     /** 
-     * @return count of messages sent to the `st::shared_sender_context's queue
+     * @return count of currently unhandled messages sent to the `st::shared_sender_context's queue
      */
     inline std::size_t queued() const {
         return this->ctx()->template cast<st::sender_context>().queued();
@@ -142,14 +142,20 @@ struct shared_sender_context : public shared_context<CRTP> {
     }
 
     /**
-     * @brief register a weak pointer of a `st::sender_context` as a listener to this object 
+     * @brief register an object as a listener to this object, to be forwarded `st::message`s `sent(...)` to it 
+     *
+     * Multiple listeners will be forwarded messages in the order registered.
      *
      * NOTE: implementors of `st::shared_sender_context` can be trivially 
-     * converted to `std::shared_ptr<st::sender_context>` or 
+     * converted to `std::shared_ptr<st::sender_context>` or
      * `std::weak_ptr<st::sender_context>`, meaning said objects can be passed 
-     * directly to this function.
+     * directly to this function. For example, the following is valid code given 
+     * variables `st::channel chan` and `st::thread thd`:
      *
-     * @param snd a shared_ptr to an object implementing `st::sender_context` to send `st::message` back to 
+     * // automatically converts `thd` to `std::weak_ptr<st::sender_context>`
+     * chan.listener(thd); 
+     *
+     * @param snd a weak_ptr to an object implementing `st::sender_context` to send `st::message` back to 
      * @return `true` on success, `false` if sender_context is terminated
      */
     inline bool listener(std::weak_ptr<st::sender_context> snd) {

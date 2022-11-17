@@ -21,10 +21,10 @@ namespace st { // simple thread
  */
 struct data {
     /// default constructor
-    data() : m_code(0), m_data(data_pointer_t(nullptr, data::no_delete)){ }
+    data() : m_type_code(0), m_data_ptr(data_pointer_t(nullptr, data::no_delete)){ }
 
     /// rvalue constructor
-    data(data&& rhs) : m_code(rhs.m_code), m_data(std::move(rhs.m_data)) { }
+    data(data&& rhs) : m_type_code(rhs.m_type_code), m_data_ptr(std::move(rhs.m_data_ptr)) { }
 
     virtual ~data() { }
 
@@ -41,8 +41,8 @@ struct data {
  
     /// rvalue copy
     inline data& operator=(data&& rhs) {
-        m_code = rhs.m_code;
-        m_data = std::move(rhs.m_data);
+        m_type_code = rhs.m_type_code;
+        m_data_ptr = std::move(rhs.m_data_ptr);
         return *this;
     }
 
@@ -54,14 +54,14 @@ struct data {
      * @return `true` if the object represents an allocated data payload, else `false`
      */
     inline operator bool() const {
-        return m_data;
+        return m_data_ptr.data_pointer_t::operator bool();
     }
 
     /**
      * @return stored payload type code
      */
     inline std::size_t type_code() const {
-        return m_code;
+        return m_type_code;
     }
 
     /**
@@ -70,7 +70,14 @@ struct data {
      */
     template <typename T>
     bool is() const {
-        return m_data && m_code == st::type_code<T>();
+        return m_data_ptr && m_type_code == st::type_code<T>();
+    }
+
+    /**
+     * @return the internal payload pointer
+     */
+    inline void* get() {
+        return m_data_ptr.get();
     }
 
     /**
@@ -85,7 +92,7 @@ struct data {
      */
     template <typename T>
     T& cast_to() {
-        return *((base<T>*)(m_data.get()));
+        return *((base<T>*)(get()));
     }
 
     /**
@@ -127,8 +134,8 @@ private:
 
     template <typename T, typename... As>
     data(detail::hint<T> h, As&&... as) :
-        m_code(st::type_code<T>()),
-        m_data(allocate<T>(std::forward<As>(as)...),data::deleter<T>)
+        m_type_code(st::type_code<T>()),
+        m_data_ptr(allocate<T>(std::forward<As>(as)...),data::deleter<T>)
     { }
 
     template <typename T, typename... As>
@@ -143,8 +150,8 @@ private:
 
     static inline void no_delete(void* p) { }
 
-    std::size_t m_code; // type code
-    data_pointer_t m_data; // stored data 
+    std::size_t m_type_code; // type code
+    data_pointer_t m_data_ptr; // stored data 
 };
 
 }

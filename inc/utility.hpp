@@ -38,21 +38,6 @@ static constexpr const char* type_name() {
     return typeid(base<T>).name();
 }
 
-/**
- * @brief object wrapper for any Callable capable of accepting an `st::message`
- */
-struct callable {
-    template <typename CALLABLE>
-    callable(CALLABLE&& cb) : m_recv(std::forward<CALLABLE>(cb)) { }
-
-    inline void recv(st::message& msg) {
-        m_recv(msg);
-    }
-
-private:
-    std::function<void(st::message msg)> m_recv;
-};
-
 namespace detail {
 
 // @brief template typing assistance object

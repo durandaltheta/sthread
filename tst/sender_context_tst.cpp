@@ -3,6 +3,7 @@
 #include <chrono>
 #include <thread>
 #include <utility>
+#include <iostream>
 #include "simple_thread_test_utils.hpp"
 #include "sthread"
 
@@ -13,7 +14,8 @@ enum op {
     Integer,
     Cstring,
     String,
-    Double
+    Double,
+    Void
 };
 
 template <typename SHARED_SEND_CONTEXT>
@@ -23,35 +25,47 @@ struct shared_sender_context_test {
             std::function<bool()> expected_requeue_result,
             std::function<SHARED_SEND_CONTEXT()> listener_make)
     {
-        const char* tst = "shared_sender_context_test";
-        shared_sender_context_api_test<st::channel>().run(tst, make);
-        shared_sender_context_listener_api_test<st::channel>().run(tst, listener_make);
+        api_test_runner(m_test_name).run(make);
+        listener_api_test_runner(m_test_name, expected_requeue_result).run(listener_make);
     }
 
-    struct shared_sender_context_api_test : protected stt::test_runner<SHARED_SEND_CONTEXT> {
+    struct api_test_runner : public stt::test_runner<SHARED_SEND_CONTEXT> {
+        api_test_runner(const char* test_name) : 
+            stt::test_runner<SHARED_SEND_CONTEXT>(test_name) 
+        { }
+        
     protected:
         void test(std::function<SHARED_SEND_CONTEXT()>& make) {
             // alive 
+            this->log("alive");
             SHARED_SEND_CONTEXT ssc = make();
             EXPECT_TRUE(ssc.alive());
             
             // terminate
+            this->log("terminate");
             ssc.terminate(); 
             EXPECT_FALSE(ssc.alive());
+            this->log("terminate2");
             ssc = make();
+            this->log("terminate2.1");
             EXPECT_TRUE(ssc.alive());
+            this->log("terminate3");
             ssc.terminate(true); 
             EXPECT_FALSE(ssc.alive());
+            this->log("terminate4");
             ssc = make();
             EXPECT_TRUE(ssc.alive());
+            this->log("terminate5");
             ssc.terminate(false); 
             EXPECT_FALSE(ssc.alive());
             
             // queued (does this compile)
+            this->log("queued");
             ssc = make();
             EXPECT_EQ(0, ssc.queued());
 
             // send 
+            this->log("send");
             EXPECT_TRUE(ssc.send());
             EXPECT_TRUE(ssc.send(op::Default));
             EXPECT_TRUE(ssc.send(op::Integer,1));
@@ -60,73 +74,27 @@ struct shared_sender_context_test {
             EXPECT_TRUE(ssc.send(op::Double,st::data::make<double>(3.6)));
 
             // async 
-            EXPECT_TRUE(ssc.async(op::Integer,[]{ return 1; }));
-            EXPECT_TRUE(ssc.async(op::String,[]{ return std::string("world"); }));
+            this->log("async");
+            ssc.async(op::Integer,[]{ return 1; }); // return int
+            ssc.async(op::String,[]{ return std::string("world"); }); // return string
+            ssc.async(op::Void,[]{}); // return void
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
     };
 
-    struct api_test_object {
-        ~api_test_object() {
-            EXPECT_EQ(8, m_msg_received_cnt);
-        }
-
-        void recv(st::message msg) {
-            ++m_msg_received_cnt;
-            
-            switch(msg.id()) {
-                case op::Default:
-                    break;
-                case op::Integer:
-                    int i;
-                    if(msg.data().copy_to(i)) {
-                        EXPECT_EQ(1. msg.data().cast_to<int>());
-                    } else {
-                        EXPECT_TRUE(false); // error
-                    }
-                    break;
-                case op::Cstring:
-                    if(msg.data().is<const char*>()) {
-                        EXPECT_EQ("hello". msg.data().cast_to<const char*>());
-                    } else {
-                        EXPECT_TRUE(false); // error
-                    }
-                    break;
-                case op::String:
-                    std::string s;
-                    if(msg.data().copy_to(s)) {
-                        EXPECT_EQ(std::string("world"). s);
-                    } else {
-                        EXPECT_TRUE(false); // error
-                    }
-                    break;
-                case op::Double:
-                    double d;
-                    if(msg.data().copy_to(d) {
-                        EXPECT_EQ((double)3.6, d);
-                    } else {
-                        EXPECT_TRUE(false); // error
-                    }
-                    break;
-                default:
-                    EXPECT_TRUE(false); // error
-                    break;
-            }
-        }
-
-        std::size_t m_msg_received_cnt=0;
-    };
-
-    template <typename SHARED_SEND_CONTEXT>
-    struct shared_sender_context_listener_api_test : protected stt::test_runner<SHARED_SEND_CONTEXT> {
-        shared_sender_context_listener_api_test(std::function<bool>& expected_requeue_result) :
+    struct listener_api_test_runner : public stt::test_runner<SHARED_SEND_CONTEXT> {
+        listener_api_test_runner(const char* test_name, std::function<bool()>& expected_requeue_result) :
+            stt::test_runner<SHARED_SEND_CONTEXT>(test_name),
             m_req_exp(expected_requeue_result)
         { }
 
     protected:
         void test(std::function<SHARED_SEND_CONTEXT()>& make) {
-            ssc = make();
-            EXPECT_EQ(m_req_exp(), ssc.requeue()); // test requeue 
+            SHARED_SEND_CONTEXT ssc = make();
+
+            // shared pointer sender context conversion
+            std::shared_ptr<st::sender_context> sptr_sc(ssc); 
+            EXPECT_EQ(m_req_exp(), sptr_sc->requeue()); // test requeue 
 
             st::channel ch(st::channel::make());
             ssc.listener(ch); // test listener 
@@ -137,7 +105,7 @@ struct shared_sender_context_test {
                 bool flag = false;
 
                 void block() { 
-                    std::unique_lock<std::mutex> lk(m_mtx);
+                    std::unique_lock<std::mutex> lk(mtx);
                     while(!flag) {
                         cv.wait(lk);
                     }
@@ -145,7 +113,7 @@ struct shared_sender_context_test {
 
                 void unblock() {
                     {
-                        std::lock_guard<std::mutex> lk(m_mtx);
+                        std::lock_guard<std::mutex> lk(mtx);
                         flag = true;
                     }
                     cv.notify_one();
@@ -159,39 +127,111 @@ struct shared_sender_context_test {
             }
 
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
-            EXPECT_TRUE(ch.queued() = 500);
-            EXPECT_TRUE(ssc.queued() = 499); // first message receive is blocked
+            EXPECT_TRUE(ch.queued() == 500);
+            EXPECT_TRUE(ssc.queued() == 499); // first message receive is blocked
 
             bd->unblock();
 
-            EXPECT_EQ(m_req_exp(), ssc.requeue()); // test requeue is the same
+            EXPECT_EQ(m_req_exp(), sptr_sc->requeue()); // test requeue is the same
         }
 
     private: 
         std::function<bool()> m_req_exp;
     };
+        
+    const char* m_test_name = "shared_sender_context_test";
+};
 
-    struct listener_api_test_object {
-        void recv(st::message msg) {
-            if(msg.data().is<std::function<void()>>()) {
-                // execute blocking function until test completes 
-                msg.data().cast_to<std::function<void()>>()();
-            } else {
+struct object {
+    ~object() {
+        EXPECT_EQ(9, m_msg_received_cnt);
+    }
+
+    void recv(st::message msg) {
+        ++m_msg_received_cnt;
+        
+        switch(msg.id()) {
+            case op::Default:
+                break;
+            case op::Integer:
+                {
+                    int i;
+                    if(msg.data().copy_to(i)) {
+                        EXPECT_EQ(1, msg.data().cast_to<int>());
+                    } else {
+                        EXPECT_TRUE(false); // error
+                    }
+                }
+                break;
+            case op::Cstring:
+                if(msg.data().is<const char*>()) {
+                    EXPECT_EQ("hello", msg.data().cast_to<const char*>());
+                } else {
+                    EXPECT_TRUE(false); // error
+                }
+                break;
+            case op::String:
+                {
+                    std::string s;
+                    if(msg.data().copy_to(s)) {
+                        EXPECT_EQ(std::string("world"), s);
+                    } else {
+                        EXPECT_TRUE(false); // error
+                    }
+                }
+                break;
+            case op::Double:
+                {
+                    double d;
+                    if(msg.data().copy_to(d)) {
+                        EXPECT_EQ((double)3.6, d);
+                    } else {
+                        EXPECT_TRUE(false); // error
+                    }
+                }
+                break;
+            case op::Void:
+                {
+                    if(msg.data()) {
+                        EXPECT_TRUE(false); // error
+                    } else {
+                        EXPECT_TRUE(true);
+                    }
+                }
+            default:
                 EXPECT_TRUE(false); // error
-            }
+                break;
         }
-    };
+    }
+
+    std::size_t m_msg_received_cnt=0;
+};
+
+struct listener_object {
+    void recv(st::message msg) {
+        if(msg.data().is<std::function<void()>>()) {
+            // execute blocking function until test completes 
+            msg.data().cast_to<std::function<void()>>()();
+        } else {
+            EXPECT_TRUE(false); // error
+        }
+    }
 };
 
 } 
 
 TEST(simple_thread, sender_context) {
     stt::shared_sender_context_test<st::channel>(
-            []{ return st::channel::make(); },
+            []{ 
+                std::cout << "channel make1" << std::endl;
+                auto ch = st::channel::make(); 
+                std::cout << "channel make2" << std::endl;
+                return ch;
+            },
             []{ return true; },
             []{ 
                 auto ch = st::channel::make(); 
-                ch.async([=]{ 
+                ch.async(0, [=]() mutable { 
                     st::message msg;
                     ch.recv(msg); // pull a message from the queue for test consistency
                 });
@@ -199,7 +239,7 @@ TEST(simple_thread, sender_context) {
             });
 
     stt::shared_sender_context_test<st::thread>(
-            []{ return st::thread::make<stt::api_test_object>(); },
+            []{ return st::thread::make<stt::object>(); },
             []{ return true; },
-            []{ return st::thread::make<stt::listener_api_test_object>(); });
+            []{ return st::thread::make<stt::listener_object>(); });
 }

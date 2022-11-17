@@ -51,8 +51,8 @@ struct channel : public shared_sender_context<channel> {
      *
      * This is a blocking operation that will not complete until there is a 
      * value in the message queue, after which the argument message reference 
-     * will be overwritten by the front of the queue. This will only return
-     * early if `st::channel::terminate()` is called.
+     * will be overwritten by the front of the queue. This will return early if 
+     * `st::channel::terminate()` is called.
      *
      * A successful call to `recv()` will remove a message queued by `send()` 
      * from the internal channel message queue.

@@ -27,8 +27,10 @@ information on interfaces and various other features not detailed in this README
 
 [Scheduling Functions on Threads](#scheduling-functions-on-threads)
 
+[Callable Considerations](#callable-considerations)
+
 ## Purpose 
-This library's purpose is to simplify setting up useful c++ threading, and to enable trivial message passing of C++ objects.
+This library's purpose is to simplify setting up useful c++ threading, and to enable trivial inter-thread message passing of C++ objects.
 
 The library provides a thread-like object named `st::thread`, an object which can manage a system thread and process incoming messages.
 
@@ -49,45 +51,6 @@ struct MyClass {
 - Objects allow for use of local namespace methods, instead of forcing the user to rely on lambdas, local objects or global namespace functions if further function calls are desired.
 - Objects enable RAII (Resource Acquisition is Initialization) semantics
 - Object's constructors, runtime execution (`void recv(st::message`), and destructor are broken into separate functions, which I think makes them more readable than alternatives when dealing with system threads.
-
-### Callable Considerations
-The reasoning behind the approach of using an object implementing `recv(st::message)` as opposed to a c++ Callable (any object convertable to `std::function<void(st::message)>`) is that c++ objects are well understood by virtually all c++ programmers and provide the most control over behavior compared to alternatives.
-
-In comparision, Callables are a rather advanced topic that fewer intermediate c++ programmers may understand well. Additionally, operator overloads are a more advanced topic than I wanted to require of users.
-
-However, if a user really wants to use Callables like a standard library `std::thread` the following template `st::callable` is provided as a convenience:
-```
-struct callable {
-    template <typename CALLABLE>
-    callable(CALLABLE&& cb) : m_recv(std::forward<CALLABLE>(cb)) { }
-
-    inline void recv(st::message& msg) {
-        m_recv(msg);
-    }
-
-private:
-    std::function<void(st::message msg)> m_recv;
-};
-```
-
-Example `st::callable` usage:
-```
-#include <sthread>
-
-void MyFunction(st::message msg) { ... }
-
-struct MyFunctor {
-    void operator()(st::message msg) { ... }
-};
-
-int main() {
-    auto thd1 = st::thread::make<st::callable>(MyFunction);
-    auto thd2 = st::thread::make<st::callable>(MyFunctor());
-    auto MyLambda = [](st::message msg){ ... };
-    auto thd3 = st::thread::make<st::callable>(MyLambda);
-    // ...
-}
-```
 
 ## Requirements
 - C++11 
@@ -169,7 +132,7 @@ Arguments passed to `send(...)` are subsequently passed to `st::message st::mess
 - `st::message st::message::make(st::message)`: Returns its argument immediately with no changes 
 
 `st::message`s have 2 important methods:
-- `std::size_t st::message::id()`: Return the unsigned integer id value stored in the messsage
+- `std::size_t st::message::id()`: Return the unsigned integer id value stored in the message
 - `st::data& st::message::data()`: Return a reference to the payload `st::data` stored in the message
 
 `st::data()` can store any data type. The stored data can be copied to an argument of templated type `T` with `st::data::copy_to(T& t)` or rvalue swapped with `st::data::move_to(T& t)`. Said functions will return `true` if their argument `T` matches the type `T` originally stored in the `st::data`, otherwise they will return `false`.
@@ -372,11 +335,11 @@ and I say hello
 ```
 
 ### Sending Messages Between Threads
-`st::thread`s can hold copies of other `st::thread`s or `st::channel`s and use these copies' `send()` functions to communicate with each other. Alternatively the user can store all `st::thread`s in some singleton object so `st::thread`s can access each other as necessary. The design is entirely up to the user.
+`st::thread`s can hold copies of other `st::thread`s or `st::channel`s and use these copies' `send()` functions to communicate with each other. Alternatively the user can store all `st::thread`s in globally accessible manner so each can access the others as necessary. The design is entirely up to the user.
 
 *WARNING*: `OBJECT`s running in an `st::thread` need to be careful to *NOT* hold a copy of that `st::thread` as a member variable, as this can create a memory leak. Instead, static function `st::thread st::thread::self()` should be called from within the running `OBJECT` when accessing the associated `st::thread` is necessary.
 
-#### Example 7
+#### Example 6
 ```
 #include <iostream>
 #include <string>
@@ -451,7 +414,7 @@ Instead, the user can create an `st::reply` object to abstract sending a respons
 
 When `st::reply::send(T t)` is called, an `st::message` containing the previously given `st::message` id and the argument `t` is sent to the stored `st::shared_sender_context`. 
 
-#### Example 8
+#### Example 7
 ```
 #include <iostream>
 #include <string>
@@ -509,7 +472,8 @@ int main() {
     st::thread thd_a = st::thread::make<ObjA>();
     st::thread thd_b = st::thread::make<ObjB>(main_ch);
 
-    thd_a.send(ObjA::op::request_value, st::reply(thd_b, ObjB::op::receive_value));
+    st::reply rep_b = st::reply(thd_b, ObjB::op::receive_value);
+    thd_a.send(ObjA::op::request_value, rep_b);
 
     st::message msg;
     main_ch.recv(msg);
@@ -534,7 +498,7 @@ If the user function returns `void`, the `st::message::data()` will be unallocat
 
 The user can implement a simple timer mechanism using this functionality by calling `std::this_thread::sleep_for(...)` inside of `user_function`.
 
-#### Example 9
+#### Example 8
 ```
 #include <iostream>
 #include <string>
@@ -611,32 +575,32 @@ that's all folks!
 ```
 
 ### Scheduling Functions on Threads 
-`st::thread`s provide the ability to enqueue arbitrary code for asynchronous execution with `st::thread::schedule(...)` API. Any `st::thread` can be used for this purpose, though the default `st::thread::make<>()` `OBJECT` template type `st::thread::processor` is a useful default for generating worker `st::thread`s dedicated to scheduling other code.
+`st::thread`s provide the ability to enqueue arbitrary code for asynchronous execution with `st::thread::schedule(...)` API. Any `st::thread` can be used for this purpose, though the default `st::thread::make<>()` `OBJECT` template type `st::thread::callable` is useful for generating worker `st::thread`s dedicated to scheduling other code.
 
-`st::thread::schedule()` can accept a function, functor, or lambda function, alongside optional arguments, in a similar fashion to standard library features `std::async()` and `std::thread()`.
+`st::thread::schedule()` can accept any Callable function, functor, or lambda function, alongside optional arguments, in a similar fashion to standard library features `std::async()` and `std::thread()`.
 
-#### Example 10
+#### Example 9
 ```
 #include <iostream>
 #include <string>
 #include <sthread>
 
-void print(std::string s) {
+void print(const char* s) {
     std::cout << s << std::endl;
 }
 
 struct PrinterFunctor { 
-    void recv(std::string s) {
+    void operator()(const char* s) {
         std::cout << s << std::endl;
     }
 };
 
 int main() {
-    // specifying `st::thread::processor` inside the template `<>` is optional
-    st::thread my_processor = st::thread::make<>();
-    my_processor.schedule(print, std::string("what a beautiful day"));
-    my_processor.schedule(PrintFunctor, std::string("looks like rain"));
-    my_processor.schedule([]{ std::cout << "what a beautiful sunset" << std::endl; });
+    // specifying `st::thread::callable` inside the template `<>` is optional
+    st::thread thd = st::thread::make<>();
+    thd.schedule(print, "what a beautiful day");
+    thd.schedule(PrintFunctor, "looks like rain");
+    thd.schedule([]{ std::cout << "what a beautiful sunset" << std::endl; });
 }
 ```
 
@@ -646,4 +610,58 @@ $./a.out
 what a beautiful day 
 looks like rain 
 what a beautiful sunset
+```
+
+### Callable Considerations
+The reasoning behind the default approach of using user objects implementing `recv(st::message)` within `st::thread`s, as opposed to a c++ Callable (any object convertable to `std::function<void(st::message)>`), is that c++ objects are well understood by virtually all c++ programmers and provide the most control over behavior compared to alternatives.
+
+In comparision, Callables are a rather advanced topic that fewer intermediate c++ programmers may understand well. Additionally, operator overloads are a more advanced topic than I wanted to require of users.
+
+However, if a user wants to use Callables with `st::thread` like a standard library `std::thread` then default `st::thread` `OBJECT` `st::thread::callable` is provided as a convenience, as it can represent any Callable convertable to `std::function<void(st::message)>`.
+
+#### Example 10
+```
+#include <iostream>
+#include <sthread>
+
+void MyFunction(st::message msg) { 
+    if(msg.data().is<const char*>()) {
+        std::cout << msg.data().cast_to<const char*>() << std::endl;
+    }
+}
+
+struct MyFunctor {
+    void operator()(st::message msg) { 
+        if(msg.data().is<const char*>()) {
+            std::cout << msg.data().cast_to<const char*>() << std::endl;
+        }
+    }
+};
+
+int main() {
+    // specifying `st::thread::callable` inside the template `<>` is optional
+    auto thd1 = st::thread::make<>(MyFunction);
+    thd1.send(0,"Tis but a scratch!");
+
+    auto thd2 = st::thread::make<>(MyFunctor());
+    thd2.send(0,"No it isn't.");
+
+    auto MyLambda = [](st::message msg){ 
+        if(msg.data().is<const char*>()) {
+            std::cout << msg.data().cast_to<const char*>() << std::endl;
+        }
+    };
+    auto thd3 = st::thread::make<>(MyLambda);
+    thd3.send(0,"Then what's that?");
+
+    return 0;
+}
+```
+
+Terminal output might be:
+```
+$./a.out 
+Tis but a scratch!
+No it isn't.
+Then what's that?
 ```

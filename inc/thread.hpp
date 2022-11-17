@@ -52,10 +52,25 @@ struct thread : public shared_scheduler_context<st::thread> {
     }
 
     /**
-     * @brief Empty `OBJECT` which only processes messages sent via `schedule()` ignoring all other messages.
+     * @brief object wrapper for any Callable capable of accepting an `st::message`
+     * 
+     * Default constructor is useful for use as a default `OBJECT` which only 
+     * processes messages sent via `schedule()` ignoring all other messages.
      */
-    struct processor { 
-        inline void recv(st::message& msg) { }
+    struct callable {
+        /// default constructor
+        callable() : m_recv([](st::message msg) { /* do nothing */ }) { }
+
+        /// Callable constructor
+        template <typename CALLABLE>
+        callable(CALLABLE&& cb) : m_recv(std::forward<CALLABLE>(cb)) { }
+
+        inline void recv(st::message& msg) {
+            m_recv(msg);
+        }
+
+    private:
+        std::function<void(st::message msg)> m_recv;
     };
 
     /**
@@ -76,7 +91,7 @@ struct thread : public shared_scheduler_context<st::thread> {
      *
      * @param as optional arguments to the constructor of type `OBJECT`
      */
-    template <typename OBJECT=processor, typename... As>
+    template <typename OBJECT=callable, typename... As>
     static st::thread make(As&&... as) {
         st::thread thd;
         thd.ctx(st::context::make<st::thread::context>());
@@ -88,7 +103,7 @@ struct thread : public shared_scheduler_context<st::thread> {
      * @return the `std::thread::id` of the system thread this `st::thread` is running on
      */
     inline std::thread::id get_id() const {
-        return this->ctx() ? this->ctx()->template cast<st::thread::context>().get_thread_id() : std::thread::id();
+        return this->ctx()->template cast<st::thread::context>().get_thread_id();
     }
 
     /**
@@ -164,7 +179,7 @@ private:
         }
     
         virtual inline bool schedule(std::function<void()> f) {
-            return m_ch.send(0, detail::task(std::move(f)));
+            return m_ch.send(0, message::task(std::move(f)));
         }
 
         inline std::thread::id get_thread_id() const {
@@ -187,11 +202,17 @@ private:
         std::thread::id m_thread_id; // thread id the user object is executing on
         friend st::shared_scheduler_context<st::thread>;
     };
-    
+   
+    /* 
+     * Object registered as a listener to the channel. It is responsible for 
+     * waking up the sleeping thread upon message receipt.
+     * */
     struct listener_context : public st::sender_context {
         listener_context(std::weak_ptr<st::thread::context> weak_ctx) : 
             m_weak_ctx(weak_ctx) 
         { }
+
+        virtual ~listener_context() { }
 
         virtual bool alive() const {
             auto strong_ctx = m_weak_ctx.lock();

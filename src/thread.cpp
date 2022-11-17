@@ -53,7 +53,7 @@ void st::thread::context::terminate(bool soft) {
 
         lk.unlock();
     
-        // terminate channel outside of lock
+        // terminate channel outside of lock to deal with listener destructors
         ch.terminate(soft);
 
         if(!soft) {

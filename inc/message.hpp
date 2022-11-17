@@ -106,7 +106,7 @@ struct message : public shared_context<message> {
     };
 
     /**
-     * @brief this function should be always be called to properly process received messages 
+     * @brief this function should be be called to properly process received messages 
      *
      * This only needs to be called once per message, can generally should *NOT* 
      * be called in user code, instead should be called by some higher level 
