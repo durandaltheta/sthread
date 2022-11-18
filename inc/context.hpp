@@ -24,9 +24,11 @@ struct context {
      */
     template <typename CONTEXT, typename... As>
     static std::shared_ptr<st::context> make(As&&... as) {
-        std::shared_ptr<st::context> ctx(
-            dynamic_cast<st::context*>(new CONTEXT(std::forward<As>(as)...)));
-        return ctx;
+        // store as a raw shared_ptr to enable `std::shared_from_this` semantics
+        std::shared_ptr<CONTEXT> ctx(new CONTEXT(std::forward<As>(as)...));
+
+        // cast to parent `st::context`
+        return std::dynamic_pointer_cast<st::context>(ctx);
     }
 
     /**
@@ -49,28 +51,17 @@ struct shared_context {
     virtual ~shared_context() { }
 
     /**
+     * WARNING: Blind manipulation of this value is dangerous.
+     *
      * @return context shared pointer reference
      */
     inline std::shared_ptr<st::context>& ctx() const {
         return m_context;
     }
-
+   
     /**
-     * @brief conversion operator to context shared pointer
-     * @return shared pointer to `st::context`
+     * @param ctx assign the context shared pointer
      */
-    inline operator std::shared_ptr<st::context>() const {
-        return ctx();
-    }
-
-    /**
-     * @brief conversion operator to context weak pointer
-     * @return shared pointer to `st::context`
-     */
-    inline operator std::weak_ptr<st::context>() const {
-        return ctx();
-    }
-    
     inline void ctx(std::shared_ptr<st::context> new_ctx) {
         m_context = new_ctx;
     }
@@ -104,11 +95,6 @@ struct shared_context {
     }
 
 private:
-    /**
-     * WARNING: Blind manipulation of this value is dangerous.
-     *
-     * @return reference to shared context
-     */
     mutable std::shared_ptr<st::context> m_context;
 };
 

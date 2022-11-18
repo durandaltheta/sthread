@@ -26,7 +26,7 @@ struct data {
     /// rvalue constructor
     data(data&& rhs) : m_type_code(rhs.m_type_code), m_data_ptr(std::move(rhs.m_data_ptr)) { }
 
-    virtual ~data() { }
+    virtual ~data() {}
 
     /**
      * @brief construct a data payload using explicit template typing instead of by deduction

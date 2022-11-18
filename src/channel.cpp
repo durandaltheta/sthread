@@ -9,8 +9,8 @@ void st::channel::context::terminate(bool soft) {
             m_msg_q.clear();
         }
 
-        if(m_msg_q.empty() && m_listeners.size()) {
-            m_listeners.clear(); // allow receivers to terminate
+        if(m_msg_q.empty() && m_blockers.size()) {
+            m_blockers.clear(); // allow receivers to terminate
         }
     }
 }
@@ -18,31 +18,21 @@ void st::channel::context::terminate(bool soft) {
 void st::channel::context::handle_queued_messages(std::unique_lock<std::mutex>& lk) {
     st::message msg;
 
-    while(m_msg_q.size() && m_listeners.size()) {
-        std::shared_ptr<st::sender_context> s = m_listeners.front().lock();
-        m_listeners.pop_front();
+    while(m_msg_q.size() && m_blockers.size()) {
+        std::shared_ptr<st::channel::blocker> s = m_blockers.front().lock();
+        m_blockers.pop_front();
         msg = m_msg_q.front();
         m_msg_q.pop_front();
 
         lk.unlock();
 
-        bool success = s->send(msg);
+        s->send(msg);
 
         lk.lock();
-
-        if(success) {
-            if(s->requeue()) {
-                m_listeners.push_back(std::move(s));
-            }
-        } else {
-            // push to the front of the queue even if channel is closed to 
-            // handle message send failure
-            m_msg_q.push_front(std::move(msg));
-        }
     }
 
-    if(m_closed && m_listeners.size()) {
-        m_listeners.clear(); // allow receivers to terminate
+    if(m_closed && m_blockers.size()) {
+        m_blockers.clear(); // allow receivers to terminate
     }
 }
 
@@ -73,20 +63,9 @@ bool st::channel::context::recv(message& msg) {
         while(!msg && !m_closed) { 
             st::channel::blocker::data d(&msg);
             std::shared_ptr<st::channel::blocker> bd(new st::channel::blocker(&d));
-            listener(bd);
             d.wait(lk);
         }
 
         return msg ? true : false;
     } 
-}
-        
-bool st::channel::context::listener(std::weak_ptr<st::sender_context> snd) {
-    std::lock_guard<std::mutex> lk(m_mtx);
-    if(m_closed) { 
-        return false;
-    } else {
-        m_listeners.push_back(std::move(snd));
-        return true;
-    }
 }

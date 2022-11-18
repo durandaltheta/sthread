@@ -21,9 +21,6 @@ namespace st { // simple thread
  * threads. This is the mechanism that other implementors of 
  * `st::shared_sender_context<CRTP>` typically use internally.
  *
- * Listeners registered to this object with `listener(...)` will
- * compete for `st::message`s sent over it.
- *
  * All methods in this object are threadsafe.
  */
 struct channel : public shared_sender_context<channel> {
@@ -43,7 +40,7 @@ struct channel : public shared_sender_context<channel> {
      * @return count of `st::thread`s blocked on `recv()` or are listening to this `st::channel`
      */
     inline std::size_t blocked_receivers() const {
-        return this->ctx()->template cast<channel::context>().blocked_receivers();
+        return ctx()->template cast<channel::context>().blocked_receivers();
     }
 
     /**
@@ -60,19 +57,22 @@ struct channel : public shared_sender_context<channel> {
      * Multiple simultaneous `recv()` calls will be served in the order they 
      * were called.
      *
-     * `recv()` is a simplified, direct, and more limited, implementation of 
-     * `st::shared_sender_context<st::channel>::listener(...)`.
-     *
      * @param msg interprocess message object reference to contain the received message 
      * @return `true` on success, `false` if channel is terminated
      */
     inline bool recv(message& msg) {
-        return this->ctx()->template cast<channel::context>().recv(msg);
+        return ctx()->template cast<channel::context>().recv(msg);
+    }
+
+    inline channel& operator=(const channel& rhs) {
+        ctx() = rhs.ctx();
+        return *this;
     }
 
 private:
     // private class used to implement `recv()` behavior
-    struct blocker : public st::sender_context {
+    struct blocker {
+        // stack variables
         struct data {
             data(message* m) : msg(m) { }
 
@@ -87,7 +87,7 @@ private:
                 cv.notify_one(); 
             }
 
-            inline void signal(message& m) {
+            inline void send(message& m) {
                 *msg = std::move(m);
                 signal();
             }
@@ -99,32 +99,9 @@ private:
 
         blocker(data* d) : m_data(d) { }
         ~blocker(){ m_data->signal(); }
-    
-        inline bool alive() const {
-            return !m_data->flag;
-        }
 
-        inline void terminate(bool soft) {
-            m_data->signal();
-        }
-        
-        inline std::size_t queued() const {
-            return 0;
-        }
-
-        inline bool send(message msg){ 
-            m_data->signal(msg); 
-            return true;
-        }
-        
-        // do nothing as this class is only used privately
-        inline bool listener(std::weak_ptr<st::sender_context> snd) { 
-            return true;
-        } 
-
-        // override requeue
-        inline bool requeue() const {
-            return false;
+        inline void send(message msg){ 
+            m_data->send(msg); 
         }
     
         data* m_data;
@@ -132,7 +109,9 @@ private:
 
     struct context : public st::sender_context {
         context() : m_closed(false) { }
-        virtual ~context(){ }
+        virtual ~context(){ 
+            terminate(true); 
+        }
 
         inline bool alive() const { 
             std::lock_guard<std::mutex> lk(m_mtx);
@@ -148,18 +127,17 @@ private:
 
         inline std::size_t blocked_receivers() const {
             std::lock_guard<std::mutex> lk(m_mtx);
-            return m_listeners.size();
+            return m_blockers.size();
         }
 
         void handle_queued_messages(std::unique_lock<std::mutex>& lk);
         bool send(message msg);
         bool recv(message& msg);
-        bool listener(std::weak_ptr<st::sender_context> snd);
 
         bool m_closed;
         mutable std::mutex m_mtx;
         std::deque<message> m_msg_q;
-        std::deque<std::weak_ptr<st::sender_context>> m_listeners;
+        std::deque<std::weak_ptr<blocker>> m_blockers;
         friend st::shared_sender_context<st::channel>;
     };
 };

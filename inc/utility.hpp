@@ -7,8 +7,9 @@
 #include <memory>
 #include <typeinfo>
 #include <functional>
+#include <iostream>
 
-namespace st { // simple thread
+namespace st { // simple thread 
 
 /**
  * @brief typedef representing the unqualified type of T
@@ -75,6 +76,21 @@ struct hold_and_restore {
     T m_old;
 };
 
+inline void log() {
+    std::cout << std::endl;
+}
+
+template <typename T, typename... As>
+inline void log(T&& t, As&&... as) {
+    std::cout << t;
+    log(std::forward<As>(as)...);
+}
+
+}
+
+template <typename... As>
+inline void log(const char* func, As&&... as) {
+    detail::log("[", func, "] ", std::forward<As>(as)...);
 }
 
 }

@@ -126,6 +126,11 @@ struct message : public shared_context<message> {
         }
     }
 
+    inline message& operator=(const message& rhs) {
+        ctx() = rhs.ctx();
+        return *this;
+    }
+
 private:
     struct context : public st::context {
         context(const std::size_t c) : m_id(c) { }

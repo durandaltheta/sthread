@@ -20,7 +20,7 @@ namespace st { // simple thread
  * the payload `st::data` of an `st::message`.
  */
 struct reply : public shared_context<reply> {
-    virtual ~reply(){ }
+    virtual ~reply(){}
 
     /**
      * @brief main constructor 
@@ -60,6 +60,11 @@ struct reply : public shared_context<reply> {
     template <typename T>
     bool send(T&& t) {
         return this->ctx()->template cast<reply::context>().send(std::forward<T>(t));
+    }
+
+    inline reply& operator=(const reply& rhs) {
+        ctx() = rhs.ctx();
+        return *this;
     }
 
 private:

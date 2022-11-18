@@ -38,18 +38,7 @@ namespace st { // simple thread
  * All methods in this object are threadsafe.
  */
 struct thread : public shared_scheduler_context<st::thread> {
-    virtual ~thread() {
-        // Explicitly terminate the `st::thread` because a system thread 
-        // holds a copy of this `st::thread` which keeps the channel alive even 
-        // though the `st::thread` is no longer reachable.
-        //
-        // Because this logic only triggers on `st::thread` destructor, we are 
-        // fine to destroy excess `st::thread::context`s during initialization 
-        // until `st::thread::make<...>(...)` returns.
-        if(this->ctx() && this->ctx().use_count() <= 2) {
-            terminate();
-        }
-    }
+    virtual ~thread(); 
 
     /**
      * @brief object wrapper for any Callable capable of accepting an `st::message`
@@ -103,7 +92,7 @@ struct thread : public shared_scheduler_context<st::thread> {
      * @return the `std::thread::id` of the system thread this `st::thread` is running on
      */
     inline std::thread::id get_id() const {
-        return this->ctx()->template cast<st::thread::context>().get_thread_id();
+        return ctx()->template cast<st::thread::context>().get_thread_id();
     }
 
     /**
@@ -118,11 +107,19 @@ struct thread : public shared_scheduler_context<st::thread> {
         return t;
     }
 
+    inline st::thread& operator=(const st::thread& rhs) {
+        ctx() = rhs.ctx();
+        return *this;
+    }
+
 private:
     struct context : public st::scheduler_context, 
                      public std::enable_shared_from_this<st::thread::context> {
-        context() : m_shutdown(false), m_ch(channel::make()){ }
-        virtual ~context() { }
+        context() : m_shutdown(false), m_ch(channel::make()) { }
+
+        virtual ~context() { 
+            terminate(true);
+        }
 
         // thread local data
         static std::weak_ptr<context>& tl_self();
@@ -173,10 +170,6 @@ private:
         inline bool send(message msg) {
             return m_ch.send(std::move(msg));
         }
-        
-        inline bool listener(std::weak_ptr<st::sender_context> snd) {
-            return m_ch.listener(std::move(snd));
-        }
     
         virtual inline bool schedule(std::function<void()> f) {
             return m_ch.send(0, message::task(std::move(f)));
@@ -187,61 +180,16 @@ private:
             return m_thread_id;
         }
 
-        bool wakeup(st::message msg);
-
         inline bool requeue() { 
             return true; 
         }
 
         mutable std::mutex m_mtx;
-        std::condition_variable m_wakeup_cond;
         bool m_shutdown;
         channel m_ch; // internal thread channel
-        std::deque<st::message> m_received_msgs;
         std::weak_ptr<st::thread::context> m_self; // weak pointer to self
         std::thread::id m_thread_id; // thread id the user object is executing on
         friend st::shared_scheduler_context<st::thread>;
-    };
-   
-    /* 
-     * Object registered as a listener to the channel. It is responsible for 
-     * waking up the sleeping thread upon message receipt.
-     * */
-    struct listener_context : public st::sender_context {
-        listener_context(std::weak_ptr<st::thread::context> weak_ctx) : 
-            m_weak_ctx(weak_ctx) 
-        { }
-
-        virtual ~listener_context() { }
-
-        virtual bool alive() const {
-            auto strong_ctx = m_weak_ctx.lock();
-            return strong_ctx ? strong_ctx->alive() : false;
-        }
-    
-        virtual void terminate(bool soft) { 
-            // only reset members
-            m_weak_ctx.reset();
-        }
-
-        virtual std::size_t queued() const {
-            return 0;
-        }
-
-        virtual bool send(st::message msg) {
-            auto strong_ctx = m_weak_ctx.lock();
-            return strong_ctx ? strong_ctx->wakeup(msg) : false;
-        }
-    
-        virtual bool listener(std::weak_ptr<st::sender_context> snd) {
-            return true; // do nothing
-        }
-
-        virtual bool requeue() const {
-            return true;
-        }
-
-        std::weak_ptr<st::thread::context> m_weak_ctx;
     };
 };
 

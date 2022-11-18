@@ -34,22 +34,6 @@ struct shared_scheduler_context : public shared_sender_context<CRTP> {
     virtual ~shared_scheduler_context() { }
 
     /**
-     * @brief conversion operator to context shared pointer
-     * @return shared pointer to `st::scheduler_context`
-     */
-    inline operator std::shared_ptr<st::scheduler_context>() const {
-        return std::dynamic_pointer_cast<st::scheduler_context>(this->ctx());
-    }
-
-    /**
-     * @brief conversion operator to context weak pointer
-     * @return shared pointer to `st::scheduler_context`
-     */
-    inline operator std::weak_ptr<st::scheduler_context>() const {
-        return std::dynamic_pointer_cast<st::scheduler_context>(this->ctx());
-    }
-
-    /**
      * @brief schedule a generic task for execution 
      *
      * Allows for implicit conversions to `std::function<void()>`, if possible.
