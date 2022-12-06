@@ -2,6 +2,9 @@
 #define __SIMPLE_THREAD_TEST_UTILS__ 
 
 #include <iostream>
+#include <sstream>
+#include <string>
+#include "sthread"
 
 namespace stt { // simple thread test 
 
@@ -13,16 +16,25 @@ struct test_runner {
     { }
 
     inline void run() {
-        std::cout << m_test_name << "<" << m_type_name << "> --- TEST BEGIN ---" << std::endl;
+        std::stringstream ss;
+        ss << m_test_name << "<" << m_type_name << ">";
+        std::string test_str = ss.str();
+
+        st::log(test_str.c_str(), "--- TEST BEGIN ---");
         test();
-        std::cout << m_test_name << "<" << m_type_name << "> --- TEST END ---" << std::endl;
+        st::log(test_str.c_str(), "--- TEST END ---");
     }
 
-    inline void log(const char* s) {
-        std::cout << m_test_name << "<" << m_type_name << "> " << s << std::endl;
+    template <typename... As>
+    inline void log(const char* s, As&&... as) {
+        std::stringstream ss;
+        ss << m_test_name << "<" << m_type_name << ">";
+        std::string test_str = ss.str();
+        st::log(test_str.c_str(), s, std::forward<As>(as)...);
     }
 
 protected:
+
     const char* m_test_name;
     const char* m_type_name;
 

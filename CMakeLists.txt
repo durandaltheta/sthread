@@ -3,8 +3,7 @@ project(sthread)
 set(LIBRARY ${CMAKE_PROJECT_NAME})
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-#set(CMAKE_BUILD_TYPE Release) 
-set(CMAKE_BUILD_TYPE Debug) 
+set(CMAKE_BUILD_TYPE Release) 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -O3 -Wall")
 
 set(HEADER_FILES 
@@ -21,6 +20,7 @@ set(HEADER_FILES
     )
 
 set(SOURCE_FILES
+    ${CMAKE_CURRENT_LIST_DIR}/src/utility.cpp
     ${CMAKE_CURRENT_LIST_DIR}/src/channel.cpp
     ${CMAKE_CURRENT_LIST_DIR}/src/thread.cpp
     )

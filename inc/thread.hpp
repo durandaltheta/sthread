@@ -172,6 +172,7 @@ private:
         }
     
         virtual inline bool schedule(std::function<void()> f) {
+            st::log(__PRETTY_FUNCTION__, "[", __LINE__, "]");
             return m_ch.send(0, message::task(std::move(f)));
         }
 

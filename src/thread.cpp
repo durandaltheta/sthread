@@ -20,6 +20,7 @@ std::weak_ptr<st::thread::context>& st::thread::context::tl_self() {
 }
 
 void st::thread::context::thread_loop(const std::function<void(message&)>& hdl) {
+    st::log(__PRETTY_FUNCTION__, "[", __LINE__, "]");
     // set thread local state
     st::detail::hold_and_restore<std::weak_ptr<context>> self_har(tl_self());
     tl_self() = m_self.lock();
@@ -31,12 +32,17 @@ void st::thread::context::thread_loop(const std::function<void(message&)>& hdl) 
 
         message msg;
         
+    st::log(__PRETTY_FUNCTION__, "[", __LINE__, "]");
         if(m_ch.recv(msg)) {
+    st::log(__PRETTY_FUNCTION__, "[", __LINE__, "]");
             st::message::handle(hdl, msg); 
+    st::log(__PRETTY_FUNCTION__, "[", __LINE__, "]");
         }
 
         lk.lock();
     }
+
+    st::log(__PRETTY_FUNCTION__, "[", __LINE__, "]");
 }
 
 void st::thread::context::terminate(bool soft) {

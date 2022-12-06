@@ -7,6 +7,7 @@
 #include <memory>
 #include <typeinfo>
 #include <functional>
+#include <mutex>
 #include <iostream>
 
 namespace st { // simple thread 
@@ -76,8 +77,10 @@ struct hold_and_restore {
     T m_old;
 };
 
+std::unique_lock<std::mutex> log_lock();
+
 inline void log() {
-    std::cout << std::endl;
+    std::cout << std::endl << std::flush;
 }
 
 template <typename T, typename... As>
@@ -90,6 +93,7 @@ inline void log(T&& t, As&&... as) {
 
 template <typename... As>
 inline void log(const char* func, As&&... as) {
+    auto lk = detail::log_lock();
     detail::log("[", func, "] ", std::forward<As>(as)...);
 }
 

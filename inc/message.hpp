@@ -117,13 +117,26 @@ struct message : public shared_context<message> {
      */
     template <typename CUSTOM_HANDLER>
     static void handle(CUSTOM_HANDLER& hdl, st::message& msg) {
+    st::log(__PRETTY_FUNCTION__, "[", __LINE__, "]");
         if(msg) { // throw out any empty messages
-            if(msg.data().is<task>()) { // check if payload is an `st::message::task`
-                msg.data().cast_to<task>()(); // evaluate task immediately
+    st::log(__PRETTY_FUNCTION__, "[", __LINE__, "]");
+            if(msg.data()) {
+        st::log(__PRETTY_FUNCTION__, "[", __LINE__, "]");
+                if(msg.data().is<task>()) { // check if payload is an `st::message::task`
+        st::log(__PRETTY_FUNCTION__, "[", __LINE__, "]");
+                    msg.data().cast_to<task>()(); // evaluate task immediately
+        st::log(__PRETTY_FUNCTION__, "[", __LINE__, "]");
+                } else {
+        st::log(__PRETTY_FUNCTION__, "[", __LINE__, "]");
+                    hdl(msg); // otherwise allow handler to process message 
+        st::log(__PRETTY_FUNCTION__, "[", __LINE__, "]");
+                }
+        st::log(__PRETTY_FUNCTION__, "[", __LINE__, "]");
             } else {
-                hdl(msg); // otherwise allow handler to process message 
+        st::log(__PRETTY_FUNCTION__, "[", __LINE__, "]");
             }
         }
+    st::log(__PRETTY_FUNCTION__, "[", __LINE__, "]");
     }
 
     inline message& operator=(const message& rhs) {

@@ -83,8 +83,10 @@ private:
             }
 
             inline void signal() {
-                flag = true;
-                cv.notify_one(); 
+                if(!flag) {
+                    flag = true;
+                    cv.notify_one(); 
+                }
             }
 
             inline void send(message& m) {
@@ -137,7 +139,7 @@ private:
         bool m_closed;
         mutable std::mutex m_mtx;
         std::deque<message> m_msg_q;
-        std::deque<std::weak_ptr<blocker>> m_blockers;
+        std::deque<std::shared_ptr<blocker>> m_blockers;
         friend st::shared_sender_context<st::channel>;
     };
 };
