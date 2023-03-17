@@ -19,7 +19,7 @@ information on interfaces and various other features not detailed in this README
 
 [Object Lifecycles](#object-lifecycles)
 
-[Sending Messages Between Threads](#sending-messages-between-threads-with-channels)
+[Sending Messages Between Threads](#sending-messages-between-threads)
 
 [Abstracting Message Replies](#abstracting-message-senders)
 
