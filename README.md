@@ -135,7 +135,7 @@ Arguments passed to `send(...)` are subsequently passed to `st::message st::mess
 - `std::size_t st::message::id()`: Return the unsigned integer id value stored in the message
 - `st::data& st::message::data()`: Return a reference to the payload `st::data` stored in the message
 
-`st::data()` can store any data type. The stored data can be copied to an argument of templated type `T` with `st::data::copy_to(T& t)` or rvalue swapped with `st::data::move_to(T& t)`. Said functions will return `true` if their argument `T` matches the type `T` originally stored in the `st::data`, otherwise they will return `false`.
+`st::data()` can store any data type. The stored data can be copied to an argument of templated type `T` with `st::data::copy_to(T& t)` or rvalue swapped with `st::data::move_to(T& t)`. Said functions will return `true` if their argument `T` matches the type originally stored in the `st::data`, otherwise they will return `false`.
 
 #### Example 2
 ```
@@ -291,7 +291,7 @@ In some cases, object's shared context can be shutdown early with a call to `ter
 - `st::channel`
 - `st::thread`
 
-For example, the default behavior for `st::channel::terminate()` is to cause all current and future all `st::channel::send()` operations to fail early but to allow `st::channel::recv()` to continue succeeding until the internal message queue is empty. This behavior is similar in `st::thread`.
+For example, the default behavior for `st::channel::terminate()` is to cause all future `st::channel::send()` operations to fail early but to allow `st::channel::recv()` to continue succeeding until the internal message queue is empty. This behavior is similar in `st::thread`.
 
 Alternatively, the user can call `terminate(false)`to immediately end all operations on the object.
 
