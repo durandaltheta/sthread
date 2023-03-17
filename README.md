@@ -346,7 +346,7 @@ and I say hello
 #include <list>
 #include <sthread>
 
-struct Childthread {
+struct MyThread {
     enum op {
         say_name
     };
