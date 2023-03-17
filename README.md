@@ -613,7 +613,7 @@ what a beautiful sunset
 ```
 
 ### Callable Considerations
-The reasoning behind the default approach of using user objects implementing `recv(st::message)` within `st::thread`s, as opposed to a c++ Callable (any object convertable to `std::function<void(st::message)>`), is that c++ objects are well understood by virtually all c++ programmers and provide the most control over behavior compared to alternatives.
+The reasoning behind the default approach of using user objects implementing `recv(st::message)` within `st::thread`s, as opposed to a c++ Callable (any function or object convertable to `std::function<void(st::message)>` in this case), is that c++ objects are well understood by virtually all c++ programmers and provide the most fine grained control over behavior compared to alternatives.
 
 In comparision, Callables are a rather advanced topic that fewer intermediate c++ programmers may understand well. Additionally, operator overloads are a more advanced topic than I wanted to require of users.
 
