@@ -16,29 +16,6 @@ namespace st { // simple thread
  */
 struct context { 
     virtual ~context() { }
-
-    /**
-     * @brief convenience method to construct descendant contexts 
-     * @param as optional constructor arguments for type `context`
-     * @return an allocated shared pointer of an `st::context` dynamically cast from type `CONTEXT`
-     */
-    template <typename CONTEXT, typename... As>
-    static std::shared_ptr<st::context> make(As&&... as) {
-        // store as a raw shared_ptr to enable `std::shared_from_this` semantics
-        std::shared_ptr<CONTEXT> ctx(new CONTEXT(std::forward<As>(as)...));
-
-        // cast to parent `st::context`
-        return std::dynamic_pointer_cast<st::context>(ctx);
-    }
-
-    /**
-     * @brief convenience method to cast context to descendant type 
-     * @return reference to descendant type
-     */
-    template <typename CONTEXT>
-    CONTEXT& cast() {
-        return *(dynamic_cast<CONTEXT*>(this));
-    }
 };
 
 /**
@@ -46,25 +23,27 @@ struct context {
  *
  * CRTP: curiously recurring template pattern
  */
-template <typename CRTP>
+template <typename CRTP, typename CRTPCTX>
 struct shared_context {
-    virtual ~shared_context() { }
-
+protected:
     /**
      * WARNING: Blind manipulation of this value is dangerous.
      *
      * @return context shared pointer reference
      */
-    inline std::shared_ptr<st::context>& ctx() const {
-        return m_context;
+    inline std::shared_ptr<CRTPCTX>& ctx() const {
+        return std::dynamic_pointer_cast<CRTPCTX>(this->m_context);
     }
    
     /**
      * @param ctx assign the context shared pointer
      */
-    inline void ctx(std::shared_ptr<st::context> new_ctx) {
-        m_context = new_ctx;
+    inline void ctx(std::shared_ptr<CRTPCTX> new_ctx) {
+        this->m_context = std::dynamic_pointer_cast<context>(new_ctx);
     }
+
+public:
+    virtual ~shared_context() { }
 
     /**
      * @return `true` if object is allocated, else `false`
@@ -92,6 +71,11 @@ struct shared_context {
      */
     inline bool operator<(const CRTP& rhs) const noexcept {
         return this->ctx() < rhs.ctx();
+    }
+    
+    inline CRTP& operator=(const CRTP& rhs) {
+        ctx() = rhs.ctx();
+        return *this;
     }
 
 private:
