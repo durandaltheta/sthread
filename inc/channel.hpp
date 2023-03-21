@@ -11,6 +11,7 @@
 #include <utility>
 
 #include "utility.hpp"
+#include "context.hpp"
 
 namespace st { // simple thread
 
@@ -25,6 +26,11 @@ namespace st { // simple thread
 struct channel : protected st::shared_context<channel,channel::context> {
     inline virtual ~channel() { }
 
+    inline channel& operator=(const channel& rhs) {
+        ctx() = rhs.ctx();
+        return *this;
+    }
+
     /**
      * @brief Construct an allocated channel
      * @return the allocated channel
@@ -33,11 +39,6 @@ struct channel : protected st::shared_context<channel,channel::context> {
         channel ch;
         ch.ctx(new context);
         return ch;
-    }
-
-    inline channel& operator=(const channel& rhs) {
-        ctx() = rhs.ctx();
-        return *this;
     }
 
     inline bool closed() const {
@@ -52,7 +53,7 @@ struct channel : protected st::shared_context<channel,channel::context> {
     }
 
     /**
-     * @return count of `st::thread`s blocked on `recv()` or are listening to this `st::channel`
+     * @return count of system threads blocked on `recv()` for this `st::channel`
      */
     inline std::size_t blocked_receivers() const {
         return ctx() ? ctx()->blocked_receivers() : 0;
@@ -61,12 +62,13 @@ struct channel : protected st::shared_context<channel,channel::context> {
     /** 
      * @brief operation result state
      *
-     * This is typically handled internally, but is provided for the few
-     * operations which directly return it.
+     * This is typically handled internally, but is provided for the operations 
+     * which directly return it.
      * 
      * closed == 0 to ensure that if the user executes `st::channel::try_recv()`
-     * as a loop's condition, it will correctly fail out when the channel is 
-     * closed (although this will cause a high cpu usage busy-wait loop).
+     * as a loop's condition, it will correctly break out of the loop when the 
+     * channel is closed (although implicitly creates a high cpu usage busy-wait 
+     * loop).
      */
     enum state {
         closed = 0,/// operation failed because channel was closed
@@ -106,7 +108,6 @@ struct channel : protected st::shared_context<channel,channel::context> {
      * Behavior of this function is the same as `st::channel::recv()` except 
      * that it can fail early.
      *
-     *
      * @param msg interprocess message object reference to contain the received message 
      * @return the result state of the operation
      */
@@ -136,7 +137,8 @@ struct channel : protected st::shared_context<channel,channel::context> {
      * @brief wrap user function and arguments then asynchronous execute them on a dedicated system thread and send the result of the operation to this `st::channel`
      *
      * Internally calls `std::async` to asynchronously execute user function.
-     * If function returns no value, then `st::message::data()` will be 
+     *
+     * If the user function returns no value, then `st::message::data()` will be 
      * unallocated. Otherwise, `st::message::data()` will contain the value 
      * returned by Callable `f`.
      *
@@ -156,7 +158,9 @@ struct channel : protected st::shared_context<channel,channel::context> {
     /**
      * @brief schedule a generic task for execution 
      * 
-     * The argument `f` will be executed when the message containing it is received.
+     * The argument `f` will be executed when the message containing it is 
+     * processed by a call to `st::channel::recv()`. The message will be handled 
+     * internally upon receipt and not returned to the user for processing.
      *
      * Allows for implicit conversions to `std::function<void()>`, if possible.
      *
@@ -171,7 +175,9 @@ struct channel : protected st::shared_context<channel,channel::context> {
      * @brief wrap user Callable and arguments then schedule as a generic task for execution
      *
      * The argument `f` will be executed with optional arguments `as` when the 
-     * message containing them is received.
+     * message containing it is processed by a call to `st::channel::recv()`. 
+     * The message will be handled internally upon receipt and not returned to 
+     * the user for processing.
      *
      * @param f function to execute on target sender 
      * @param a first argument for argument function

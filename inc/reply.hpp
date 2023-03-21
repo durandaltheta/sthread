@@ -8,12 +8,12 @@
 #include <deque>
 
 #include "utility.hpp"
-#include "sender_context.hpp"
+#include "context.hpp"
 
 namespace st { // simple thread
 
 /**
- * @brief object capable of sending a payload back to an `st::sender`
+ * @brief object capable of sending a `st::message` back to an `st::channel`
  *
  * This object provides a simple, lightweight way to send messages back to a 
  * requestor while abstracting the message passing details. This object can be 
@@ -56,13 +56,13 @@ struct reply : protected st::shared_context<reply, reply::context> {
     }
 
     /**
-     * @brief send an `st::message` back to some abstracted `st::sender`
+     * @brief send an `st::message` back to some abstracted `st::channel`
      * @param t `st::message` payload data 
      * @return `true` if internal `st::channel::send(...)` succeeds, else `false`
      */
     template <typename T>
     bool send(T&& t) {
-        return ctx()->send(std::forward<T>(t));
+        return ctx() ? ctx()->send(std::forward<T>(t)) : false;
     }
 
 private:

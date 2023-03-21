@@ -1,15 +1,7 @@
 #include <deque>
 #include "thread.hpp"
 
-st::thread::~thread() { 
-    if(m_ch && m_close_on_destruct) {
-        m_ch.close(m_close_soft);
-    }
-
-    if(m_join_on_destruct) {
-        join();
-    }
-}
+st::thread::~thread() { }
 
 void st::thread::object_recv_loop(const std::function<void(message&)>& hdl) {
     // set thread local state

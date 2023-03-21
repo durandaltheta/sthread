@@ -2,8 +2,6 @@
 //Author: Blayne Dennis
 #include "utility.hpp"
 #include "context.hpp"
-#include "sender_context.hpp"
-#include "scheduler_context.hpp"
 #include "data.hpp"
 #include "message.hpp"
 #include "channel.hpp"

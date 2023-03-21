@@ -12,7 +12,7 @@
 namespace st { // simple thread
 
 /**
- * @brief parent context interface
+ * @brief parent context definition
  */
 struct context { 
     virtual ~context() { }
@@ -22,6 +22,7 @@ struct context {
  * @brief CRTP-templated interface to provide shared context api
  *
  * CRTP: curiously recurring template pattern
+ * CRTPCTX: the CRTP's context type
  */
 template <typename CRTP, typename CRTPCTX>
 struct shared_context {

@@ -1,6 +1,6 @@
 #include "channel.hpp"
 
-void st::channel::context::terminate(bool soft) {
+void st::channel::context::close(bool soft) {
     std::unique_lock<std::mutex> lk(m_mtx);
     if(!m_closed) {
         m_closed = true;
