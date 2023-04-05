@@ -6,4 +6,3 @@
 #include "message.hpp"
 #include "channel.hpp"
 #include "reply.hpp"
-#include "thread.hpp"

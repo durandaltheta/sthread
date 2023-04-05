@@ -7,14 +7,33 @@
 #include "data.hpp"
 #include "context.hpp"
 
-namespace st { // simple thread
+namespace st { // simple thread 
+namespace detail {
+namespace message {
+
+struct context {
+    context(const std::size_t c) : m_id(c) { }
+
+    context(const std::size_t c, st::data&& d) :
+        m_id(c),
+        m_data(std::move(d))
+    { }
+
+    virtual ~context() { }
+
+    std::size_t m_id;
+    st::data m_data;
+};
+
+}
+}
 
 /**
  * @brief interthread type erased message container 
  *
  * this object is *not* mutex locked.
  */
-struct message : protected st::shared_context<message, message::context> {
+struct message : protected st::shared_context<message, detail::message::context> {
     virtual ~message() { }
 
     /** 
@@ -35,7 +54,7 @@ struct message : protected st::shared_context<message, message::context> {
      */
     static inline message make(std::size_t id, st::data&& d) {
         message msg;
-        ctx(new context(id, std::move(d)));
+        msg.ctx(std::make_shared<detail::message::context>(id, std::move(d)));
         return msg;
     }
 
@@ -59,7 +78,7 @@ struct message : protected st::shared_context<message, message::context> {
      */
     static inline message make(std::size_t id) {
         message msg;
-        ctx(new context(id));
+        msg.ctx(std::make_shared<detail::message::context>(id));
         return msg;
     }
 
@@ -79,45 +98,15 @@ struct message : protected st::shared_context<message, message::context> {
      * specific request, response, or notification operation.
      */
     const std::size_t id() const {
-        return ctx() ? ctx()->.m_id : 0;
+        return ctx()->m_id;
+    }
 
     /**
      * @brief optional type erased payload data
      */
     inline st::data& data() {
-        return ctx() ? ctx()->.m_data : st::data();
+        return ctx()->m_data;
     }
-
-private:
-    struct context : public st::context {
-        context(const std::size_t c) : m_id(c) { }
-
-        context(const std::size_t c, st::data&& d) :
-            m_id(c),
-            m_data(std::move(d))
-        { }
-
-        virtual ~context() { }
-
-        std::size_t m_id;
-        st::data m_data;
-    };
-
-    /**
-     * @return context shared pointer reference
-     */
-    inline std::shared_ptr<st::context>& ctx() const {
-        return m_context;
-    }
-   
-    /**
-     * @param ctx assign the context shared pointer
-     */
-    inline void ctx(std::shared_ptr<st::context> new_ctx) {
-        m_context = new_ctx;
-    }
-
-    mutable std::shared_ptr<st::context> m_context;
 };
 
 }

@@ -9,8 +9,31 @@
 
 #include "utility.hpp"
 #include "context.hpp"
+#include "channel.hpp"
 
 namespace st { // simple thread
+namespace detail {
+namespace reply {
+
+struct context {
+    context(st::channel ch, std::size_t id) :
+        m_ch(std::move(ch)),
+        m_id(id)
+    { }
+
+    virtual ~context(){ }
+
+    template <typename T>
+    bool send(T&& t) {
+        return m_ch.send(m_id, std::forward<T>(t));
+    }
+
+    st::channel m_ch;
+    std::size_t m_id;
+};
+
+}
+}
 
 /**
  * @brief object capable of sending a `st::message` back to an `st::channel`
@@ -19,7 +42,7 @@ namespace st { // simple thread
  * requestor while abstracting the message passing details. This object can be 
  * the payload `st::data` of an `st::message`.
  */
-struct reply : protected st::shared_context<reply, reply::context> {
+struct reply : protected st::shared_context<reply, detail::reply::context> {
     virtual ~reply(){}
 
     inline reply& operator=(const reply& rhs) {
@@ -35,9 +58,9 @@ struct reply : protected st::shared_context<reply, reply::context> {
      * @param ch an `st::channel` to send `st::message` back to 
      * @param id unsigned int id of `st::message` sent back over `ch`
      */
-    static inline reply make(st::channel& ch, std::size_t id) { 
+    static inline reply make(st::channel& ch, std::size_t id = 0) { 
         reply r;
-        r.ctx(new context(ch, id));
+        r.ctx(std::make_shared<detail::reply::context>(ch, id));
         return r;
     }
 
@@ -49,9 +72,9 @@ struct reply : protected st::shared_context<reply, reply::context> {
      * @param ch an `st::channel` to send `st::message` back to 
      * @param id unsigned int id of `st::message` sent back over `ch`
      */
-    static inline reply make(st::channel&& ch, std::size_t id) { 
+    static inline reply make(st::channel&& ch, std::size_t id = 0) { 
         reply r;
-        r.ctx(new context(std::move(ch), id));
+        r.ctx(std::make_shared<detail::reply::context>(std::move(ch), id));
         return r;
     }
 
@@ -64,24 +87,6 @@ struct reply : protected st::shared_context<reply, reply::context> {
     bool send(T&& t) {
         return ctx() ? ctx()->send(std::forward<T>(t)) : false;
     }
-
-private:
-    struct context : public st::context {
-        context(st::channel ch, std::size_t id) :
-            m_ch(std::move(ch)),
-            m_id(id)
-        { }
-
-        virtual ~context(){ }
-    
-        template <typename T>
-        bool send(T&& t) {
-            return m_ch.send(m_id, std::forward<T>(t));
-        }
-
-        st::channel m_ch;
-        std::size_t m_id;
-    };
 };
 
 }

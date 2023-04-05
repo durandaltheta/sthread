@@ -9,20 +9,17 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -O3 -Wall")
 set(HEADER_FILES 
     ${CMAKE_CURRENT_LIST_DIR}/inc/utility.hpp
     ${CMAKE_CURRENT_LIST_DIR}/inc/context.hpp
-    ${CMAKE_CURRENT_LIST_DIR}/inc/sender_context.hpp
-    ${CMAKE_CURRENT_LIST_DIR}/inc/scheduler_context.hpp
     ${CMAKE_CURRENT_LIST_DIR}/inc/data.hpp
     ${CMAKE_CURRENT_LIST_DIR}/inc/message.hpp
     ${CMAKE_CURRENT_LIST_DIR}/inc/channel.hpp
     ${CMAKE_CURRENT_LIST_DIR}/inc/reply.hpp
-    ${CMAKE_CURRENT_LIST_DIR}/inc/thread.hpp
+    ${CMAKE_CURRENT_LIST_DIR}/inc/threadpool.hpp
     ${CMAKE_CURRENT_LIST_DIR}/inc/sthread
     )
 
 set(SOURCE_FILES
     ${CMAKE_CURRENT_LIST_DIR}/src/utility.cpp
     ${CMAKE_CURRENT_LIST_DIR}/src/channel.cpp
-    ${CMAKE_CURRENT_LIST_DIR}/src/thread.cpp
     )
 
 add_library(${LIBRARY} STATIC ${SOURCE_FILES})

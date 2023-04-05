@@ -12,8 +12,7 @@ set(TEST_SOURCE_FILES
     data_tst.cpp
     context_tst.cpp
     message_tst.cpp
-    sender_context_tst.cpp 
-    scheduler_context_tst.cpp
+    channel_tst.cpp
     )
 
 #add_executable(${BINARY} ${HEADER_FILES} ${BINARY}.cpp)

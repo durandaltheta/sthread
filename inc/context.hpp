@@ -12,13 +12,6 @@
 namespace st { // simple thread
 
 /**
- * @brief parent context definition
- */
-struct context { 
-    virtual ~context() { }
-};
-
-/**
  * @brief CRTP-templated interface to provide shared context api
  *
  * CRTP: curiously recurring template pattern
@@ -33,14 +26,14 @@ protected:
      * @return context shared pointer reference
      */
     inline std::shared_ptr<CRTPCTX>& ctx() const {
-        return std::dynamic_pointer_cast<CRTPCTX>(this->m_context);
+        return this->m_context;
     }
    
     /**
      * @param ctx assign the context shared pointer
      */
     inline void ctx(std::shared_ptr<CRTPCTX> new_ctx) {
-        this->m_context = std::dynamic_pointer_cast<context>(new_ctx);
+        this->m_context = new_ctx;
     }
 
 public:
@@ -75,12 +68,12 @@ public:
     }
     
     inline CRTP& operator=(const CRTP& rhs) {
-        ctx() = rhs.ctx();
+        this->ctx() = rhs.ctx();
         return *this;
     }
 
 private:
-    mutable std::shared_ptr<st::context> m_context;
+    mutable std::shared_ptr<CRTPCTX> m_context;
 };
 
 }

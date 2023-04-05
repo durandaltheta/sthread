@@ -12,8 +12,49 @@
 
 #include "utility.hpp"
 #include "context.hpp"
+#include "message.hpp"
 
 namespace st { // simple thread
+namespace detail {
+namespace channel {
+
+struct context {
+    context() : m_closed(false) { }
+
+    virtual ~context(){ 
+        close(true); 
+    }
+
+    inline bool closed() const { 
+        std::lock_guard<std::mutex> lk(m_mtx);
+        return m_closed;
+    }
+    
+    void close(bool soft=true);
+    
+    inline std::size_t queued() const {
+        std::lock_guard<std::mutex> lk(m_mtx);
+        return m_msg_q.size();
+    }
+
+    inline std::size_t blocked_receivers() const {
+        std::lock_guard<std::mutex> lk(m_mtx);
+        return m_blockers.size();
+    }
+
+    void handle_queued_messages(std::unique_lock<std::mutex>& lk);
+    bool send(st::message msg);
+    state recv(st::message& msg, bool block);
+    bool process(st::message& msg);
+
+    bool m_closed;
+    mutable std::mutex m_mtx;
+    std::deque<st::message> m_msg_q;
+    std::deque<std::shared_ptr<blocker>> m_blockers;
+};
+
+}
+}
 
 /**
  * @brief Interthread message passing queue
@@ -23,7 +64,10 @@ namespace st { // simple thread
  *
  * All methods in this object are threadsafe.
  */
-struct channel : protected st::shared_context<channel,channel::context> {
+struct channel : protected st::shared_context<channel,detail::channel::context> {
+    //--------------------------------------------------------------------------
+    // Base API 
+
     inline virtual ~channel() { }
 
     inline channel& operator=(const channel& rhs) {
@@ -37,7 +81,7 @@ struct channel : protected st::shared_context<channel,channel::context> {
      */
     static inline channel make() {
         channel ch;
-        ch.ctx(new context);
+        ch.ctx(std::make_shared<detail::channel::context>());
         return ch;
     }
 
@@ -67,11 +111,11 @@ struct channel : protected st::shared_context<channel,channel::context> {
      * 
      * closed == 0 to ensure that if the user executes `st::channel::try_recv()`
      * as a loop's condition, it will correctly break out of the loop when the 
-     * channel is closed (although implicitly creates a high cpu usage busy-wait 
-     * loop).
+     * channel is closed (although this implicitly creates a high cpu usage 
+     * busy-wait loop).
      */
     enum state {
-        closed = 0,/// operation failed because channel was closed
+        closed = 0, /// operation failed because channel was closed
         failure, /// non-blocking operation failed
         success /// operation succeeded
     };
@@ -100,13 +144,12 @@ struct channel : protected st::shared_context<channel,channel::context> {
     inline bool recv(st::message& msg) {
         return ctx() ? ctx()->recv(msg, true) == state::success : false;
     }
-   
 
     /**
      * @brief do a non-blocking receive over the channel
      *
      * Behavior of this function is the same as `st::channel::recv()` except 
-     * that it can fail early.
+     * that it can fail early and returns an enumeration instead of a boolean.
      *
      * @param msg interprocess message object reference to contain the received message 
      * @return the result state of the operation
@@ -132,11 +175,92 @@ struct channel : protected st::shared_context<channel,channel::context> {
     bool send(As&&... as) {
         return ctx() ? ctx()->send(st::message::make(std::forward<As>(as)...)) : false;
     }
+    
+    //--------------------------------------------------------------------------
+    // Iteration 
+   
+    /**
+     * @brief implementation of an input iterator for `st::channel`
+     *
+     * This implementation allows trivial usage of channels in `for` loops:
+     * for(auto& msg : ch) { 
+     *     // handle message
+     * }
+     */
+    class iterator : 
+        public st::shared_context<iterator, detail::channel::context>, 
+        public std::input_iterator_tag {
+                
+        inline bool increment() const {
+            bool ret = ctx() ? ctx()->recv(msg, true) == state::success : false;
+
+            if(!ret) {
+                ctx().reset();
+            }
+
+            return ret;
+        }
+
+        st::message msg;
+
+    public:
+        inline virtual ~iterator() { }
+
+        inline iterator& operator=(const iterator& rhs) {
+            ctx() = rhs.ctx();
+            msg = rhs.msg;
+            return *this;
+        }
+
+        inline T& operator*() const { 
+            return msg; 
+        }
+
+        inline T* operator->() const { 
+            return &msg;
+        }
+
+        inline iterator& operator++() {
+            increment();
+            return *this;
+        }
+
+        inline iterator operator++(int) {
+            increment();
+            return *this;
+        }
+    };
+
+    /**
+     * @return an iterator to the beginning of the channel
+     */
+    inline iterator begin() const {
+        iterator it;
+        it.ctx(ctx());
+        ++it; // get an initial value
+        return it;
+    }
+
+    /**
+     * If another `st::channel::iterator` == the iterator returned by this 
+     * method, then the iterator has reached the end of the `st::channel`.
+     *
+     * @return an iterator to the end of the channel
+     */
+    inline iterator end() const { 
+        return iterator(); 
+    } // default iterator == end()
+
+    //--------------------------------------------------------------------------
+    // Convenience API 
 
     /**
      * @brief wrap user function and arguments then asynchronous execute them on a dedicated system thread and send the result of the operation to this `st::channel`
      *
      * Internally calls `std::async` to asynchronously execute user function.
+     *
+     * The resulting `st::message`'s `st::message::id()` will equal the value 
+     * `resp_id`.
      *
      * If the user function returns no value, then `st::message::data()` will be 
      * unallocated. Otherwise, `st::message::data()` will contain the value 
@@ -165,7 +289,7 @@ struct channel : protected st::shared_context<channel,channel::context> {
      * Allows for implicit conversions to `std::function<void()>`, if possible.
      *
      * @param f std::function to execute on target sender
-     * @return `true` on success, `false` on failure due to object being closed
+     * @return `true` on success, `false` on failure due to the channel being closed
      */
     inline bool schedule(std::function<void()> f) {
         return m_ch.send(0, st::channel::task(std::move(f)));
@@ -182,7 +306,7 @@ struct channel : protected st::shared_context<channel,channel::context> {
      * @param f function to execute on target sender 
      * @param a first argument for argument function
      * @param as optional remaining arguments for argument function
-     * @return `true` on success, `false` on failure due to object being closed
+     * @return `true` on success, `false` on failure due to the channel being closed
      */
     template <typename F, typename A, typename... As>
     bool schedule(F&& f, A&& a, As&&... as) {
@@ -278,41 +402,6 @@ private:
         }
     
         data* m_data;
-    };
-
-    struct context : public st::context {
-        context() : m_closed(false) { }
-
-        virtual ~context(){ 
-            close(true); 
-        }
-
-        inline bool closed() const { 
-            std::lock_guard<std::mutex> lk(m_mtx);
-            return m_closed;
-        }
-        
-        void close(bool soft=true);
-        
-        inline std::size_t queued() const {
-            std::lock_guard<std::mutex> lk(m_mtx);
-            return m_msg_q.size();
-        }
-
-        inline std::size_t blocked_receivers() const {
-            std::lock_guard<std::mutex> lk(m_mtx);
-            return m_blockers.size();
-        }
-
-        void handle_queued_messages(std::unique_lock<std::mutex>& lk);
-        bool send(st::message msg);
-        state recv(st::message& msg, bool block);
-        bool process(st::message& msg);
-
-        bool m_closed;
-        mutable std::mutex m_mtx;
-        std::deque<st::message> m_msg_q;
-        std::deque<std::shared_ptr<blocker>> m_blockers;
     };
 };
 
