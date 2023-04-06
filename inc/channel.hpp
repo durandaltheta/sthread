@@ -65,9 +65,6 @@ struct context {
  * All methods in this object are threadsafe.
  */
 struct channel : protected st::shared_context<channel,detail::channel::context> {
-    //--------------------------------------------------------------------------
-    // Base API 
-
     inline virtual ~channel() { }
 
     inline channel& operator=(const channel& rhs) {
@@ -85,14 +82,20 @@ struct channel : protected st::shared_context<channel,detail::channel::context> 
         return ch;
     }
 
+    /**
+     * @return `true` if the `st::channel::close()` has been called or if `st::channel::make()` was never called, else `false`
+     */
     inline bool closed() const {
         return ctx() ? ctx()->closed() : true;
     }
 
-    template <typename... As>
-    void close(As&&... as) {
+    /**
+     * @brief `st::channel` is set to the closed state
+     * @param soft if `false` clear all previously sent messages from the internal message queue
+     */
+    inline void close(bool soft=true) {
         if(ctx()) {
-            ctx()->close(std::forward<As>(as)...);
+            ctx()->close(soft);
         }
     }
 
@@ -124,12 +127,14 @@ struct channel : protected st::shared_context<channel,detail::channel::context> 
      * @brief receive a message over the channel
      *
      * This is a blocking operation that will not complete until there is a 
-     * value in the message queue, after which the argument message reference 
-     * will be overwritten by the front of the queue. This will return early if 
-     * `st::channel::close()` is called.
+     * message available in the message queue, after which the argument message 
+     * reference will be overwritten by the front of the queue. The front of the 
+     * queue will then be popped. 
      *
-     * A successful call to `recv()` will remove a message queued by `send()` 
-     * from the internal channel message queue.
+     * This will return early if `st::channel::close(false)` is called. If
+     * `st::channel::close(true)` or `st::channel::close()` is called instead, 
+     * then calls to this function will succeed until the internal message queue 
+     * is empty.
      *
      * Multiple simultaneous `recv()` calls will be served in the order they 
      * were called.
@@ -146,7 +151,7 @@ struct channel : protected st::shared_context<channel,detail::channel::context> 
     }
 
     /**
-     * @brief do a non-blocking receive over the channel
+     * @brief do a non-blocking message receive over the channel
      *
      * Behavior of this function is the same as `st::channel::recv()` except 
      * that it can fail early and returns an enumeration instead of a boolean.
@@ -166,7 +171,11 @@ struct channel : protected st::shared_context<channel,detail::channel::context> 
     }
 
     /**
-     * @brief send an `st::message` with given parameters
+     * @brief send an `st::message` with given parameters into the internal message queue
+     *
+     * This method is non-blocking.
+     *
+     * This method will always return early if the channel is closed.
      *
      * @param as arguments passed to `st::message::make()`
      * @return `true` on success, `false` if sender_context is closed
@@ -249,10 +258,10 @@ struct channel : protected st::shared_context<channel,detail::channel::context> 
      */
     inline iterator end() const { 
         return iterator(); 
-    } // default iterator == end()
+    } 
 
     //--------------------------------------------------------------------------
-    // Convenience API 
+    // High Level Features
 
     /**
      * @brief wrap user function and arguments then asynchronous execute them on a dedicated system thread and send the result of the operation to this `st::channel`

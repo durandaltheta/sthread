@@ -39,8 +39,10 @@ struct context {
  * @brief object capable of sending a `st::message` back to an `st::channel`
  *
  * This object provides a simple, lightweight way to send messages back to a 
- * requestor while abstracting the message passing details. This object can be 
- * the payload `st::data` of an `st::message`.
+ * requestor while abstracting the message passing details. 
+ *
+ * For example, his object can be the payload `st::data` of an `st::message`, 
+ * allowing a user to forward information back to a requestor.
  */
 struct reply : protected st::shared_context<reply, detail::reply::context> {
     virtual ~reply(){}
@@ -49,37 +51,22 @@ struct reply : protected st::shared_context<reply, detail::reply::context> {
         ctx() = rhs.ctx();
         return *this;
     }
-
+    
     /**
-     * @brief main constructor 
-     *
-     * lvalue make
+     * @brief construct a reply 
      *
      * @param ch an `st::channel` to send `st::message` back to 
      * @param id unsigned int id of `st::message` sent back over `ch`
      */
-    static inline reply make(st::channel& ch, std::size_t id = 0) { 
+    template <typename CHANNEL>
+    static reply make(CHANNEL&& ch, std::size_t id = 0) { 
         reply r;
-        r.ctx(std::make_shared<detail::reply::context>(ch, id));
+        r.ctx(std::make_shared<detail::reply::context>(std::forward(ch), id));
         return r;
     }
 
     /**
-     * @brief main constructor 
-     *
-     * rvalue make
-     *
-     * @param ch an `st::channel` to send `st::message` back to 
-     * @param id unsigned int id of `st::message` sent back over `ch`
-     */
-    static inline reply make(st::channel&& ch, std::size_t id = 0) { 
-        reply r;
-        r.ctx(std::make_shared<detail::reply::context>(std::move(ch), id));
-        return r;
-    }
-
-    /**
-     * @brief send an `st::message` back to some abstracted `st::channel`
+     * @brief send an `st::message` back to the `st::channel`
      * @param t `st::message` payload data 
      * @return `true` if internal `st::channel::send(...)` succeeds, else `false`
      */
