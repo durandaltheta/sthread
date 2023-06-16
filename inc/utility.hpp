@@ -77,6 +77,20 @@ struct hold_and_restore {
     T m_old;
 };
 
+/*
+ * Allows for implicit conversions to `std::function<void()>`, if possible.
+ */
+inline std::function<void()> to_thunk(std::function<void()> f) {
+    return std::move(f);
+}
+
+template <typename F, typename A, typename... As>
+std::function<void()> to_thunk(F&& f, A&& a, As&&... as) {
+    return [=]() mutable {
+        f(std::forward<A>(a), std::forward<As>(as)...);
+    };
+}
+
 std::unique_lock<std::mutex> log_lock();
 
 inline void log() {

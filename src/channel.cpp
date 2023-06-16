@@ -87,7 +87,9 @@ st::channel::state st::channel::context::recv(st::message& msg, bool block) {
 // return true if the message can be returned to the user, else false
 bool st::channel::context::process(st::message& msg) {
     if(msg) { 
-        if(msg.data() && msg.data().is<st::channel::task>()) { 
+        if(msg.data() && 
+           msg.data().is<st::channel::task>() &&
+           !msg.data().cast_to<st::channel::task>().forward()) { 
             // evaluate task immediately
             msg.data().cast_to<st::channel::task>()(); 
 

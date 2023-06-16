@@ -9,6 +9,7 @@
 #include <condition_variable>
 #include <deque>
 #include <utility>
+#include <chrono>
 
 #include "utility.hpp"
 #include "context.hpp"
@@ -141,7 +142,7 @@ struct channel : protected st::shared_context<channel,detail::channel::context> 
      *
      * Any message received that was sent via a call to 
      * `st::channel::schedule(...)` will be processed internally (executing the 
-     * sent function and optional arguments) and not returned to the user. 
+     * sent Callable and optional arguments) and not returned to the user. 
      *
      * @param msg interprocess message object reference to contain the received message 
      * @return `true` on success, `false` if channel is closed
@@ -175,10 +176,10 @@ struct channel : protected st::shared_context<channel,detail::channel::context> 
      *
      * This method is non-blocking.
      *
-     * This method will always return early if the channel is closed.
+     * This method will immediately return if the channel is closed.
      *
      * @param as arguments passed to `st::message::make()`
-     * @return `true` on success, `false` if sender_context is closed
+     * @return `true` on success, `false` if the `st::channel` is closed
      * */
     template <typename... As>
     bool send(As&&... as) {
@@ -261,78 +262,150 @@ struct channel : protected st::shared_context<channel,detail::channel::context> 
     } 
 
     //--------------------------------------------------------------------------
-    // High Level Features
+    // Asynchronous Execution
 
     /**
-     * @brief wrap user function and arguments then asynchronous execute them on a dedicated system thread and send the result of the operation to this `st::channel`
+     * @brief generic function wrapper for executing arbitrary code
      *
-     * Internally calls `std::async` to asynchronously execute user function.
+     * Used to convert and wrap any code to a generically executable type. Is 
+     * a new definition instead of a typedef so that it can be distinguished by 
+     * receiving code. Messages processed by `st::message::handle(...)` will 
+     * automatically execute any non-forwarded `st::message::task`s passed to it 
+     * that are stored in the `st::message::data()` payload instead of passing 
+     * the message to be processed by the user handler.
+     *
+     * If the user wishes to wrap their Callable code in this structure, but 
+     * does not wish said code to be automatically executed by a receiver, then 
+     * specify `forward` to `true`. Otherswise the wrapped code will be 
+     * automatically executed when that `st::channel::task` is the data payload 
+     * of an `st::message` received via `st::channel::recv()`.
+     *
+     * Because this object inherits `std::function<void()>` (and is a Callable),
+     * it can be directly passed to `st::channel::schedule()` for execution 
+     * (this will *remove* it's "forwardness"). This is useful once a forwarded 
+     * `st::channel::task` is ready for execution on some worker.
+     *
+     * This object can be executed at any time by calling it's `()` operator:
+     * 
+     * task t([]{ std::cout << "hello world!" << std::endl; });
+     * t(); // execute wrapped code and print "hello world!"
+     */
+    struct task : public std::function<void()> { 
+        template <typename... As>
+        task(bool forward, As&&... as) : 
+            std::function<void()>(std::forward<As>(as)...), 
+            m_fwd(forward) 
+        { }
+
+        inline const bool forward() const {
+            return m_fwd;
+        }
+
+    private:
+        const bool m_fwd;
+    };
+
+    /**
+     * @brief wrap a Callable as a generic task for execution and forward to a receiver in an `st::channel::task`
+     *
+     * Callables sent via this method will *not* be automatically executed. They 
+     * will instead be handed to the caller of `st::channel::recv()` for 
+     * processing.
+     *
+     * @param id value to set as the `st::message::id()`
+     * @param f Callable to forward to target sender
+     * @param as optional remaining arguments for argument function
+     * @return `true` on success, `false` on failure due to the channel being closed
+     */
+    template <typename F, typename... As>
+    bool forward(std::size_t id, F&& f, As&&... as) {
+        return m_ch.send(id, st::channel::task(true, to_thunk(std::forward<F>(f), std::forward<As>(as)...)));
+    }
+    
+    /**
+     * @brief wrap a Callable as a generic task and schedule it for execution on a receiver
+     * 
+     * The argument `f` will be executed when the message containing it is 
+     * processed by a call to `st::channel::recv()`. The message will be handled 
+     * internally upon receipt and not returned to the user for processing (will 
+     * not cause `st::channel::recv()` to return).
+     *
+     * NOTE: No id value is required for this feature to function! A user only 
+     * needs pass in a Callable. Disambiguation of the sent message is 
+     * automatically done via type comparison by the receiver. 
+     *
+     * Allows for implicit conversions to `std::function<void()>`, if possible.
+     *
+     * @param f std::function to execute on target sender
+     * @param as optional remaining arguments for argument function
+     * @return `true` on success, `false` on failure due to the channel being closed
+     */
+    template <typename F, typename... As>
+    bool schedule(F&& f, As&&... as) {
+        return m_ch.send(0, st::channel::task(false, to_thunk(std::forward<F>(f), std::forward<As>(as)...)));
+    }
+
+    /**
+     * @brief wrap user function and arguments then asynchronous execute them on a dedicated system thread and send the result of the operation back to this `st::channel`
+     *
+     * Internally calls `std::async` to asynchronously execute user function 
+     * (Callable). This behavior is useful for evaluating long running functions 
+     * in a way that will not block the current thread.
+     *
+     * NOTE: an `st::channel::task` is a valid Callable for this method!
      *
      * The resulting `st::message`'s `st::message::id()` will equal the value 
-     * `resp_id`.
+     * of argument `resp_id`.
      *
      * If the user function returns no value, then `st::message::data()` will be 
      * unallocated. Otherwise, `st::message::data()` will contain the value 
      * returned by Callable `f`.
      *
-     * @param resp_id id of message that will be sent back to the this `st::channel` when `std::async` completes 
-     * @param f function to execute on another system thread
+     * @param resp_id of the message that will be sent back to the this `st::channel` when `std::async` completes 
+     * @param f a Callable to execute on another system thread
      * @param as optional arguments for `f`
+     * @return `true` if the asynchronous call was scheduled, `false` if this `st::channel` is closed
      */
     template <typename F, typename... As>
-    bool async(std::size_t resp_id, F&& f, As&&... as) {
+    inline bool async(std::size_t resp_id, F&& f, As&&... as) {
         using isv = typename std::is_void<detail::function_return_type<F,As...>>;
-        return async_impl(std::integral_constant<bool,isv::value>(),
-                   resp_id,
-                   std::forward<F>(f),
-                   std::forward<As>(as)...);
+        return async_impl(
+                std::integral_constant<bool,isv::value>(),
+                resp_id,
+                to_thunk(std::forward<F>(f), std::forward<As>(as)...));
     }
     
     /**
-     * @brief schedule a generic task for execution 
-     * 
-     * The argument `f` will be executed when the message containing it is 
-     * processed by a call to `st::channel::recv()`. The message will be handled 
-     * internally upon receipt and not returned to the user for processing.
+     * @brief start a timer 
      *
-     * Allows for implicit conversions to `std::function<void()>`, if possible.
+     * This method is an abstraction of `st::channel::async()`. Once the timer 
+     * elapses (and optional timeout_handler is executed) a message containing 
+     * `resp_id` as its id will be sent back to this channel.
      *
-     * @param f std::function to execute on target sender
-     * @return `true` on success, `false` on failure due to the channel being closed
+     * @param resp_id of the message to be sent back to this channel after timeout
+     * @param timeout a duration to elapse before timer times out
+     * @param timeout_handler an optional Callable to execute after timeout but before sending the response back to the `st::channel`
+     * @param as optional arguments for timeout_handler
+     * @return `true` if the timer was started, `false` if this `st::channel` is closed
      */
-    inline bool schedule(std::function<void()> f) {
-        return m_ch.send(0, st::channel::task(std::move(f)));
-    }
-
-    /**
-     * @brief wrap user Callable and arguments then schedule as a generic task for execution
-     *
-     * The argument `f` will be executed with optional arguments `as` when the 
-     * message containing it is processed by a call to `st::channel::recv()`. 
-     * The message will be handled internally upon receipt and not returned to 
-     * the user for processing.
-     *
-     * @param f function to execute on target sender 
-     * @param a first argument for argument function
-     * @param as optional remaining arguments for argument function
-     * @return `true` on success, `false` on failure due to the channel being closed
-     */
-    template <typename F, typename A, typename... As>
-    bool schedule(F&& f, A&& a, As&&... as) {
-        return schedule(std::function<void()>([=]() mutable { 
-            f(std::forward<A>(a), std::forward<As>(as)...); 
-        }));
+    template< class Rep, class Period, typename F, typename... As>
+    bool timer(std::size_t resp_id, const std::chrono::duration<Rep, Period>& timeout, F&& timeout_handler = []{}, As&&... as) {
+        return async(
+                resp_id, 
+                [=]() mutable { 
+                    std::this_thread::sleep_for(timeout); 
+                    timeout_handler(std::forward<As>(as)...);
+                });
     }
 
 private:
-    template <typename F, typename... As>
-    bool async_impl(std::true_type, std::size_t resp_id, F&& f, As&&... as) {
+    inline bool async_impl(std::true_type, std::size_t resp_id, std::function<void()> f) {
         if(ctx()) {
             auto self = ctx()
 
             // launch a thread and schedule the call
             std::async([=]() mutable { // capture a copy of the shared send context
-                 f(std::forward<As>(as)...);
+                 f();
                  self.send(resp_id);
             }); 
 
@@ -342,14 +415,13 @@ private:
         }
     }
     
-    template <typename F, typename... As>
-    bool async_impl(std::false_type, std::size_t resp_id, F&& f, As&&... as) {
+    inline bool async_impl(std::false_type, std::size_t resp_id, std::function<void()> f) {
         if(ctx()) {
             auto self = ctx()
 
             // launch a thread and schedule the call
             std::async([=]() mutable { // capture a copy of the shared send context
-                 auto result = f(std::forward<As>(as)...);
+                 auto result = f();
                  self.send(resp_id, result);
             }); 
 
@@ -358,21 +430,6 @@ private:
             return false;
         }
     }
-
-    /*
-     * generic function wrapper for executing arbitrary code
-     *
-     * Used to convert and wrap any code to a generically executable type. Is 
-     * a new definition instead of a typedef so that it can be distinguished by 
-     * receiving code. Messages processed by `st::message::handle(...)` will 
-     * automatically execute any `st::message::task`s passed to it that are 
-     * stored in the `st::message::data()` payload instead of passing the
-     * message to be processed by the user handler.
-     */
-    struct task : public std::function<void()> { 
-        template <typename... As>
-        task(As&&... as) : std::function<void()>(std::forward<As>(as)...) { }
-    };
 
     // private class used to implement `recv()` behavior
     struct blocker {
