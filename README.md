@@ -576,8 +576,8 @@ And an internal `my_api.h` APID header for interthread communication:
 
 enum my_api {
     // internal operations start on reserved value
-    internal_operation_1 = MY_PUBLIC_API_RESERVED,  
-    internal_operation_2,
+    interprocess_receive_error = MY_PUBLIC_API_RESERVED,  
+    interprocess_close_error,
     // etc...
     internal_operation_n
 }
@@ -601,8 +601,8 @@ void interprocess_receive_loop(st::channel ch, HANDLE hdl) {
         switch(msg.id) {
             // forward messages via internal st::channel
             case SHUTDOWN:
+                // will forward shutdown after cleanup
                 cont = false;
-                ch.send(msg.id, msg);
                 break;
             default:
                 ch.send(msg.id, msg);
@@ -611,12 +611,14 @@ void interprocess_receive_loop(st::channel ch, HANDLE hdl) {
     }
 
     if(0 != error) {
-        std::cout << "interprocess queue receive failed with error[" << error << "]" << std::endl;
+        ch.send(my_api::interprocess_receive_error, error);
     }
 
     if(0 != error = interprocess_close_queue(hdl)) {
-        std::cout << "failed to close interprocess queue with error[" << error << "]" << std::endl;
+        ch.send(my_api::interprocess_close_error, error);
     }
+
+    ch.send(SHUTDOWN);
 }
 
 int main() {
@@ -641,14 +643,23 @@ int main() {
                     break;
                 // handle other cases
                 case SHUTDOWN:
-                    ret = 0;
                     ch.close();
                     break;
-                case my_api::internal_operation_1:
-                    // ...
+                case my_api::interprocess_receive_error:
+                    if(msg.data().copy_to(error)) {
+                        std::cerr << "interprocess queue receive failed with error[" << error << "]" << std::endl;
+                    } else {
+                        std::cerr << "interprocess queue receive failed; message type unknown" << std::endl;
+                    }
+                    ret = 1;
                     break;
-                case my_api::internal_operation_2:
-                    // ...
+                case my_api::interprocess_close_error:
+                    if(msg.data().copy_to(error)) {
+                        std::cerr << "interprocess queue close failed with error[" << error << "]" << std::endl;
+                    } else {
+                        std::cerr << "interprocess queue close failed; message type unknown" << std::endl;
+                    }
+                    ret = 1;
                     break;
                 // ...
                 case my_api::internal_operation_n:
@@ -660,7 +671,7 @@ int main() {
         // shutdown and join any other child threads...
         interprocess_recv_thread.join();
     } else {
-        std::cout << "failed to open interprocess queue[" << INTERPROCESS_QUEUE_NAME << "] with error[" << error << "]" << std::endl;
+        std::cerr << "failed to open interprocess queue[" << INTERPROCESS_QUEUE_NAME << "] with error[" << error << "]" << std::endl;
         ret = 1;
     }
 
