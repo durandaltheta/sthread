@@ -61,10 +61,9 @@ If building on linux, may have to `sudo make install`.
 
 ## Usage 
 ### Simple message passing 
-All that is required to send/recv messages between threads is that each thread has a copy of a constructed `st::channel` object. Messages can be sent with a call to one of the 4 `st::message::send()` overloads:
-- `st::channel::send(
+All that is required to send/recv messages between threads is that each thread has a copy of a constructed `st::channel` object. Messages can be sent with a call to `st::message::send()`.
 
-Messages can be received by calling `st::channel::recv()`, but the simplest solution is to make use of `st::channel` iterators in a range-for loop.
+Messages can be received by calling `bool st::channel::recv(st::message& msg)`, but the simplest solution is to make use of `st::channel` iterators in a range-for loop. `st::channel` iterators can also be returned with calls to `st::channel::begin()` and `st::channel::end()`.
 
 #### Example
 ```
@@ -252,7 +251,7 @@ When the last object holding a copy of some shared context goes out of scope, th
 ### Closing Channels
 Operations on `st::channel`'s shared context can be shutdown early with a call to `close()`, causing operations which use that shared context to fail.
 
-For example, the default behavior for `st::channel::close()` is to cause all current and future all `st::channel::send()` operations to fail early but to allow `st::channel::recv()` to continue succeeding until the internal message queue is empty. Alternatively, the user can call `close(false)`to immediately end all operations on the object. 
+For example, the default behavior for `st::channel::close()` is to cause all current and future all `st::channel::send()` operations to fail early but to allow `st::channel::recv()` to continue succeeding until the internal message queue is empty. Alternatively, the user can specify a "hard" close by calling `st::channel::close(false)` to immediately end all send and recieve operations on the object, though this is rarely the preferred behavior. 
 
 The user can call `bool closed()`on these objects to check if an object has been closed or is still running. 
 
@@ -281,7 +280,9 @@ int main() {
 
     my_channel.send(0, "you say goodbye");
     my_channel.send(0, "and I say hello");
-    my_thread.join(true); // close channel and join thread
+    // close channel and join thread
+    my_channel.close();
+    my_thread.join(); 
     return 0;
 }
 ```
