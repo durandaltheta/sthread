@@ -560,7 +560,7 @@ const char* INTERPROCESS_QUEUE_NAME = "my_interprocess_queue_name"
 
 enum my_public_api {
     OPERATION_1 = 0,
-    OPERATION_2 = 1,
+    OPERATION_2,
     // etc...
     SHUTDOWN,
     MY_PUBLIC_API_RESERVED // do not put values after this 
