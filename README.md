@@ -314,7 +314,7 @@ Instead, the user can create an `st::reply` object to abstract sending a respons
 #include <sthread>
 
 enum opA {
-    request_value = 0; // Send a value back to a requestor
+    request_value = 0; // send a value back to a requestor
 };
 
 enum opB {
