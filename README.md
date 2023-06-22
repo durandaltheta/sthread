@@ -85,7 +85,7 @@ int childThread() {
             case op::say: 
                 {
                     std::string s;
-                    if(msg.copy_to(s)) { 
+                    if(msg.data().copy_to(s)) { 
                         std::cout << "child thread says: " << s << std::endl;
                     }
                 }
