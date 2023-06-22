@@ -175,6 +175,7 @@ Terminal output might be:
 $./a.out
 hello again
 message data was not a string
+$
 ```
 
 ### Payload Data Type Checking
@@ -228,6 +229,7 @@ Terminal output might be:
 ```
 $./a.out
 hello 1 more time
+$
 ```
 
 ### Object Lifecycles
@@ -293,6 +295,7 @@ Terminal output might be:
 $./a.out 
 you say goodbye
 and I say hello
+$
 ```
 
 ### Abstracting Message Replies 
@@ -384,6 +387,7 @@ Terminal output might be:
 ```
 $./a.out 
 received foofaa!
+$
 ```
 
 ### Dealing with Blocking Functions 
@@ -475,6 +479,7 @@ $./a.out
 2
 3
 that's all folks!
+$
 ```
 
 ### Scheduling Functions on User Threads 
