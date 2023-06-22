@@ -488,7 +488,7 @@ $
 
 In simple terms, `st::channel::async()` executes code on another background thread generated for that purpose, while `st::channel::schedule()` executes code on a thread the user manages (the message receiver).
 
-`st::channel::schedule()` can accept any Callable function, functor, or lambda function, alongside optional arguments, in a similar fashion to standard library features `std::async()` and `std::thread()`.
+`st::channel::schedule()` can accept any `Callable` function, functor, or lambda function, alongside optional arguments, in a similar fashion to standard library features `std::async()` and `std::thread()`.
 
 #### Example
 ```
