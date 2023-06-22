@@ -26,7 +26,7 @@ information on interfaces and various other features not detailed in this README
 
 [Dealing with Blocking Functions](#dealing-with-blocking-functions)
 
-[Scheduling Functions on Threads](#scheduling-functions-on-threads)
+[Scheduling Functions on User Threads](#scheduling-functions-on-user-threads)
 
 ## Purpose 
 This library's purpose is to simplify setting up useful c++ threading, and to enable trivial inter-thread message passing of C++ objects. That is, message passing with support for proper C++ construction and destruction instead of blind `memcpy()` calls, allowing C++ objects to be passed around.
@@ -66,7 +66,7 @@ All that is required to send/recv messages between threads is that each thread h
 
 Messages can be received by calling `st::channel::recv()`, but the simplest solution is to make use of `st::channel` iterators in a range-for loop.
 
-#### Example 1
+#### Example
 ```
 #include <iostream>
 #include <string>
@@ -118,7 +118,7 @@ $
 ```
 
 ### A Closer Look at Channel Send Operations
-Arguments passed to `st::channel::send(...)` are internally passed to `st::message st::message::make(...)` function before sending to its destination. 
+Arguments passed to `st::channel::send(...)` are internally passed to `st::message st::message::make(...)` function before sending to its destination. `st::message::make(...)` will generate an allocated `st::message` object which contains message identification and an optional data payload.
 
 The summary of the 4 overloads of `st::message st::message::make(...)` are:
 
@@ -134,18 +134,15 @@ The summary of the 4 overloads of `st::message st::message::make(...)` are:
 ### Message Data Payloads
 `st::data()` can store any data type. The stored data can be copied to an argument of templated type `T` with `st::data::copy_to(T& t)` or rvalue swapped with `st::data::move_to(T& t)`. Said functions will return `true` if their argument `T` matches the type `T` originally stored in the `st::data`, otherwise they will return `false`.
 
-#### Example 2
+#### Example
 ```
 #include <iostream>
 #include <string>
+#include <thread>
 #include <sthread>
 
-struct MyClass {
-    enum op {
-        print
-    };
-
-    void recv(st::message msg) {
+void my_function(st::channel ch) {
+    for(auto msg : ch) {
         switch(msg.id()) {
             case op::print:
             {
@@ -163,11 +160,12 @@ struct MyClass {
 
 int main() {
     st::channel my_channel = st::channel::make();
-    st::thread my_thread = st::thread::make<MyClass>(my_channel);
+    std::thread my_thread(my_function, my_channel);
 
     my_channel.send(MyClass::op::print, std::string("hello again"));
     my_channel.send(MyClass::op::print, 14);
-    my_thread.join(true);
+    my_channel.close();
+    my_thread.join();
     return 0;
 }
 ```
@@ -188,18 +186,19 @@ WARNING: `st::data` can store a payload of any type. However, this behavior can 
 
 A simple workaround to these headaches is to encapsulate c-style strings within a c++ `std::string`.
 
-#### Example 3
+#### Example
 ```
 #include <iostream>
 #include <string>
+#include <thread>
 #include <sthread>
 
-struct MyClass {
-    enum op {
-        print
-    };
+enum op {
+    print
+};
 
-    void recv(st::message msg) {
+void my_function(st::channel ch)
+    for(auto msg : ch) {
         switch(msg.id()) {
             case op::print:
                 if(msg.data().is<std::string>()) {
@@ -214,12 +213,13 @@ struct MyClass {
 
 int main() {
     auto ch = st::channel::make();
-    st::thread my_thread = st::thread::make<MyClass>(ch);
+    std::thread thd(my_function, ch);
 
     ch.send(MyClass::op::print, std::string("hello"));
     ch.send(MyClass::op::print, 1);
     ch.send(MyClass::op::print, std::string(" more time\n"));
-    my_thread.join(true);
+    ch.close();
+    thd.join();
     return 0;
 }
 ```
@@ -236,7 +236,7 @@ The objects in this library are actually shared pointers to some shared context,
 - `st::channel`
 - `st::reply`
 
-The user can check if these objects contain an allocated shared context with their `bool` conversion. This is easiest to do by using the object as the argument to an `if()` statement. Given an `st::thread` named `my_thd`:
+The user can check if these objects contain an allocated shared context with their `bool` conversion. This is easiest to do by using the object as the argument to an `if()` statement. Given an `st::channel` named `my_channel`:
 ```
 if(my_channel) {
     // my_channel is allocated
@@ -252,25 +252,21 @@ When the last object holding a copy of some shared context goes out of scope, th
 ### Closing Channels
 Operations on `st::channel`'s shared context can be shutdown early with a call to `close()`, causing operations which use that shared context to fail.
 
-For example, the default behavior for `st::channel::close()` is to cause all current and future all `st::channel::send()` operations to fail early but to allow `st::channel::recv()` to continue succeeding until the internal message queue is empty. This behavior is similar in `st::thread`.
-
-Alternatively, the user can call `close(false)`to immediately end all operations on the object. As a convenience, the function overload `st::thread::join(bool)` has been provided to close the `st::channel`, ending future `st::channel::send()` calls, and `join()` the underlying `std::thread`.
+For example, the default behavior for `st::channel::close()` is to cause all current and future all `st::channel::send()` operations to fail early but to allow `st::channel::recv()` to continue succeeding until the internal message queue is empty. Alternatively, the user can call `close(false)`to immediately end all operations on the object. 
 
 The user can call `bool closed()`on these objects to check if an object has been closed or is still running. 
 
-#### Example 5
+#### Example
 ```
 #include <iostream>
 #include <string>
+#include <thread>
 #include <sthread>
 
-void looping_recv() {
-    // Acquire a copy of the `st::channel` passed to our `st::thread`'s constructor
-    st::channel ch = st::this_thread::get_channel();
+void looping_recv(st::channel ch) {
     st::message msg;
 
-    // Since this is a normal function, we handle the `st::message` receive loop 
-    // ourselves. When `recv()` starts returning false the `while()` loop will end
+    // it is possible to manually receive values instead of through iterators
     while(ch.recv(msg)) {
         std::string s;
         if(msg.data().copy_to(s)) {
@@ -281,9 +277,7 @@ void looping_recv() {
 
 int main() {
     st::channel my_channel = st::channel::make();
-
-    // notice the use of a standard `st::thread` constructor instead of `st::thread::make<OBJECT>()`
-    st::thread my_thread(my_channel, looping_recv);
+    std::thread my_thread(looping_recv, my_channel);
 
     my_channel.send(0, "you say goodbye");
     my_channel.send(0, "and I say hello");
@@ -302,14 +296,15 @@ and I say hello
 ### Abstracting Message Replies 
 Dealing with enumerations when message passing can be painful when enumerations conflict with each other.
 
-Instead, the user can create an `st::reply` object to abstract sending a response back over an `st::channel` or `st::thread` which abstracts information about the receiver so the sender doesn't have to account for it.
+Instead, the user can create an `st::reply` object to abstract sending a response back over an `st::channel` which abstracts information about the receiver so the sender doesn't have to know about it.
 
 `st::reply::make(...)` will take an `st::channel` and an unsigned integer `st::message` id. When `st::reply::send(T t)` is called, an `st::message` containing the given `st::message` id and an optional payload `t` is sent to the stored `st::channel`.
 
-#### Example 7
+#### Example
 ```
 #include <iostream>
 #include <string>
+#include <thread>
 #include <sthread>
 
 enum opA {
@@ -342,6 +337,7 @@ void childThreadA(st::channel ch) {
 void childThreadB(st::channel ch, st::channel main_ch) {
     for(auto msg : ch) {
         switch(msg.id()) {
+            // this thread doesn't know who they are receiving from 
             case opB::receive_value:
             {
                 std::string s;
@@ -362,8 +358,8 @@ int main() {
     st::channel main_ch = st::channel::make(); // main thread listens to this channel
    
     // launch child threads
-    st::thread thd_a = st::thread::make<ObjA>(ch_a);
-    st::thread thd_b = st::thread::make<ObjB>(ch_b, main_ch);
+    std::thread thd_a(childThreadA, ch_a);
+    std::thread thd_b(childThreadB, ch_b, main_ch);
 
     // create an `st::reply` to send a message to `ch_b` and send to `ch_a`
     st::reply rep_b = st::reply(ch_b, opB::receive_value);
@@ -376,8 +372,8 @@ int main() {
     // close and join child threads 
     ch_a.close();
     ch_b.close();
-    thd_a.join(true);
-    thd_b.join(true);
+    thd_a.join();
+    thd_b.join();
     return 0;
 }
 ```
@@ -389,16 +385,16 @@ received foofaa!
 ```
 
 ### Dealing with Blocking Functions 
-To ensure messages are processed in a timely manner, and to avoid deadlock in general, it is important to avoid calling functions which will block for indeclose periods within an `st::thread`. If the user needs to call such a function, a solution is to make use of the standard library's `std::async()` feature to execute arbitrary code on a dedicated system thread, then `send()` the result back to the `st::thread` when the call completes. 
+To ensure messages are processed in a timely manner, and to avoid deadlock in general, it is important to avoid calling functions which will block for indeterminate periods within an thread. If the user needs to call such a function, a solution is to make use of the standard library's `std::async()` feature to execute arbitrary code on a separate, dedicated system thread, then `send()` the result back to through the caller's `st::channel` when the call completes. 
 
-As a convenience, `st::channel::async()` is provided for exactly this purpose, sending an `st::message` back to the object with the argument response id stored in `st::message::id()` and the return value of some executed function stored in the `st::message::data()` payload:
+As a convenience, `st::channel::async()` is provided for exactly this purpose, sending an `st::message` back through the channel to a receiver when the scheduled function (actually any Callable) completes. The resulting `st::message` will have the same id passed to `st::channel::async()` and the payload will be the return value of the executed function:
 - `st::channel::async(std::size_t resp_id, user_function, optional_function_args ...)` 
 
 If the user function returns `void`, the `st::message::data()` will be unallocated (`st::data::operator bool()` will return `false`).
 
 The user can implement a simple timer mechanism using this functionality by calling `std::this_thread::sleep_for(...)` inside of `user_function`.
 
-#### Example 8
+#### Example
 ```
 #include <iostream>
 #include <string>
@@ -406,22 +402,22 @@ The user can implement a simple timer mechanism using this functionality by call
 #include <chrono>
 #include <sthread>
 
+enum op {
+    print,
+    slow_function,
+    slow_result
+};
+
 std::string slow_function() {
     // long operation
     std::this_thread::sleep_for(std::chrono::seconds(2));
     return std::string("that's all folks!");
 };
 
-struct MyClass {
-    MyClass(st::channel main_ch) { }
+void child_thread(st::channel ch, st::channel main_ch) {
+    int cnt = 0;
 
-    enum op {
-        print,
-        slow_function,
-        slow_result
-    };
-
-    void recv(st::message msg) {
+    for(auto msg: ch) { 
         switch(msg.id()) {
             case op::print:
             {
@@ -433,30 +429,39 @@ struct MyClass {
             }
             case op::slow_function:
                 // execute our code on its own thread
-                st::thread::self().async(op::slow_result, slow_function);
+                ch.async(op::slow_result, slow_function);
                 break;
             case op::slow_result:
             {
                 std::string s;
                 if(msg.data().copy_to(s) {
-                    st::thread::self().send(op::print, s);
+                    ch.send(op::print, s);
+                    // let main thread know we processed the slow result
+                    main_ch.send(0); 
                 }
                 break;
             }
         }
     }
-
-    int cnt = 0;
 }
 
 int main() {
-    st::channel thread_ch = st::channel::make();
-    st::thread my_thread = st::thread::make<MyClass>(thread_ch);
-    thread_ch.send(MyClass::op::slow_function);
-    thread_ch.send(MyClass::op::print, std::string("1"));
-    thread_ch.send(MyClass::op::print, std::string("2"));
-    thread_ch.send(MyClass::op::print, std::string("3"));
-    my_thread.join(true); // `true` value allows thread to process all sent messages before closing 
+    st::channel ch = st::channel::make();
+    st::channel main_ch = st::channel::make();
+    std::thread thd(child_thread, ch, main_ch);
+    ch.send(MyClass::op::slow_function);
+    ch.send(MyClass::op::print, std::string("1"));
+    ch.send(MyClass::op::print, std::string("2"));
+    ch.send(MyClass::op::print, std::string("3"));
+
+    // wait for child thread to inidicate it received the slow result
+    st::message msg;
+    main_ch.recv(msg);
+
+    // default `st::channel::close()` behavior allows all previously sent messages 
+    // to be received before calls to `st::channel::recv()` start failing
+    ch.close();
+    thd.join(); 
     return 0; 
 };
 ```
@@ -470,12 +475,14 @@ $./a.out
 that's all folks!
 ```
 
-### Scheduling Functions on Threads 
-`st::channel`s provide the ability to enqueue functions (actually any Callable) for asynchronous execution with `st::channel::schedule(...)` API. When a message containing a scheduled function is received by a thread it will automatically be executed on that thread before resuming waiting for incoming messages. Any `st::channel` can be used for this purpose.
+### Scheduling Functions on User Threads 
+`st::channel`s provide the ability to enqueue functions (actually any Callable) for asynchronous execution with `st::channel::schedule(...)` API. When a message containing a scheduled function is received by a thread it will automatically be executed on that thread before resuming waiting for incoming messages. 
+
+In simple terms, `st::channel::async()` executes code on another background thread generated for that purpose, while `st::channel::schedule()` executes code on a thread the user manages (the message receiver).
 
 `st::channel::schedule()` can accept any Callable function, functor, or lambda function, alongside optional arguments, in a similar fashion to standard library features `std::async()` and `std::thread()`.
 
-#### Example 9
+#### Example
 ```
 #include <iostream>
 #include <string>
@@ -492,12 +499,14 @@ struct PrinterFunctor {
 };
 
 int main() {
-    // specifying `st::thread::callable` inside the template `<>` is optional
-    st::thread thd = st::thread::make<>(st::channel::make());
-    thd.channel().schedule(print, "what a beautiful day");
-    thd.channel().schedule(PrintFunctor, "looks like rain");
-    thd.channel().schedule([]{ std::cout << "what a beautiful sunset" << std::endl; });
-    thd.join(true);
+    st::channel ch = st::channel::make();
+    // blindly receive messages to process incoming scheduled messages
+    std::thread thd([ch]{ for(auto msg : ch) { } }); 
+    ch.schedule(print, "what a beautiful day");
+    ch.schedule(PrintFunctor, "looks like rain");
+    ch.schedule([]{ std::cout << "what a beautiful sunset" << std::endl; });
+    ch.close();
+    thd.join();
     return 0;
 }
 ```
