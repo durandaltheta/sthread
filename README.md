@@ -593,11 +593,11 @@ enum my_api {
 
 void interprocess_receive_loop(st::channel ch, HANDLE hdl) {
     int error = 0;
-    interprocess_message msg;
-    memset(&msg, 0, sizeof(interprocess_message));
+    interprocess_message ipmsg;
+    memset(&ipmsg, 0, sizeof(interprocess_message));
     bool cont = true;
 
-    while(cont && 0 == error = interprocess_recv_message(hdl, &msg)) { 
+    while(cont && 0 == error = interprocess_recv_message(hdl, &ipmsg)) { 
         switch(msg.id) {
             // forward messages via internal st::channel
             case SHUTDOWN:
@@ -605,7 +605,8 @@ void interprocess_receive_loop(st::channel ch, HANDLE hdl) {
                 cont = false;
                 break;
             default:
-                ch.send(msg.id, msg);
+                // received interprocess_message will be in the `st::message` payload
+                ch.send(msg.id, ipmsg);
                 break;
         }
     }
