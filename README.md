@@ -631,7 +631,7 @@ int main() {
                 case OPERATION_2:
                     // ...
                     break;
-                // handle other cases
+                // handle other public API operations...
                 case SHUTDOWN:
                     // end message processing and cleanup
                     ch.close(); 
