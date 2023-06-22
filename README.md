@@ -22,7 +22,7 @@ information on interfaces and various other features not detailed in this README
 
 [Closing Channels](#closing-channels)
 
-[Abstracting Message Replies](#abstracting-message-senders)
+[Abstracting Message Replies](#abstracting-message-replies)
 
 [Dealing with Blocking Functions](#dealing-with-blocking-functions)
 
