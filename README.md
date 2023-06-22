@@ -525,6 +525,7 @@ $./a.out
 what a beautiful day 
 looks like rain 
 what a beautiful sunset
+$
 ``` 
 
 ### Interprocess Considerations
