@@ -9,8 +9,7 @@ information on interfaces and various other features not detailed in this README
 [Unit Test and Example Code](tst/)
 
 #### Usage:
-
-[Channel Send Operations](#send-operations) 
+[Simple Message Passing](#simple-message-passing) 
 
 [A Closer Look at Channel Send Operations](#a-closer-look-at-channel-send-operations) 
 
