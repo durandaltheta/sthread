@@ -28,6 +28,8 @@ information on interfaces and various other features not detailed in this README
 
 [Scheduling Functions on User Threads](#scheduling-functions-on-user-threads)
 
+[Interprocess Considerations](#interprocess-considerations)
+
 ## Purpose 
 This library's purpose is to simplify setting up useful c++ threading, and to enable trivial inter-thread message passing of C++ objects. That is, message passing with support for proper C++ construction and destruction instead of blind `memcpy()` calls, allowing C++ objects to be passed around.
 
@@ -518,4 +520,146 @@ $./a.out
 what a beautiful day 
 looks like rain 
 what a beautiful sunset
+``` 
+
+### Interprocess Considerations
+While `st::channel`s are useful for communicating between a single process's threads, they cannot be used for communicating between processes. A simple method for unifying interprocess and interthread communication is to use one thread as a translator, receiving interprocess messages and forwarding them to a main thread over an `st::channel`.
+
+#### Example 
+Given this theoretical `interprocess_messaging.h` API header
+```
+#ifndef INTERPROCESS_MESSAGING
+#define INTERPROCESS_MESSAGING
+
+#define INTERPROCESS_MESSAGE_BUFFER_SIZE 2048
+
+struct interprocess_message {
+    ssize_t id; // message id
+    char buffer[INTERPROCESS_MESSAGE_BUFFER_SIZE]; // buffer filled by receive function  
+    ssize_t size; // payload data size
+};
+
+enum INTERPROCESS_ERRORS {
+    // ...
+};
+
+typedef int HANDLE;
+
+extern int interprocess_open_queue(const char* queue_name, HANDLE* hdl);
+extern int interprocess_send_message(HANDLE queue, message* msg);
+extern int interprocess_recv_message(HANDLE queue, message* msg);
+extern int interprocess_close_queue(HANDLE);
+#endif
+```
+
+With the user's `my_public_api.h` API header for interprocess communication:
+```
+#ifndef MY_PUBLIC_API
+#define MY_PUBLIC_API
+const char* INTERPROCESS_QUEUE_NAME = "my_interprocess_queue_name"
+
+enum my_public_api {
+    OPERATION_1 = 0,
+    OPERATION_2 = 1,
+    // etc...
+    SHUTDOWN,
+    MY_PUBLIC_API_RESERVED // do not put values after this 
+};
+#endif
+```
+
+And an internal `my_api.h` APID header for interthread communication:
+```
+#ifndef MY_API
+#define MY_API
+#include  "my_public_api.h"
+
+enum my_api {
+    // internal operations start on reserved value
+    internal_operation_1 = MY_PUBLIC_API_RESERVED,  
+    internal_operation_2,
+    // etc...
+    internal_operation_n
+}
+```
+
+```
+#include <iostream>
+#include <string>
+#include <thread>
+#include <sthread>
+#include "interprocess_messaging.h"
+#include "my_api.h"
+
+int interprocess_receive_loop(st::channel ch, HANDLE hdl) {
+    int error = 0;
+    interprocess_message msg;
+    memset(&msg, 0, sizeof(interprocess_message));
+    bool cont = true;
+
+    while(cont && 0 == error = interprocess_recv_message(hdl, &msg)) { 
+        switch(msg.id) {
+            case SHUTDOWN:
+                cont = false;
+                ch.send(msg.id, msg);
+                break;
+            default:
+                ch.send(msg.id, msg);
+                break;
+        }
+    }
+
+    if(0 != error) {
+        std::cout << "interprocess queue receive failed with error[" << error << "]" << std::endl;
+    }
+
+    if(0 != error = interprocess_close_queue(hdl)) {
+        std::cout << "failed to close interprocess queue with error[" << error << "]" << std::endl;
+    }
+}
+
+int main() {
+    int ret = 0;
+    st::channel ch = st::channel::make();
+    
+    HANDLE hdl = interprocess_open_queue(INTERPROCESS_QUEUE_NAME);
+
+    if(hdl) {
+        std::thread interprocess_recv_thread(interprocess_receive_loop, ch, hdl);
+
+        // launch any other child threads...
+
+        // handle incoming messages
+        for(auto msg : ch) {
+            switch(msg.id()) {
+                case OPERATION_1:
+                    // ...
+                    break;
+                case OPERATION_2:
+                    // ...
+                    break;
+                // handle other cases
+                case SHUTDOWN:
+                    ret = 0;
+                    ch.close();
+                    break;
+                case my_api::internal_operation_1:
+                    // ...
+                    break;
+                case my_api::internal_operation_2:
+                    // ...
+                    break;
+                // ...
+                case my_api::internal_operation_n:
+                    // ...
+                    break;
+            }
+        }
+    } else {
+        std::cout << "failed to open interprocess queue[" << INTERPROCESS_QUEUE_NAME << "]" << std::endl;
+        ret = 1;
+    }
+
+    return ret;
+}
 ```
