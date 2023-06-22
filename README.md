@@ -599,6 +599,7 @@ int interprocess_receive_loop(st::channel ch, HANDLE hdl) {
 
     while(cont && 0 == error = interprocess_recv_message(hdl, &msg)) { 
         switch(msg.id) {
+            // forward messages via internal st::channel
             case SHUTDOWN:
                 cont = false;
                 ch.send(msg.id, msg);
@@ -620,11 +621,11 @@ int interprocess_receive_loop(st::channel ch, HANDLE hdl) {
 
 int main() {
     int ret = 0;
+    int error = 0;
+    HANDLE hdl;
     st::channel ch = st::channel::make();
-    
-    HANDLE hdl = interprocess_open_queue(INTERPROCESS_QUEUE_NAME);
 
-    if(hdl) {
+    if(0 == error = interprocess_open_queue(INTERPROCESS_QUEUE_NAME, &hdl)) {
         std::thread interprocess_recv_thread(interprocess_receive_loop, ch, hdl);
 
         // launch any other child threads...
@@ -656,7 +657,7 @@ int main() {
             }
         }
     } else {
-        std::cout << "failed to open interprocess queue[" << INTERPROCESS_QUEUE_NAME << "]" << std::endl;
+        std::cout << "failed to open interprocess queue[" << INTERPROCESS_QUEUE_NAME << "] with error[" << error << "]" << std::endl;
         ret = 1;
     }
 
