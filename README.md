@@ -591,7 +591,7 @@ enum my_api {
 #include "interprocess_messaging.h"
 #include "my_api.h"
 
-int interprocess_receive_loop(st::channel ch, HANDLE hdl) {
+void interprocess_receive_loop(st::channel ch, HANDLE hdl) {
     int error = 0;
     interprocess_message msg;
     memset(&msg, 0, sizeof(interprocess_message));
@@ -656,6 +656,9 @@ int main() {
                     break;
             }
         }
+
+        // shutdown and join any other child threads...
+        interprocess_recv_thread.join();
     } else {
         std::cout << "failed to open interprocess queue[" << INTERPROCESS_QUEUE_NAME << "] with error[" << error << "]" << std::endl;
         ret = 1;
