@@ -585,7 +585,7 @@ enum my_api {
     internal_operation_2,
     // etc...
     internal_operation_n
-}
+};
 #endif
 ```
 
