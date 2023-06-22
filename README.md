@@ -568,7 +568,7 @@ enum my_public_api {
 #endif
 ```
 
-And an internal `my_api.h` APID header for interthread communication:
+And an internal `my_api.h` API header for interthread communication:
 ```
 #ifndef MY_API
 #define MY_API
