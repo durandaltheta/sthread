@@ -19,7 +19,7 @@ void st::channel::context::handle_queued_messages(std::unique_lock<std::mutex>& 
     st::message msg;
 
     while(m_msg_q.size() && m_blockers.size()) {
-        std::shared_ptr<st::channel::blocker> s = m_blockers.front();
+        std::shared_ptr<st::channel::detail::blocker> s = m_blockers.front();
         m_blockers.pop_front();
         msg = m_msg_q.front();
         m_msg_q.pop_front();
@@ -67,10 +67,10 @@ st::channel::state st::channel::context::recv(st::message& msg, bool block) {
         } else if(block) {
             // block until message is available or channel termination
             while(!msg && !m_closed) { 
-                st::channel::blocker::data d(&msg);
+                st::channel::detail::blocker::data d(&msg);
                 m_blockers.push_back(
-                        std::shared_ptr<st::channel::blocker>(
-                            new st::channel::blocker(&d)));
+                        std::shared_ptr<st::channel::detail::blocker>(
+                            new st::channel::detail::blocker(&d)));
                 d.wait(lk);
             }
 
@@ -86,17 +86,18 @@ st::channel::state st::channel::context::recv(st::message& msg, bool block) {
 
 // return true if the message can be returned to the user, else false
 bool st::channel::context::process(st::message& msg) {
+    // check if message is allocated
     if(msg) { 
-        if(msg.data() && 
-           msg.data().is<st::channel::task>() &&
-           !msg.data().cast_to<st::channel::task>().forward()) { 
-            // evaluate task immediately
-            msg.data().cast_to<st::channel::task>()(); 
+        st::data& data = msg.data();
 
+        // check if payload is a scheduled task
+        if(data && data.is<st::channel::task>()) {
+            // evaluate task immediately
+            data.cast_to<st::channel::task>()();
             // we already handled the message, do not return to user
             return false;
         } else {
-            // message is valid and ready to be returned to the user
+            // message is otherwise valid and ready to be returned to the user
             return true;
         }
     } else {

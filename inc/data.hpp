@@ -15,16 +15,23 @@ namespace st { // simple thread
  * @brief type erased data container
  *
  * The purpose of this object is similar to c++17 `std::any` but is backwards 
- * compatible to c++11.
+ * compatible to c++11. It is intended to be constructed inside other objects in 
+ * this library (`st::message`) instead of directly by the user.
  *
  * `st::data` can represent types that are at least lvalue constructable.
  */
 struct data {
     /// default constructor
-    data() : m_type_code(0), m_data_ptr(data_pointer_t(nullptr, data::no_delete)){ }
+    data() : 
+        m_type_info(nullptr), 
+        m_data_ptr(data_pointer_t(nullptr, data::no_delete))
+    { }
 
     /// rvalue constructor
-    data(data&& rhs) : m_type_code(rhs.m_type_code), m_data_ptr(std::move(rhs.m_data_ptr)) { }
+    data(data&& rhs) : 
+        m_type_info(rhs.m_type_info), 
+        m_data_ptr(std::move(rhs.m_data_ptr)) 
+    { }
 
     virtual ~data() {}
 
@@ -41,7 +48,7 @@ struct data {
  
     /// rvalue copy
     inline data& operator=(data&& rhs) {
-        m_type_code = rhs.m_type_code;
+        m_type_info = rhs.m_type_info;
         m_data_ptr = std::move(rhs.m_data_ptr);
         return *this;
     }
@@ -58,10 +65,10 @@ struct data {
     }
 
     /**
-     * @return stored payload type code
+     * @return payload type info 
      */
-    inline std::size_t type_code() const {
-        return m_type_code;
+    inline const std::type_info& type_info() const {
+        return *m_type_info;
     }
 
     /**
@@ -70,7 +77,7 @@ struct data {
      */
     template <typename T>
     bool is() const {
-        return m_data_ptr && m_type_code == st::type_code<T>();
+        return m_data_ptr && *m_type_info == st::type_info<T>();
     }
 
     /**
@@ -134,7 +141,7 @@ private:
 
     template <typename T, typename... As>
     data(detail::hint<T> h, As&&... as) :
-        m_type_code(st::type_code<T>()),
+        m_type_info(&typeid(T)),
         m_data_ptr(allocate<T>(std::forward<As>(as)...),data::deleter<T>)
     { }
 
@@ -150,7 +157,7 @@ private:
 
     static inline void no_delete(void* p) { }
 
-    std::size_t m_type_code; // type code
+    const std::type_info* m_type_info; // type code
     data_pointer_t m_data_ptr; // stored data 
 };
 

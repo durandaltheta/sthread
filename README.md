@@ -3,7 +3,7 @@
 
 The overall design of code in this library relies heavily on virtual
 interfaces to implement inherited behavior. Visit the documentation for 
-information on interfaces and various other features not detailed in this README.
+information and features not detailed in this README.
 
 [Documentation](https://durandaltheta.github.io/sthread/)
 
@@ -59,13 +59,11 @@ If building on linux, may have to `sudo make install`.
 - `cmake .`
 - `make sthread_tst`
 
-`sthread_tst` binary will be placed in tst/ 
+`sthread_tst` binary will be placed in tst/  
 
 ## Usage 
 ### Simple message passing 
-All that is required to send/recv messages between threads is that each thread has a copy of a constructed `st::channel` object. Messages can be sent with a call to `bool st::message::send(...)`.
-
-Messages can be received by calling `bool st::channel::recv(st::message& msg)`, but the simplest solution is to make use of `st::channel` iterators in a range-for loop. `st::channel` iterators can also be returned with calls to `st::channel::begin()` and `st::channel::end()`.
+All that is required to send/receive messages between threads is that each thread has a copy of a constructed `st::channel` object. Messages can be sent with a call to `bool st::message::send(...)` and messages can be received by calling `bool st::channel::recv(st::message& msg)`. However, the simplest solution is to make use of `st::channel` iterators in a range-for loop. `st::channel` iterators can also be returned with calls to `st::channel::begin()` and `st::channel::end()`.
 
 #### Example
 ```
@@ -130,7 +128,9 @@ The summary of the 4 overloads of `st::message st::message::make(...)` are:
 
 `st::message`s have 2 important methods:
 - `std::size_t st::message::id()`: Return the unsigned integer id value stored in the message
-- `st::data& st::message::data()`: Return a reference to the payload `st::data` stored in the message
+- `st::data& st::message::data()`: Return a reference to the payload `st::data` stored in the message 
+
+It should be noted that the `auto` keyword can be used for objects contructed by `make()` calls.
 
 ### Message Data Payloads
 `st::data()` can store any data type. The stored data can be copied to an argument of templated type `T` with `st::data::copy_to(T& t)` or rvalue swapped with `st::data::move_to(T& t)`. Said functions will return `true` if their argument `T` matches the type `T` originally stored in the `st::data`, otherwise they will return `false`.
@@ -160,7 +160,7 @@ void my_function(st::channel ch) {
 };
 
 int main() {
-    st::channel my_channel = st::channel::make();
+    auto my_channel = st::channel::make();
     std::thread my_thread(my_function, my_channel);
 
     my_channel.send(MyClass::op::print, std::string("hello again"));
@@ -248,7 +248,7 @@ if(my_channel) {
 }
 ```
 
-Attempting to use API of these objects when they are *NOT* allocated (other than static allocation functions or the `bool` conversion) will typically result in a failure return value. This means that users generally don't need to handle exceptions, but they do need to pay attention to return values.
+Attempting to use API of these objects when they are *NOT* allocated (other than static allocation functions or the `bool` conversion) will typically result in a failure return value of `false`. Alternatively, a successful call will return `true`. This means that users generally don't need to handle exceptions, but they do need to pay attention to return values of methods.
 
 When the last object holding a copy of some shared context goes out of scope, that object will be neatly shutdown and be destroyed. As such, the user is responsible for keeping copies of the above objects when they are created with an allocator function (`make()`), otherwise they may unexpectedly shutdown.
 
@@ -279,7 +279,7 @@ void looping_recv(st::channel ch) {
 }
 
 int main() {
-    st::channel my_channel = st::channel::make();
+    auto my_channel = st::channel::make();
     std::thread my_thread(looping_recv, my_channel);
 
     my_channel.send(0, "you say goodbye");
@@ -300,9 +300,9 @@ $
 ```
 
 ### Abstracting Message Replies 
-Dealing with enumerations when message passing can be painful when enumerations conflict with each other.
+Dealing with enumerations when message passing can be complicated when API grows large and painful when enumerations conflict with each other. This typically requires abstraction between multiple APIs such that multiple points in the program do not know anything about the other.
 
-Instead, the user can create an `st::reply` object to abstract sending a response back over an `st::channel` which abstracts information about the receiver so the sender doesn't have to know about it.
+As a convenience, the user can create an `st::reply` object to abstract sending a response back over an `st::channel` which hides information about the receiver, simplifying request/response API.
 
 `st::reply::make(...)` will take an `st::channel` and an unsigned integer `st::message` id. When `st::reply::send(T t)` is called, an `st::message` containing the given `st::message` id and an optional payload `t` is sent to the stored `st::channel`.
 
@@ -318,20 +318,20 @@ enum opA {
 };
 
 enum opB {
-    receive_value = 0; // same enumeration value as opA::request_value, normally a potential bug!
+    // same enumeration value as opA::request_value, normally a potential bug
+    receive_value = 0; 
 };
 
 void childThreadA(st::channel ch) {
-    std::string str = "foofaa";
+    std::string value = "foofaa";
 
     for(auto msg : ch)
         switch(msg.id()) {
             case opA::request_value:
             {
-                st::reply r;
-                if(msg.data().copy_to(r)) {
-                    // this thread doesn't know anything about who they are replying to
-                    r.send(str);
+                // this thread doesn't know anything about who they are replying to
+                if(msg.data().is<st::reply>()) {
+                    msg.data().cast_to<st::reply>().send(value);
                 }
                 break;
             }
@@ -340,7 +340,7 @@ void childThreadA(st::channel ch) {
 
 };
 
-void childThreadB(st::channel ch, st::channel main_ch) {
+void childThreadB(st::channel ch, st::channel value_received_conf_ch) {
     for(auto msg : ch) {
         switch(msg.id()) {
             // this thread doesn't know who they are receiving from 
@@ -349,7 +349,7 @@ void childThreadB(st::channel ch, st::channel main_ch) {
                 std::string s;
                 if(msg.data().copy_to(s)) {
                     std::cout << "received " << s << "!" std::endl;
-                    main_ch.send();
+                    value_received_conf_ch.send();
                 }
                 break;
             }
@@ -358,22 +358,23 @@ void childThreadB(st::channel ch, st::channel main_ch) {
 };
 
 int main() {
-    // channels
-    st::channel ch_a = st::channel::make(); // ObjA listens to this channel
-    st::channel ch_b = st::channel::make(); // ObjB listens to this channel
-    st::channel main_ch = st::channel::make(); // main thread listens to this channel
-   
     // launch child threads
+    auto ch_a = st::channel::make(); 
     std::thread thd_a(childThreadA, ch_a);
-    std::thread thd_b(childThreadB, ch_b, main_ch);
 
-    // create an `st::reply` to send a message to `ch_b` and send to `ch_a`
-    st::reply rep_b = st::reply(ch_b, opB::receive_value);
+    auto ch_b = st::channel::make(); 
+    auto value_received_conf_ch = st::channel::make(); 
+    std::thread thd_b(childThreadB, ch_b, value_received_conf_ch);
+
+    // create an `st::reply` to forward a value to `ch_b`
+    auto rep_b = st::reply::make(ch_b, opB::receive_value);
+
+    // send the request for a value over `ch_a`
     ch_a.send(opA::request_value, rep_b);
 
     // wait for childThreadB to process the response from childThreadA 
     st::message msg;
-    main_ch.recv(msg); 
+    value_received_conf_ch.recv(msg); 
 
     // close and join child threads 
     ch_a.close();
@@ -392,14 +393,15 @@ $
 ```
 
 ### Dealing with Blocking Functions 
-To ensure messages are processed in a timely manner, and to avoid deadlock in general, it is important to avoid calling functions which will block for indeterminate periods within a thread. If the user needs to call such a function a solution is to make use of the standard library's `std::async()` feature to execute arbitrary code on a separate, dedicated system thread, then `send()` the result back to through the caller's `st::channel` when the call completes. 
+To ensure messages are processed in a timely manner, and to avoid deadlock in general, it is important to avoid calling functions which will block for indeterminate periods within a message receiving thread. If the user needs to call such a function a solution is to make use of the standard library's `std::async()` feature to execute arbitrary code on a separate, dedicated system thread, then `send()` the result back to through the caller's `st::channel` when the call completes. 
 
-As a convenience, `st::channel::async()` is provided for exactly this purpose, sending an `st::message` back through the channel to a receiver when the scheduled function (actually any `Callable`) completes. The resulting `st::message` will have the same id passed to `st::channel::async()` and the payload will be the return value of the executed function:
-- `st::channel::async(std::size_t resp_id, user_function, optional_function_args ...)` 
+`st::channel::async()` is provided for exactly this purpose, sending an `st::message` back through the channel to a receiver when the scheduled function (actually any `Callable`) completes. The resulting `st::message` will have the same id passed to `st::channel::async()` and the payload will be the return value of the executed function:
 
-If the user function returns `void`, the `st::message::data()` will be unallocated (`st::data::operator bool()` will return `false`).
+`st::channel::async(std::size_t resp_id, user_function, optional_function_args...)` 
 
-The user can implement a simple timer mechanism using this functionality by calling `std::this_thread::sleep_for(...)` inside of `user_function`.
+Alternatively, if the user function returns `void`, the `st::message::data()` will be unallocated (`st::data::operator bool()` will return `false`).
+
+The user can implement a simple timer mechanism using this functionality by calling `std::this_thread::sleep_for(...)` inside of `user_function`. Another convenience, `st::channel::timer(id, duration)` does exactly this, where `duration` is a `std::chrono::duration` and does not accept a user Callable to execute, sending `id` over the `st::channel` after timeout.
 
 #### Example
 ```
@@ -411,62 +413,68 @@ The user can implement a simple timer mechanism using this functionality by call
 
 enum op {
     print,
-    slow_function,
-    slow_result
+    timeout,
 };
 
-std::string slow_function() {
-    // long operation
-    std::this_thread::sleep_for(std::chrono::seconds(2));
-    return std::string("that's all folks!");
+std::string user_timer(std::chrono::milliseconds ms, std::string s) {
+    std::this_thread::sleep_for(ms);
+
+    // can do things in the user function
+    std::cout << "sleep ended on temporary thread" << std::endl;
+
+    // return a string from the timer to show how it can be read by the
+    // recipient of the st::message sent by st::channel:async()
+    return s;
 };
 
-void child_thread(st::channel ch, st::channel main_ch) {
-    int cnt = 0;
-
+void child_thread(st::channel ch, st::channel timeout_conf_ch) {
     for(auto msg: ch) { 
         switch(msg.id()) {
             case op::print:
-            {
-                std::string s;
-                if(msg.data().copy_to(s)) {
-                    std::cout << s << std::endl;
+                if(msg.data().is<std::string>()) {
+                    std::cout << msg.data.cast_to<std::string>() << std::endl;
                 }
                 break;
-            }
-            case op::slow_function:
-                // execute our code on its own thread
-                ch.async(op::slow_result, slow_function);
-                break;
-            case op::slow_result:
-            {
-                std::string s;
-                if(msg.data().copy_to(s) {
-                    ch.send(op::print, s);
-                    // let main thread know we processed the slow result
-                    main_ch.send(0); 
+            case op::timeout:
+                // always print, even when message is not sent by user_timer()
+                std::cout << "timeout detected" << std::endl;
+
+                if(msg.data().is<std::string>()) {
+                    // print the value returned by user_timer()
+                    std::cout << msg.data.cast_to<std::string>() << std::endl;
                 }
+
+                // let main thread know we processed the timeout
+                timeout_conf_ch.send(0); 
                 break;
-            }
         }
     }
 }
 
 int main() {
-    st::channel ch = st::channel::make();
-    st::channel main_ch = st::channel::make();
-    std::thread thd(child_thread, ch, main_ch);
-    ch.send(MyClass::op::slow_function);
-    ch.send(MyClass::op::print, std::string("1"));
-    ch.send(MyClass::op::print, std::string("2"));
-    ch.send(MyClass::op::print, std::string("3"));
+    auto ch = st::channel::make();
+    auto timeout_conf_ch = st::channel::make();
+    std::thread thd(child_thread, ch, timeout_conf_ch);
 
-    // wait for child thread to inidicate it received the slow result
+    // Launch function `user_timer` on a new thread. Send the user_timer's 
+    // return value over the channel with a message id of `op::timeout`
+    ch.async(op::timeout, 
+             user_timer, 
+             std::chrono::milliseconds(200), 
+             std::string("that's all folks!"));
+
+    // Launch a similar timer but no user function is executed and no value returned
+    ch.timer(op::timeout, std::chrono::milliseconds(300));
+
+    ch.send(op::print, std::string("1"));
+    ch.send(op::print, std::string("2"));
+    ch.send(op::print, std::string("3"));
+
+    // wait for child thread to indicate it received the timeout confirmation
     st::message msg;
-    main_ch.recv(msg);
+    timeout_conf_ch.recv(msg);
+    timeout_conf_ch.recv(msg);
 
-    // default `st::channel::close()` behavior allows all previously sent messages 
-    // to be received before calls to `st::channel::recv()` start failing
     ch.close();
     thd.join(); 
     return 0; 
@@ -479,12 +487,15 @@ $./a.out
 1
 2
 3
+sleep ended on temporary thread
+timeout detected
 that's all folks!
+timeout detected
 $
 ```
 
 ### Scheduling Functions on User Threads 
-`st::channel`s provide the ability to enqueue functions (actually any `Callable`) for asynchronous execution with `st::channel::schedule(...)` API. When a message containing a scheduled function is received by a thread it will automatically be executed on that thread before resuming waiting for incoming messages. 
+`st::channel`s provide the ability to enqueue functions (actually any `Callable`) for asynchronous execution with `st::channel::schedule(Callable, optional_arguments...)` API. When a message containing a scheduled function is received by a thread it will automatically be executed on that thread before resuming waiting for incoming messages. 
 
 In simple terms, `st::channel::async()` executes code on another background thread generated for that purpose, while `st::channel::schedule()` executes code on a thread the user manages (the message receiver).
 
@@ -494,6 +505,7 @@ In simple terms, `st::channel::async()` executes code on another background thre
 ```
 #include <iostream>
 #include <string>
+#include <thread>
 #include <sthread>
 
 void print(const char* s) {
@@ -507,7 +519,7 @@ struct PrinterFunctor {
 };
 
 int main() {
-    st::channel ch = st::channel::make();
+    auto ch = st::channel::make();
     // blindly receive messages to process incoming scheduled messages
     std::thread thd([ch]{ for(auto msg : ch) { } }); 
     ch.schedule(print, "what a beautiful day");
@@ -546,9 +558,12 @@ struct interprocess_message {
 };
 
 enum INTERPROCESS_ERRORS {
+    SUCCESS = 0,
     // ...
 };
 
+// Type HANDLE is some value used by the interprocess mechanism for identifying
+// and differentiating queues and endpoints. 
 typedef int HANDLE;
 
 extern int interprocess_open_queue(const char* queue_name, HANDLE* hdl);
@@ -565,16 +580,17 @@ With the user's `my_public_api.h` API header for interprocess communication:
 const char* INTERPROCESS_QUEUE_NAME = "my_interprocess_queue_name"
 
 enum my_public_api {
-    OPERATION_1 = 0,
-    OPERATION_2,
+    INTERPROCESS_OPERATION_1 = 0,
+    INTERPROCESS_OPERATION_2,
     // etc...
-    SHUTDOWN,
-    MY_PUBLIC_API_RESERVED // do not put values after this 
+    INTERPROCESS_SHUTDOWN,
+    MY_PUBLIC_API_RESERVED // do not put values in this enum after this
 };
 #endif
 ```
 
-And an internal `my_api.h` API header for interthread communication:
+And an internal `my_api.h` API header for interthread communication which
+extends the message types defined in `my_public_api.h`:
 ```
 #ifndef MY_API
 #define MY_API
@@ -621,7 +637,7 @@ int main() {
     int ret = 0;
     int error = 0;
     HANDLE hdl;
-    st::channel ch = st::channel::make();
+    auto ch = st::channel::make();
 
     if(0 == error = interprocess_open_queue(INTERPROCESS_QUEUE_NAME, &hdl)) {
         std::thread interprocess_receive_thread(interprocess_receive_loop, ch, hdl);
@@ -631,17 +647,18 @@ int main() {
         // handle incoming messages
         for(auto msg : ch) {
             switch(msg.id()) {
-                case OPERATION_1:
+                case INTERPROCESS_OPERATION_1:
                     // ...
                     break;
-                case OPERATION_2:
+                case INTERPROCESS_OPERATION_2:
                     // ...
                     break;
                 // handle other public API operations...
-                case SHUTDOWN:
+                case INTERPROCESS_SHUTDOWN:
                     // end message processing and cleanup
                     ch.close(); 
                     break;
+                // handle private API operations...
                 case my_api::interprocess_receive_error:
                     if(msg.data().copy_to(error)) {
                         std::cerr << "interprocess queue receive failed with error[" << error << "]" << std::endl;

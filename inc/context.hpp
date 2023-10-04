@@ -12,10 +12,32 @@
 namespace st { // simple thread
 
 /**
- * @brief CRTP-templated interface to provide shared context api
+ * @brief CRTP-templated interface to provide shared context api 
  *
- * CRTP: curiously recurring template pattern
- * CRTPCTX: the CRTP's context type
+ * Implements the the shared API between objects in this library which act as 
+ * abstracted shared pointers. By inheritting this template a type can guarantee 
+ * that it has a standardized implementation for various basic operators:
+ * ==
+ * !=
+ * <
+ * =
+ * bool conversion 
+ *
+ * As well as standardized implementation for accessing the underlying pointer 
+ * (of type CRTPCTX) which contains the real implementation:
+ * ctx() -> shared_ptr<CRTPCTX>& // getter
+ * ctx(shared_ptr<CRTPCTX>) -> void // setter
+ *
+ *
+ * CRTP: curiously recurring template pattern, this should be equal to the child 
+ * type which is implementing this object. IE: 
+ * struct object : shared_context<object, object_context>
+ * A CRTP type's methods typically are abstracted indirect calls to a CRTPCTX's 
+ * methods.
+ *
+ * CRTPCTX: the CRTP's context type. This is the underlying (typically private, 
+ * or hidden) type which contains the actual data and implementation for an 
+ * object. 
  */
 template <typename CRTP, typename CRTPCTX>
 struct shared_context {
@@ -66,7 +88,11 @@ public:
     inline bool operator<(const CRTP& rhs) const noexcept {
         return this->ctx() < rhs.ctx();
     }
-    
+   
+    /**
+     * @brief assign the context
+     * @return a reference to argument this object
+     */
     inline CRTP& operator=(const CRTP& rhs) {
         this->ctx() = rhs.ctx();
         return *this;

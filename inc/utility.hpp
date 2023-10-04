@@ -78,37 +78,42 @@ struct hold_and_restore {
 };
 
 /*
+ * Explicitly return a copy of const references
+ */
+inline std::function<void()> to_thunk(const std::function<void()>& f) {
+    return f;
+}
+
+/*
+ * Explicitly return a reference in the case of a mutable reference for 
+ * efficiency.
+ */
+inline std::function<void()>& to_thunk(std::function<void()>& f) {
+    return f;
+}
+
+/*
+ * Explicitly move an rvalue 
+ */
+inline std::function<void()> to_thunk(std::function<void()>&& f) {
+    return std::move(f);
+}
+
+/*
  * Allows for implicit conversions to `std::function<void()>`, if possible.
  */
 inline std::function<void()> to_thunk(std::function<void()> f) {
     return std::move(f);
 }
 
+/*
+ * Convert any other callable with arguments to a thunk
+ */
 template <typename F, typename A, typename... As>
 std::function<void()> to_thunk(F&& f, A&& a, As&&... as) {
     return [=]() mutable {
         f(std::forward<A>(a), std::forward<As>(as)...);
     };
-}
-
-std::unique_lock<std::mutex> log_lock();
-
-inline void log() {
-    std::cout << std::endl << std::flush;
-}
-
-template <typename T, typename... As>
-inline void log(T&& t, As&&... as) {
-    std::cout << t;
-    log(std::forward<As>(as)...);
-}
-
-}
-
-template <typename... As>
-inline void log(const char* func, As&&... as) {
-    auto lk = detail::log_lock();
-    detail::log("[", func, "] ", std::forward<As>(as)...);
 }
 
 }
