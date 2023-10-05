@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <typeinfo>
+#include <type_traits>
 
 #include "utility.hpp"
 
@@ -46,7 +47,7 @@ struct data {
      */
     template <typename T, typename... As>
     static data make(As&&... as) {
-        return data(detail::hint<T>(), std::forward<As>(as)...);
+        return data(detail::hint<typename std::remove_reference<T>::type>(), std::forward<As>(as)...);
     }
  
     /// rvalue copy

@@ -8,11 +8,7 @@ namespace stt { // simple thread test
 
 template <typename SHARED_CONTEXT>
 struct shared_context_test : public test_runner<SHARED_CONTEXT> {
-    shared_context_test(
-            const char* test_name, 
-            std::function<SHARED_CONTEXT()> make) : 
-        stt::test_runner<SHARED_CONTEXT>(test_name),
-        m_make(make)
+    shared_context_test(std::function<SHARED_CONTEXT()> make) : m_make(make)
     { }
 
 protected:
@@ -56,17 +52,19 @@ protected:
 
 }
 
-TEST(simple_thread, shared_context) {
-    stt::shared_context_test<st::message>(
-            "shared_context_message_test", 
-            []{ return st::message::make(); }).run();
-    stt::shared_context_test<st::channel>(
-            "shared_context_channel_test", 
-            []{ return st::channel::make();}).run();
+TEST(simple_thread, shared_context_message) {
+    stt::shared_context_test<st::message>([]{ return st::message::make(); }).run();
+}
+
+TEST(simple_thread, shared_context_channel) {
+    stt::shared_context_test<st::channel>([]{ return st::channel::make();}).run();
+}
+
+TEST(simple_thread, shared_context_reply) {
     stt::shared_context_test<st::reply>(
-            "shared_context_reply_test", 
             []{ return st::reply::make( st::channel::make(), 0); }).run();
-    stt::shared_context_test<st::task>(
-            "shared_context_task_test", 
-            []{ return st::task::make([]{}); }).run();
+}
+
+TEST(simple_thread, shared_context_task) {
+    stt::shared_context_test<st::task>([]{ return st::task::make([]{}); }).run();
 }
