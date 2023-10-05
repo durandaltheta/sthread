@@ -64,7 +64,8 @@ If building on linux, may have to `sudo make install`.
 ### Simple message passing 
 All that is required to send/receive messages between threads is that each thread has a copy of a constructed `st::channel` object. Messages can be sent with a call to `bool st::message::send(...)` and messages can be received by calling `bool st::channel::recv(st::message& msg)`. However, the simplest solution is to make use of `st::channel` iterators in a range-for loop. `st::channel` iterators can also be returned with calls to `st::channel::begin()` and `st::channel::end()`.
 
-#### Example
+#### Example 
+[example source](tst/message_passing_ex.cpp)
 ```
 #include <iostream>
 #include <string>
@@ -78,7 +79,7 @@ enum op {
 
 st::channel ch = st::channel::make();
 
-int childThread() {
+void childThread() {
     for(auto msg : ch) { // msg is an `st::message`
         switch(msg.id()) {
             case op::say: 
@@ -139,11 +140,16 @@ It should be noted that the `auto` keyword can be used for objects contructed by
 The stored data can be copied to an argument of templated type `T` with `st::data::copy_to(T& t)` or rvalue swapped with `st::data::move_to(T& t)`. Said functions will return `true` if their argument `T` matches the type `T` originally stored in the `st::data`, otherwise they will return `false`.
 
 #### Example
+[example source](tst/message_payloads_ex.cpp)
 ```
 #include <iostream>
 #include <string>
 #include <thread>
 #include <sthread>
+
+enum op {
+    print
+};
 
 void my_function(st::channel ch) {
     for(auto msg : ch) {
@@ -166,8 +172,8 @@ int main() {
     auto my_channel = st::channel::make();
     std::thread my_thread(my_function, my_channel);
 
-    my_channel.send(MyClass::op::print, std::string("hello again"));
-    my_channel.send(MyClass::op::print, 14);
+    my_channel.send(op::print, std::string("hello again"));
+    my_channel.send(op::print, 14);
     my_channel.close();
     my_thread.join();
     return 0;
@@ -198,6 +204,7 @@ Furthermore, compiler rules around array and pointer conversions may sometimes c
 A simple workaround to these headaches is to encapsulate c-style strings within a c++ `std::string`, which will make typing consistent and explicit.
 
 #### Example
+[example source](tst/payload_data_type_checking_ex.cpp)
 ```
 #include <iostream>
 #include <string>
@@ -208,7 +215,7 @@ enum op {
     print
 };
 
-void my_function(st::channel ch)
+void my_function(st::channel ch) {
     for(auto msg : ch) {
         switch(msg.id()) {
             case op::print:
@@ -226,9 +233,9 @@ int main() {
     auto ch = st::channel::make();
     std::thread thd(my_function, ch);
 
-    ch.send(MyClass::op::print, std::string("hello"));
-    ch.send(MyClass::op::print, 1);
-    ch.send(MyClass::op::print, std::string(" more time\n"));
+    ch.send(op::print, std::string("hello "));
+    ch.send(op::print, 1);
+    ch.send(op::print, std::string(" more time\n"));
     ch.close();
     thd.join();
     return 0;
@@ -270,6 +277,7 @@ For example, the default behavior for `st::channel::close()` is to cause all cur
 The user can call `bool closed()`on these objects to check if an object has been closed or is still running. 
 
 #### Example
+[example source](tst/closing_channels_ex.cpp)
 ```
 #include <iostream>
 #include <string>
@@ -292,8 +300,8 @@ int main() {
     auto my_channel = st::channel::make();
     std::thread my_thread(looping_recv, my_channel);
 
-    my_channel.send(0, "you say goodbye");
-    my_channel.send(0, "and I say hello");
+    my_channel.send(0, std::string("you say goodbye"));
+    my_channel.send(0, std::string("and I say hello"));
     // close channel and join thread
     my_channel.close();
     my_thread.join(); 
@@ -317,6 +325,7 @@ As a convenience, the user can create an `st::reply` object to abstract sending 
 `st::reply::make(...)` will take an `st::channel` and an unsigned integer `st::message` id. When `st::reply::send(T t)` is called, an `st::message` containing the given `st::message` id and an optional payload `t` is sent to the stored `st::channel`.
 
 #### Example
+[example source](tst/abstracting_message_replies_ex.cpp)
 ```
 #include <iostream>
 #include <string>
@@ -324,18 +333,18 @@ As a convenience, the user can create an `st::reply` object to abstract sending 
 #include <sthread>
 
 enum opA {
-    request_value = 0; // send a value back to a requestor
+    request_value = 0 // send a value back to a requestor
 };
 
 enum opB {
     // same enumeration value as opA::request_value, normally a potential bug
-    receive_value = 0; 
+    receive_value = 0 
 };
 
 void childThreadA(st::channel ch) {
     std::string value = "foofaa";
 
-    for(auto msg : ch)
+    for(auto msg : ch) {
         switch(msg.id()) {
             case opA::request_value:
             {
@@ -348,7 +357,7 @@ void childThreadA(st::channel ch) {
         }
     }
 
-};
+}
 
 void childThreadB(st::channel ch, st::channel value_received_conf_ch) {
     for(auto msg : ch) {
@@ -358,7 +367,7 @@ void childThreadB(st::channel ch, st::channel value_received_conf_ch) {
             {
                 std::string s;
                 if(msg.data().copy_to(s)) {
-                    std::cout << "received " << s << "!" std::endl;
+                    std::cout << "received " << s << "!" << std::endl;
                     value_received_conf_ch.send();
                 }
                 break;

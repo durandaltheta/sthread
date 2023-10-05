@@ -7,6 +7,10 @@
 #include <memory>
 #include <deque>
 
+#include <iostream>
+#include <thread>
+#include <chrono>
+
 #include "utility.hpp"
 #include "context.hpp"
 #include "channel.hpp"
@@ -19,12 +23,16 @@ struct context {
     context(st::channel ch, std::size_t id) :
         m_ch(std::move(ch)),
         m_id(id)
-    { }
+    { 
+        std::cout << "reply(), m_ch: " << m_ch.get() << std::endl;
+    }
 
     virtual ~context(){ }
 
     template <typename T>
     bool send(T&& t) {
+        std::cout << "reply send to m_ch" << m_ch.get() << std::endl;
+        std::this_thread::sleep_for(std::chrono::seconds(1));
         return m_ch.send(m_id, std::forward<T>(t));
     }
 

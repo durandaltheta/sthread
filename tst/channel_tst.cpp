@@ -3,7 +3,6 @@
 #include <chrono>
 #include <thread>
 #include <utility>
-#include <iostream>
 #include <functional>
 #include "sthread"
 #include "simple_thread_test_utils.hpp"

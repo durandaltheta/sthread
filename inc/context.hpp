@@ -61,6 +61,10 @@ protected:
 public:
     virtual ~shared_context() { }
 
+    inline void* get() {
+        return ctx().get();
+    }
+
     /**
      * @return `true` if object is allocated, else `false`
      */

@@ -11,8 +11,15 @@ set(TEST_SOURCE_FILES
     context_tst.cpp
     message_tst.cpp
     channel_tst.cpp 
-    task_tst.cpp
+    reply_tst.cpp
+    task_tst.cpp 
+    #message_passing_ex.cpp
+    #message_payloads_ex.cpp
+    #payload_data_type_checking_ex.cpp
+    #closing_channels_ex.cpp 
+    #abstracting_message_replies_ex.cpp
     )
+
 
 add_executable(${TEST_BINARY} ${TEST_HEADER_FILES} ${TEST_SOURCE_FILES})
 target_include_directories(${TEST_BINARY} PUBLIC ${CMAKE_CURRENT_LIST_DIR}/../inc)
