@@ -18,7 +18,7 @@ set(HEADER_FILES
     )
 
 add_library(${LIBRARY} INTERFACE)
-target_include_directories(${LIBRARY} PUBLIC inc) 
+target_include_directories(${LIBRARY} INTERFACE inc) 
 
 install(FILES ${HEADER_FILES} DESTINATION include/${LIBRARY})
 install(TARGETS ${LIBRARY} DESTINATION lib/)

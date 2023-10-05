@@ -225,7 +225,7 @@ struct channel : protected st::shared_context<channel,detail::channel::context> 
 
     /**
      * @brief `st::channel` is set to the closed state
-     * @param soft if `false` clear all previously sent messages from the internal message queue, otherwise leave previously sent messages to be received with `recv()`
+     * @param soft if `false` clear all messages from the internal message queue, otherwise leave messages to be received with `recv()`
      */
     inline void close(bool soft=true) {
         if(ctx()) {
@@ -380,7 +380,7 @@ struct channel : protected st::shared_context<channel,detail::channel::context> 
     // Asynchronous Execution
 
     /**
-     * @brief wrap user function and arguments then asynchronous execute them on a dedicated system thread and send the result of the operation back to this `st::channel`
+     * @brief asynchronously execute user Callable on a system thread 
      *
      * Internally calls `std::async` to asynchronously execute user function 
      * (Callable). This behavior is useful for evaluating long running functions 
