@@ -510,13 +510,6 @@ A `Callable` is any data or object which can be executed like a function includi
 
 `st::task` objects when invoked will return a reference to an `st::data` value when invoked containing the returned value of the wrapped `Callable`. If wrapped `Callable` returns void, the resulting `st::data&` will be empty and `== false` when used in an `if` statement.
 
-Highest CPU throughput is typically reached by an executor whose worker count 
-matches the CPU core count of the executing machine. This optimal number of 
-cores may be discoverable by the return value of a call to 
-`st::executor::default_worker_count()`, though this is not guaranteed by the
-c++ standard.
-
-
 `st::task` objects are 'lazy', in that once they have been evaluated once, further evaluations will immediately return the previously returned value with no further work.
 
 #### Example
