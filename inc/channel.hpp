@@ -12,6 +12,7 @@
 #include <thread>
 #include <future>
 #include <chrono>
+#include <type_traits>
 
 #include "utility.hpp"
 #include "context.hpp"
@@ -402,9 +403,9 @@ struct channel : public st::shared_context<channel,detail::channel::context> {
      */
     template <typename F, typename... As>
     bool async(std::size_t resp_id, F&& f, As&&... as) {
-        using isv = typename std::is_void<detail::function_return_type<F,As...>>;
+        using isv = typename std::is_void<detail::function_return_type<F,As...>>::type;
         return async_impl(
-                std::integral_constant<bool,isv::value>(),
+                isv(),
                 resp_id,
                 std::forward<F>(f), 
                 std::forward<As>(as)...);

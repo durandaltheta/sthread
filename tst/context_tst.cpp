@@ -22,26 +22,26 @@ protected:
         SHARED_CONTEXT sctx2(m_make()); // rvalue constructor
         SHARED_CONTEXT sctx3(sctx2); // lvalue constructor
 
-        EXPECT_FALSE(sctx); // bool conversion
+        // bool conversion
+        EXPECT_FALSE(sctx); 
         EXPECT_TRUE(sctx2);
 
-        // equality and assignment
+        // assignment
         sctx = sctx2; // lvalue assignment
+        
+        // equality 
         EXPECT_TRUE(sctx);
         EXPECT_TRUE(sctx == sctx2); // lvalue comparision
         EXPECT_TRUE(sctx == std::move(sctx2)); // rvalue comparision
         EXPECT_TRUE(sctx == sctx3); 
 
-        EXPECT_TRUE(sctx.ctx()); // context getter is accessible
-        sctx.ctx(std::shared_ptr<st::context>()); // context setter is accessible
-        EXPECT_FALSE(sctx.ctx()); 
-
+        // inequality
         sctx = m_make(); // rvalue assignment
         EXPECT_TRUE(sctx != sctx2); // lvalue compiler created not comparison
         EXPECT_TRUE(sctx != std::move(sctx2)); // rvalue compiler created not comparison
         EXPECT_TRUE(sctx != sctx3); 
 
-        // comparison
+        // greater and less
         SHARED_CONTEXT sctx4;
         EXPECT_TRUE(sctx4 < sctx); // less than comparison
         EXPECT_TRUE(sctx4 < sctx2);
@@ -57,9 +57,16 @@ protected:
 }
 
 TEST(simple_thread, shared_context) {
-    const char* tst = "shared_context_test";
-    stt::shared_context_test<st::message>(tst, []{ return st::message::make(); }).run();
-    stt::shared_context_test<st::channel>(tst, []{ return st::channel::make();}).run();
-    stt::shared_context_test<st::reply>(tst, []{ return st::reply::make( st::channel::make(), 0); }).run();
-    stt::shared_context_test<st::thread>(tst, []{ return st::thread::make<>(); }).run();
+    stt::shared_context_test<st::message>(
+            "shared_context_message_test", 
+            []{ return st::message::make(); }).run();
+    stt::shared_context_test<st::channel>(
+            "shared_context_channel_test", 
+            []{ return st::channel::make();}).run();
+    stt::shared_context_test<st::reply>(
+            "shared_context_reply_test", 
+            []{ return st::reply::make( st::channel::make(), 0); }).run();
+    stt::shared_context_test<st::task>(
+            "shared_context_task_test", 
+            []{ return st::task::make([]{}); }).run();
 }

@@ -16,7 +16,6 @@ set(TEST_SOURCE_FILES
     channel_tst.cpp
     )
 
-#add_executable(${BINARY} ${HEADER_FILES} ${BINARY}.cpp)
 add_executable(${BINARY} ${HEADER_FILES} ${TEST_HEADER_FILES} ${TEST_SOURCE_FILES})
 add_test(simple_thread_unit_test ${BINARY} COMMAND ${BINARY}) 
 target_link_libraries(${BINARY} PUBLIC ${CMAKE_PROJECT_NAME} gtest gtest_main)

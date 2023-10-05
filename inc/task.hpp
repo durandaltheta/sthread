@@ -78,7 +78,7 @@ struct context {
  * further evaluations will immediately return the previously returned value 
  * with no further work.
  */
-struct task : protected st::shared_context<task, detail::task::context> {
+struct task : public st::shared_context<task, detail::task::context> {
     inline virtual ~task() { }
 
     /**

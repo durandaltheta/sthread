@@ -21,9 +21,12 @@ namespace st { // simple thread
  * `st::data` can represent types that are at least lvalue constructable.
  */
 struct data {
+    // type_info helper struck when unallocated
+    struct unset { };
+
     /// default constructor
     data() : 
-        m_type_info(nullptr), 
+        m_type_info(&typeid(unset)), 
         m_data_ptr(data_pointer_t(nullptr, data::no_delete))
     { }
 
@@ -65,6 +68,8 @@ struct data {
     }
 
     /**
+     * If `st::data` has not been constructed with a payload value then returned 
+     * type_info will be equal to `typeid(st::data::unset)`.
      * @return payload type info 
      */
     inline const std::type_info& type_info() const {

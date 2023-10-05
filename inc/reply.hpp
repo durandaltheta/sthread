@@ -61,7 +61,7 @@ struct reply : public st::shared_context<reply, detail::reply::context> {
     template <typename CHANNEL>
     static reply make(CHANNEL&& ch, std::size_t id = 0) { 
         reply r;
-        r.ctx(std::make_shared<detail::reply::context>(std::forward(ch), id));
+        r.ctx(std::make_shared<detail::reply::context>(std::forward<CHANNEL>(ch), id));
         return r;
     }
 

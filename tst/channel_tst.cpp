@@ -8,28 +8,33 @@
 #include "simple_thread_test_utils.hpp"
 #include "sthread"
 
-struct msg_handling_object {
-    // message recv API
-    void recv(st::message msg) {
-        m_hdl(msg);
-    }
-
-    // actual message handler, settable by this test
-    std::function<void(st::message msg)> m_hdl;
-};
-
 TEST(simple_thread, channel) {
     st::message msg;
     std::size_t expected_msg_recv_cnt=0;
     std::size_t actual_msg_recv_cnt=0;
+
+    enum op {
+        Default = 0,
+        Integer,
+        Cstring,
+        String,
+        Double,
+        Void
+    };
 
     auto reset_rcv_cnts = [&](std::size_t exp){ 
         expected_msg_recv_cnt=exp;
         actual_msg_recv_cnt=0;
     };
 
-    auto msg_handler = [](st::message msg) {
+    auto msg_handler = [&](st::message msg) {
         ++actual_msg_recv_cnt;
+
+        auto print_type_error = [&](const std::type_info& expected){
+            stt::log("channel", "expected type: ", expected.name());
+            stt::log("channel", "actual type: ", msg.data().type_info().name());
+            EXPECT_TRUE(false); // error
+        };
         
         switch(msg.id()) {
             case op::Default:
@@ -40,6 +45,7 @@ TEST(simple_thread, channel) {
                     if(msg.data().copy_to(i)) {
                         EXPECT_EQ(1, msg.data().cast_to<int>());
                     } else {
+                        print_type_error(typeid(int));
                         EXPECT_TRUE(false); // error
                     }
                 }
@@ -48,7 +54,7 @@ TEST(simple_thread, channel) {
                 if(msg.data().is<const char*>()) {
                     EXPECT_EQ("hello", msg.data().cast_to<const char*>());
                 } else {
-                    EXPECT_TRUE(false); // error
+                    print_type_error(typeid(const char*));
                 }
                 break;
             case op::String:
@@ -57,7 +63,7 @@ TEST(simple_thread, channel) {
                     if(msg.data().copy_to(s)) {
                         EXPECT_EQ(std::string("world"), s);
                     } else {
-                        EXPECT_TRUE(false); // error
+                        print_type_error(typeid(std::string));
                     }
                 }
                 break;
@@ -67,7 +73,7 @@ TEST(simple_thread, channel) {
                     if(msg.data().copy_to(d)) {
                         EXPECT_EQ((double)3.6, d);
                     } else {
-                        EXPECT_TRUE(false); // error
+                        print_type_error(typeid(double));
                     }
                 }
                 break;
@@ -79,30 +85,47 @@ TEST(simple_thread, channel) {
                         EXPECT_TRUE(true);
                     }
                 }
+                break;
             default:
                 EXPECT_TRUE(false); // error
                 break;
         }
     };
 
-    // closed 
-    st::channel ch = st::channel.make();
+    auto msg_loop = [&](st::channel ch) {
+        for(auto msg : ch) {
+            msg_handler(msg);
+        }
+    };
+
+    stt::log("channel", "closed");
+    st::channel ch = st::channel::make();
     EXPECT_FALSE(ch.closed());
     
-    // terminate
-    ch.terminate(); 
+    stt::log("channel", "close");
+    ch.close(); 
     EXPECT_TRUE(ch.closed());
     auto ch2 = st::channel::make();
     ch = ch2;
     EXPECT_FALSE(ch.closed());
-    ch.terminate(true); 
+    EXPECT_FALSE(ch2.closed());
+    ch.send(0,0);
+    ch.close(true); 
+    EXPECT_TRUE(ch.recv(msg));
+    EXPECT_FALSE(ch.recv(msg));
     EXPECT_TRUE(ch.closed());
+    EXPECT_TRUE(ch2.closed());
     ch = st::channel::make();
     EXPECT_FALSE(ch.closed());
-    ch.terminate(false); 
+    EXPECT_TRUE(ch2.closed());
+    ch.send(0,0);
+    ch.close(false); 
+    EXPECT_FALSE(ch.recv(msg));
+    EXPECT_FALSE(ch.recv(msg));
     EXPECT_TRUE(ch.closed());
+    EXPECT_TRUE(ch2.closed());
     
-    // queued (does this compile)
+    stt::log("channel", "queued");
     ch = st::channel::make();
     EXPECT_EQ(0, ch.queued());
     EXPECT_TRUE(ch.send(op::Default));
@@ -111,47 +134,44 @@ TEST(simple_thread, channel) {
     EXPECT_EQ(msg.id(), op::Default);
     ch.close();
 
-    // send 
+    stt::log("channel", "send/recv");
+    reset_rcv_cnts(6);
     ch = st::channel::make();
     EXPECT_TRUE(ch.send());
     EXPECT_TRUE(ch.send(op::Default));
     EXPECT_TRUE(ch.send(op::Integer,1));
-    EXPECT_TRUE(ch.send(op::Cstring,"hello"));
+    EXPECT_TRUE(ch.send(op::Cstring, "hello"));
     EXPECT_TRUE(ch.send(op::String,std::string("world")));
     EXPECT_TRUE(ch.send(op::Double,st::data::make<double>(3.6)));
     EXPECT_EQ(6, ch.queued());
-
-    reset_rcv_cnts(6);
-    std::thread recv_thd(ch.launch_recv_thread(msg_handler));
+    std::thread recv_thd(msg_loop, ch);
     ch.close();
     recv_thd.join();
     EXPECT_EQ(6, actual_msg_recv_cnt);
 
-    // async 
+    stt::log("channel", "async");
+    reset_rcv_cnts(3);
     ch = st::channel::make();
     ch.async(op::Integer,[]{ return 1; }); // return int
     ch.async(op::String,[]{ return std::string("world"); }); // return string
     ch.async(op::Void,[]{}); // return void
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     EXPECT_EQ(3, ch.queued());
-    reset_rcv_cnts(3);
-    // recv_loop Callable
-    recv_thd = ch.launch_recv_thread(msg_handler);
+    recv_thd = std::thread(msg_loop, ch);
     ch.close();
     recv_thd.join();
     EXPECT_EQ(3, actual_msg_recv_cnt);
-
-    // schedule 
-    ch = st::channel::make();
-    msg_handling_object obj;
-    obj.m_hdl = msg_handler;
-    EXPECT_TRUE(ch.schedule([=]{ ch.send(op::String,std::string("foo")); }));
-    EXPECT_TRUE(ch.schedule([=]{ ch.send(op::String,std::string("faa")); }));
-    EXPECT_EQ(2, ch.queued());
-    // recv_loop object
-    recv_thd = ch.launch_recv_thread(obj, msg_handling_object::recv);
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    ch.close();
-    recv_thd.join();
-    EXPECT_EQ(4, actual_msg_recv_cnt);
+    
+    //stt::log("channel", "timer");
+    //reset_rcv_cnts(3);
+    //ch = st::channel::make();
+    //ch.timer(op::Integer,std::chrono::milliseconds(200),1); 
+    //ch.timer(op::String,std::chrono::milliseconds(300),std::string("world")); 
+    //ch.timer(op::Void,std::chrono::milliseconds(400)); 
+    //std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    //EXPECT_EQ(3, ch.queued());
+    //recv_thd = std::thread(msg_loop, ch);
+    //ch.close();
+    //recv_thd.join();
+    //EXPECT_EQ(3, actual_msg_recv_cnt);
 }

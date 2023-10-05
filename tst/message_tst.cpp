@@ -25,7 +25,7 @@ TEST(simple_thread, message) {
         EXPECT_TRUE(msg2);
         EXPECT_EQ(msg2, msg);
         EXPECT_EQ(0, msg.id());
-        EXPECT_EQ(0, msg.data().type_code());
+        EXPECT_EQ(typeid(st::data::unset), msg.data().type_info());
     }
     
     // forward message make
@@ -35,7 +35,7 @@ TEST(simple_thread, message) {
         EXPECT_TRUE(msg2);
         EXPECT_EQ(msg2, msg);
         EXPECT_EQ(0, msg.id());
-        EXPECT_EQ(0, msg.data().type_code());
+        EXPECT_EQ(typeid(st::data::unset), msg.data().type_info());
     }
 
     // int message
@@ -45,8 +45,8 @@ TEST(simple_thread, message) {
 
         EXPECT_EQ(msg.id(), op::integer);
         EXPECT_NE(msg.id(), op::string);
-        EXPECT_EQ(msg.data().type_code(), st::type_code<int>());
-        EXPECT_NE(msg.data().type_code(), st::type_code<std::string>());
+        EXPECT_EQ(msg.data().type_info(), typeid(int));
+        EXPECT_NE(msg.data().type_info(), typeid(std::string));
         EXPECT_TRUE(msg.data().is<int>());
         EXPECT_FALSE(msg.data().is<std::string>());
 
@@ -88,8 +88,8 @@ TEST(simple_thread, message) {
 
         EXPECT_EQ(msg.id(), op::integer);
         EXPECT_NE(msg.id(), op::string);
-        EXPECT_EQ(msg.data().type_code(), st::type_code<int>());
-        EXPECT_NE(msg.data().type_code(), st::type_code<std::string>());
+        EXPECT_EQ(msg.data().type_info(), typeid(int));
+        EXPECT_NE(msg.data().type_info(), typeid(std::string));
         EXPECT_TRUE(msg.data().is<int>());
         EXPECT_FALSE(msg.data().is<std::string>());
 
@@ -131,8 +131,8 @@ TEST(simple_thread, message) {
 
         EXPECT_EQ(msg.id(), op::cstring);
         EXPECT_NE(msg.id(), op::integer);
-        EXPECT_EQ(msg.data().type_code(), st::type_code<std::string>());
-        EXPECT_NE(msg.data().type_code(), st::type_code<int>());
+        EXPECT_EQ(msg.data().type_info(), typeid(std::string));
+        EXPECT_NE(msg.data().type_info(), typeid(int));
         EXPECT_TRUE(msg.data().is<std::string>());
         EXPECT_FALSE(msg.data().is<int>());
 
@@ -174,8 +174,8 @@ TEST(simple_thread, message) {
 
         EXPECT_EQ(msg.id(), op::string);
         EXPECT_NE(msg.id(), op::integer);
-        EXPECT_EQ(msg.data().type_code(), st::type_code<std::string>());
-        EXPECT_NE(msg.data().type_code(), st::type_code<int>());
+        EXPECT_EQ(msg.data().type_info(), typeid(std::string));
+        EXPECT_NE(msg.data().type_info(), typeid(int));
         EXPECT_TRUE(msg.data().is<std::string>());
         EXPECT_FALSE(msg.data().is<int>());
 

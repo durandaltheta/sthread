@@ -17,6 +17,7 @@ TEST(simple_thread, data) {
         EXPECT_FALSE(d.is<int>());
         EXPECT_FALSE(d.is<const char*>());
         EXPECT_FALSE(d.is<std::string>());
+        EXPECT_EQ(typeid(st::data::unset), d.type_info());
     }
 
     // int data
