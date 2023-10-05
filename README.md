@@ -187,9 +187,15 @@ Payload `st::data` types can also be checked with `bool st::data::is<T>()` (retu
 
 Additionally, the type stored in `st::data` can be cast to a reference with a call to `T& st::data::cast_to<T>()`. However, this functionality is only safe when used inside of an `st::data::is<T>()` check.
 
-WARNING: `st::data` can store a payload of any type. However, this behavior can be confusing with regard to c-style `const char*` strings. c-style strings are just pointers to memory, and the user is responsible for ensuring that said memory is accessible outside of the scope when the message is sent. Typically, it is safe to send c-style strings with a hardcoded value, as such strings are stored in the program's global data. However, local stack arrays of characters, or, even worse, allocated c-strings must be carefully considered when sending over a message. 
+WARNING: 
 
-A simple workaround to these headaches is to encapsulate c-style strings within a c++ `std::string`.
+`st::data` can store a payload of any type. However, this behavior can be confusing with regard to c-style `const char*` strings. c-style strings are just pointers to memory, and the user is responsible for ensuring that said memory is accessible outside of the scope when the message is sent. 
+
+Typically, it is safe to send c-style strings with a hardcoded value, as such strings are stored in the program's global data. However, local stack arrays of characters, or, even worse, allocated c-strings must be carefully considered when sending over a message. 
+
+Furthermore, compiler rules around array and pointer conversions may sometimes cause unexpected types to be stored in `st::data` if the type is not explicit. Therefore when using raw c-strings it may be a necessary to explicitly cast it to the expected type whenever assigning a payload to an `st::message`: `st::message::make(my_id, (const char*)"my string")`.
+
+A simple workaround to these headaches is to encapsulate c-style strings within a c++ `std::string`, which will make typing consistent and explicit.
 
 #### Example
 ```

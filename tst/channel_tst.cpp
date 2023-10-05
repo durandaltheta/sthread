@@ -161,6 +161,61 @@ TEST(simple_thread, channel_send_recv) {
     EXPECT_EQ(6, stt::channel::msg_recv_cnt);
 }
 
+TEST(simple_thread, channel_try_recv) {
+    st::channel ch = st::channel::make();
+
+    std::thread([](st::channel ch) {
+        st::message msg;
+        EXPECT_EQ(st::state::failure, ch.try_recv(msg));
+    },
+    ch).join();
+
+    ch.send(13, (const char*)"hello");
+
+    std::thread([](st::channel ch) {
+        st::message msg;
+        EXPECT_EQ(st::state::success, ch.try_recv(msg));
+        EXPECT_EQ(13, msg.id());
+        EXPECT_TRUE(msg.data().is<const char*>());
+        EXPECT_EQ(std::string("hello"), std::string(msg.data().cast_to<const char*>()));
+    },
+    ch).join();
+
+    std::thread([](st::channel ch) {
+        st::message msg;
+        EXPECT_EQ(st::state::failure, ch.try_recv(msg));
+    },
+    ch).join();
+
+    ch.close();
+
+    std::thread([](st::channel ch) {
+        st::message msg;
+        EXPECT_EQ(st::state::closed, ch.try_recv(msg));
+    },
+    ch).join();
+}
+
+TEST(simple_thread, channel_blocked_receivers) {
+    st::message msg;
+    st::channel ch = st::channel::make();
+    EXPECT_EQ(0, ch.blocked_receivers());
+    auto do_recv = [](st::channel ch) { st::message msg; return ch.recv(msg); };
+    std::thread t1(do_recv, ch);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    EXPECT_EQ(1, ch.blocked_receivers());
+    std::thread t2(do_recv, ch);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    EXPECT_EQ(2, ch.blocked_receivers());
+    ch.send(0);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    EXPECT_EQ(1, ch.blocked_receivers());
+    ch.close();
+    t1.join();
+    t2.join();
+    EXPECT_EQ(0, ch.blocked_receivers());
+}
+
 TEST(simple_thread, channel_async) {
     st::message msg;
     st::channel ch;
