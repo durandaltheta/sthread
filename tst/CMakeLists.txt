@@ -9,6 +9,7 @@ set(TEST_HEADER_FILES
     )
 
 set(TEST_SOURCE_FILES 
+    simple_thread_test_utils.cpp
     data_tst.cpp
     context_tst.cpp
     message_tst.cpp

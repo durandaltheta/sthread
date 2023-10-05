@@ -4,9 +4,32 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <mutex>
 #include "sthread"
 
-namespace stt { // simple thread test 
+namespace stt { // simple thread test  
+namespace detail {
+
+std::unique_lock<std::mutex> log_lock();
+
+inline void log() {
+    std::cout << std::endl << std::flush;
+}
+
+template <typename T, typename... As>
+inline void log(T&& t, As&&... as) {
+    std::cout << t;
+    log(std::forward<As>(as)...);
+}
+
+}
+
+template <typename... As>
+inline void log(const char* func, As&&... as) {
+    auto lk = detail::log_lock();
+    detail::log("[", func, "] ", std::forward<As>(as)...);
+}
+
 
 template <typename CONTEXT_WRAPPER_T>
 struct test_runner {
@@ -20,9 +43,9 @@ struct test_runner {
         ss << m_test_name << "<" << m_type_name << ">";
         std::string test_str = ss.str();
 
-        st::log(test_str.c_str(), "--- TEST BEGIN ---");
+        stt::log(test_str.c_str(), "--- TEST BEGIN ---");
         test();
-        st::log(test_str.c_str(), "--- TEST END ---");
+        stt::log(test_str.c_str(), "--- TEST END ---");
     }
 
     template <typename... As>
@@ -30,7 +53,7 @@ struct test_runner {
         std::stringstream ss;
         ss << m_test_name << "<" << m_type_name << ">";
         std::string test_str = ss.str();
-        st::log(test_str.c_str(), s, std::forward<As>(as)...);
+        stt::log(test_str.c_str(), s, std::forward<As>(as)...);
     }
 
 protected:

@@ -11,42 +11,14 @@
 #include <iostream>
 
 namespace st { // simple thread 
+namespace detail {
 
-/**
- * @brief typedef representing the unqualified type of T
- */
+// typedef representing the unqualified type of T
 template <typename T>
 using base = typename std::decay<T>::type;
 
-/**
- * The data type value is acquired by removing const and volatile 
- * qualifiers and then by acquiring the type_info::hash_type_code().
- *
- * @return an unsigned integer representing a data type.
- */
-template <typename T>
-static constexpr std::size_t type_code() {
-    return typeid(base<T>).hash_code();
-}
-
-/**
- * The data type compiler name is acquired by removing const and volatile 
- * qualifiers and then by acquiring the type_info::name().
- *
- * @return an unsigned integer representing a data type.
- */
-template <typename T>
-static constexpr const char* type_name() {
-    return typeid(base<T>).name();
-}
-
-namespace detail {
-
-// @brief template typing assistance object
+// template typing assistance object
 template <typename T> struct hint { };
-
-//template assistance for unusable parent type
-struct null_parent { };
 
 // get a function's return type via SFINAE
 // handle pre and post c++17 
@@ -57,64 +29,6 @@ using function_return_type = typename std::invoke_result<base<F>,As...>::type;
 template <typename F, typename... As>
 using function_return_type = typename std::result_of<base<F>(As...)>::type;
 #endif
-
-/*
- * A utility struct which will store the current value of an argument reference,
- * and restore that value to said reference when this object goes out of scope.
- *
- * One advantage of using this over manual commands is that the destructor of 
- * this object will still trigger when an exception is raised.
- */
-template <typename T>
-struct hold_and_restore {
-    hold_and_restore() = delete; // cannot create empty value
-    hold_and_restore(const hold_and_restore&) = delete; // cannot copy
-    hold_and_restore(hold_and_restore&& rhs) = delete; // cannot move
-    inline hold_and_restore(T& t) : m_ref(t), m_old(t) { }
-    inline ~hold_and_restore() { m_ref = m_old; }
-    
-    T& m_ref;
-    T m_old;
-};
-
-/*
- * Explicitly return a copy of const references
- */
-inline std::function<void()> to_thunk(const std::function<void()>& f) {
-    return f;
-}
-
-/*
- * Explicitly return a reference in the case of a mutable reference for 
- * efficiency.
- */
-inline std::function<void()>& to_thunk(std::function<void()>& f) {
-    return f;
-}
-
-/*
- * Explicitly move an rvalue 
- */
-inline std::function<void()> to_thunk(std::function<void()>&& f) {
-    return std::move(f);
-}
-
-/*
- * Allows for implicit conversions to `std::function<void()>`, if possible.
- */
-inline std::function<void()> to_thunk(std::function<void()> f) {
-    return std::move(f);
-}
-
-/*
- * Convert any other callable with arguments to a thunk
- */
-template <typename F, typename A, typename... As>
-std::function<void()> to_thunk(F&& f, A&& a, As&&... as) {
-    return [=]() mutable {
-        f(std::forward<A>(a), std::forward<As>(as)...);
-    };
-}
 
 }
 }

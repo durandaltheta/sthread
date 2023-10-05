@@ -14,7 +14,6 @@ TEST(simple_thread, data) {
     {
         st::data d;
         EXPECT_FALSE(d);
-        EXPECT_EQ(0, d.type_code());
         EXPECT_FALSE(d.is<int>());
         EXPECT_FALSE(d.is<const char*>());
         EXPECT_FALSE(d.is<std::string>());
@@ -25,8 +24,8 @@ TEST(simple_thread, data) {
         int i=14;
         st::data d = st::data::make<int>(i);
 
-        EXPECT_EQ(d.type_code(), st::type_code<int>());
-        EXPECT_NE(d.type_code(), st::type_code<std::string>());
+        EXPECT_EQ(d.type_info(), typeid(int));
+        EXPECT_NE(d.type_info(), typeid(std::string));
         EXPECT_TRUE(d.is<int>());
         EXPECT_FALSE(d.is<std::string>());
 
@@ -66,8 +65,8 @@ TEST(simple_thread, data) {
         int i=14;
         st::data d(st::data::make<int>(i));
 
-        EXPECT_EQ(d.type_code(), st::type_code<int>());
-        EXPECT_NE(d.type_code(), st::type_code<std::string>());
+        EXPECT_EQ(d.type_info(), typeid(int));
+        EXPECT_NE(d.type_info(), typeid(std::string));
         EXPECT_TRUE(d.is<int>());
         EXPECT_FALSE(d.is<std::string>());
 
@@ -107,8 +106,8 @@ TEST(simple_thread, data) {
         std::string s = "codemonkey";
         st::data d = st::data::make<std::string>(s);
 
-        EXPECT_EQ(d.type_code(), st::type_code<std::string>());
-        EXPECT_NE(d.type_code(), st::type_code<int>());
+        EXPECT_EQ(d.type_info(), typeid(std::string));
+        EXPECT_NE(d.type_info(), typeid(int));
         EXPECT_TRUE(d.is<std::string>());
         EXPECT_FALSE(d.is<int>());
 
@@ -148,8 +147,8 @@ TEST(simple_thread, data) {
         std::string s = "getupgetcoffee";
         st::data d = st::data::make<std::string>(s);
 
-        EXPECT_EQ(d.type_code(), st::type_code<std::string>());
-        EXPECT_NE(d.type_code(), st::type_code<int>());
+        EXPECT_EQ(d.type_info(), typeid(std::string));
+        EXPECT_NE(d.type_info(), typeid(int));
         EXPECT_TRUE(d.is<std::string>());
         EXPECT_FALSE(d.is<int>());
 

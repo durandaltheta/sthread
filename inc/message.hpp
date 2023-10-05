@@ -33,7 +33,7 @@ struct context {
  *
  * this object is *not* mutex locked.
  */
-struct message : protected st::shared_context<message, detail::message::context> {
+struct message : public st::shared_context<message, detail::message::context> {
     virtual ~message() { }
 
     /** 

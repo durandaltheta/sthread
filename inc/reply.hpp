@@ -44,7 +44,7 @@ struct context {
  * For example, his object can be the payload `st::data` of an `st::message`, 
  * allowing a user to forward information back to a requestor.
  */
-struct reply : protected st::shared_context<reply, detail::reply::context> {
+struct reply : public st::shared_context<reply, detail::reply::context> {
     virtual ~reply(){}
 
     inline reply& operator=(const reply& rhs) {

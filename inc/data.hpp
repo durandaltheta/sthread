@@ -99,7 +99,7 @@ struct data {
      */
     template <typename T>
     T& cast_to() {
-        return *((base<T>*)(get()));
+        return *((detail::base<T>*)(get()));
     }
 
     /**
@@ -147,12 +147,12 @@ private:
 
     template <typename T, typename... As>
     static void* allocate(As&&... as) {
-        return (void*)(new base<T>(std::forward<As>(as)...));
+        return (void*)(new detail::base<T>(std::forward<As>(as)...));
     }
 
     template <typename T>
     static void deleter(void* p) {
-        delete (base<T>*)p;
+        delete (detail::base<T>*)p;
     }
 
     static inline void no_delete(void* p) { }

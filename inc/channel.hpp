@@ -121,7 +121,7 @@ struct context {
         st::message msg;
 
         while(m_msg_q.size() && m_blockers.size()) {
-            std::shared_ptr<st::channel::detail::blocker> s = m_blockers.front();
+            std::shared_ptr<blocker> s = m_blockers.front();
             m_blockers.pop_front();
             msg = m_msg_q.front();
             m_msg_q.pop_front();
@@ -161,29 +161,29 @@ struct context {
                     m_msg_q.pop_front();
 
                     if(msg) {
-                        return st::channel::success;
+                        return st::state::success;
                     }
                 }
             } else if(m_closed) {
-                return st::channel::state::closed;
+                return st::state::closed;
             } else if(block) {
                 // block until message is available or channel termination
                 while(!msg && !m_closed) { 
-                    st::channel::detail::blocker::data d(&msg);
+                    blocker::data d(&msg);
                     m_blockers.push_back(
-                            std::shared_ptr<st::channel::detail::blocker>(
-                                new st::channel::detail::blocker(&d)));
+                            std::shared_ptr<blocker>(
+                                new blocker(&d)));
                     d.wait(lk);
                 }
 
                 if(msg) {
-                    return st::channel::state::success;
+                    return st::state::success;
                 }
             } 
         } while(block); // on blocking receive, loop till we receive a non-task message or channel is closed
 
         // since we didn't early return out the receive loop, then this is a failed try_recv()
-        return st::channel::state::failure;
+        return st::state::failure;
     }
 
     bool m_closed;
@@ -203,7 +203,7 @@ struct context {
  *
  * All methods in this object are threadsafe.
  */
-struct channel : protected st::shared_context<channel,detail::channel::context> {
+struct channel : public st::shared_context<channel,detail::channel::context> {
     inline virtual ~channel() { }
 
     /**

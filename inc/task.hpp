@@ -15,17 +15,15 @@ namespace detail {
 namespace task {
 
 struct context {
+    context() : evaluate([&]() -> data& { return m_result; }) { }
+
     template <typename Callable, typename... As>
     context(Callable&& cb, As&&... as) { 
         using isv = typename std::is_void<detail::function_return_type<Callable,As...>>;
-        m_function = create_function(
+        evaluate = create_function(
                 std::integral_constant<bool,isv::value>(),
                 std::forward<Callable>(cb),
                 std::forward<As>(as)...);
-    }
-
-    inline data evaluate() {
-        return m_function();
     }
 
     // handle case where Callable returns void
@@ -34,7 +32,7 @@ struct context {
     create_function(std::true_type, Callable&& cb, As&&... as) {
         return [&]() -> data& {
             cb(std::forward<As>(as)...);
-            m_function = [&]() -> data& { return m_result };
+            evaluate = [&]() -> data& { return m_result; };
             return m_result; // return empty data
         };
     }
@@ -44,15 +42,16 @@ struct context {
     std::function<data&()> 
     create_function(std::false_type, Callable&& cb, As&&... as) {
         return [&]() -> data& {
-            typedef callable_return_t<Callable, As...> R;
+            typedef detail::function_return_type<Callable,As...> R;
             m_result = data::make<R>(cb(std::forward<As>(as)...));
-            m_function = [&]() -> data& { return m_result };
+            evaluate = [&]() -> data& { return m_result; };
             return m_result;
         };
     }
 
+
     data m_result;
-    std::function<data&()> m_function;
+    std::function<data&()> evaluate;
 };
 
 }
@@ -94,8 +93,12 @@ struct task : protected st::shared_context<task, detail::task::context> {
         return t;
     }
 
-    inline data operator()() {
-        return ctx() ? ctx()->evaluate() : data();
+    inline data& operator()() {
+        if(!ctx()) {
+            ctx(std::make_shared<detail::task::context>());
+        }
+
+        return ctx()->evaluate();
     }
 };
 
