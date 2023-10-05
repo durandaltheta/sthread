@@ -1,7 +1,4 @@
-set(BINARY ${CMAKE_PROJECT_NAME}_tst)
-set(SOURCES ${TEST_SOURCES})
-set(CMAKE_BUILD_TYPE Debug) 
-set(ENABLE_SIMPLE_THREAD_LOGGING)
+set(TEST_BINARY ${CMAKE_PROJECT_NAME}_tst)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/googletest EXCLUDE_FROM_ALL)
 
 set(TEST_HEADER_FILES
@@ -13,9 +10,10 @@ set(TEST_SOURCE_FILES
     data_tst.cpp
     context_tst.cpp
     message_tst.cpp
-    channel_tst.cpp
+    channel_tst.cpp 
+    task_tst.cpp
     )
 
-add_executable(${BINARY} ${HEADER_FILES} ${TEST_HEADER_FILES} ${TEST_SOURCE_FILES})
-add_test(simple_thread_unit_test ${BINARY} COMMAND ${BINARY}) 
-target_link_libraries(${BINARY} PUBLIC ${CMAKE_PROJECT_NAME} gtest gtest_main)
+add_executable(${TEST_BINARY} ${TEST_HEADER_FILES} ${TEST_SOURCE_FILES})
+target_include_directories(${TEST_BINARY} PUBLIC ${CMAKE_CURRENT_LIST_DIR}/../inc)
+target_link_libraries(${TEST_BINARY} PUBLIC gtest gtest_main)

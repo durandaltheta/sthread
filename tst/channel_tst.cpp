@@ -20,10 +20,22 @@ enum op {
     Void
 };
 
-std::size_t msg_recv_cnt=0;
+std::mutex mtx;
+std::size_t private_msg_recv_cnt=0;
+
+int msg_recv_cnt() {
+    std::lock_guard<std::mutex> lk(mtx);
+    return private_msg_recv_cnt;
+}
+
+void incr_recv_cnt() {
+    std::lock_guard<std::mutex> lk(mtx);
+    ++private_msg_recv_cnt;
+}
 
 void reset_recv_cnt() { 
-    msg_recv_cnt=0;
+    std::lock_guard<std::mutex> lk(mtx);
+    private_msg_recv_cnt=0;
 };
 
 void print_type_error(const std::type_info& actual, const std::type_info& expected) {
@@ -33,7 +45,7 @@ void print_type_error(const std::type_info& actual, const std::type_info& expect
 };
 
 void msg_handler(st::message msg) {
-    ++stt::channel::msg_recv_cnt;
+    stt::channel::incr_recv_cnt();
     
     switch(msg.id()) {
         case stt::channel::op::Default:
@@ -91,12 +103,18 @@ void msg_handler(st::message msg) {
     }
 };
 
-void msg_loop(st::channel ch) {
-    for(auto msg : ch) {
+void msg_while_recv_loop(st::channel ch) {
+    st::message msg;
+    while(ch.recv(msg)) {
         msg_handler(msg);
     }
 };
 
+void msg_for_recv_loop(st::channel ch) {
+    for(auto msg : ch) {
+        msg_handler(msg);
+    }
+};
 }
 }
 
@@ -155,10 +173,10 @@ TEST(simple_thread, channel_send_recv) {
     EXPECT_TRUE(ch.send(stt::channel::op::String,std::string("world")));
     EXPECT_TRUE(ch.send(stt::channel::op::Double,st::data::make<double>(3.6)));
     EXPECT_EQ(6, ch.queued());
-    std::thread recv_thd(stt::channel::msg_loop, ch);
+    std::thread recv_thd(stt::channel::msg_while_recv_loop, ch);
     ch.close();
     recv_thd.join();
-    EXPECT_EQ(6, stt::channel::msg_recv_cnt);
+    EXPECT_EQ(6, stt::channel::msg_recv_cnt());
 }
 
 TEST(simple_thread, channel_try_recv) {
@@ -226,10 +244,10 @@ TEST(simple_thread, channel_async) {
     ch.async(stt::channel::op::Void,[]{}); // return void
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     EXPECT_EQ(3, ch.queued());
-    std::thread recv_thd = std::thread(stt::channel::msg_loop, ch);
+    std::thread recv_thd = std::thread(stt::channel::msg_for_recv_loop, ch);
     ch.close();
     recv_thd.join();
-    EXPECT_EQ(3, stt::channel::msg_recv_cnt);
+    EXPECT_EQ(3, stt::channel::msg_recv_cnt());
 }
     
 TEST(simple_thread, channel_timer) {
@@ -242,8 +260,8 @@ TEST(simple_thread, channel_timer) {
     ch.timer(stt::channel::op::Void,std::chrono::milliseconds(400)); 
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     EXPECT_EQ(3, ch.queued());
-    std::thread recv_thd = std::thread(stt::channel::msg_loop, ch);
+    std::thread recv_thd = std::thread(stt::channel::msg_for_recv_loop, ch);
     ch.close();
     recv_thd.join();
-    EXPECT_EQ(3, stt::channel::msg_recv_cnt);
+    EXPECT_EQ(3, stt::channel::msg_recv_cnt());
 }

@@ -30,10 +30,13 @@ struct context {
     template <typename Callable, typename... As>
     std::function<data&()> 
     create_function(std::true_type, Callable&& cb, As&&... as) {
-        return [&]() -> data& {
-            cb(std::forward<As>(as)...);
-            evaluate = [&]() -> data& { return m_result; };
-            return m_result; // return empty data
+        return [=]() mutable -> data& {
+            if(!(this->m_flag)) {
+                this->m_flag = true;
+                cb(std::forward<As>(as)...);
+            }
+
+            return this->m_result; // return empty data
         };
     }
 
@@ -41,15 +44,19 @@ struct context {
     template <typename Callable, typename... As>
     std::function<data&()> 
     create_function(std::false_type, Callable&& cb, As&&... as) {
-        return [&]() -> data& {
-            typedef detail::function_return_type<Callable,As...> R;
-            m_result = data::make<R>(cb(std::forward<As>(as)...));
-            evaluate = [&]() -> data& { return m_result; };
-            return m_result;
+        return [=]() mutable -> data& {
+            if(!(this->m_flag)) {
+                this->m_flag = true;
+                typedef detail::function_return_type<Callable,As...> R;
+                this->m_result = data::make<R>(cb(std::forward<As>(as)...));
+            }
+
+            return this->m_result;
         };
     }
 
 
+    bool m_flag = false;
     data m_result;
     std::function<data&()> evaluate;
 };
