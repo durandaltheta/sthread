@@ -509,7 +509,7 @@ A `Callable` is any data or object which can be executed like a function includi
 `st::task::make(Callable, optional_arguments...)` can be invoked to make a `st::task` which will wrap it's arguments into a task for the user. `st::task` objects can be invoked with the `()` operator.
 
 `st::task` objects when invoked will return a reference to an `st::data` value when invoked containing the returned value of the wrapped `Callable`. If wrapped `Callable` returns void, the resulting `st::data&` will be empty and `== false` when used in an `if` statement.
-=======
+
 Highest CPU throughput is typically reached by an executor whose worker count 
 matches the CPU core count of the executing machine. This optimal number of 
 cores may be discoverable by the return value of a call to 
