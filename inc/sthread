@@ -4,5 +4,6 @@
 #include "context.hpp"
 #include "data.hpp"
 #include "message.hpp"
+#include "task.hpp"
 #include "channel.hpp"
 #include "reply.hpp"

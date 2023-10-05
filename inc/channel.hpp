@@ -9,13 +9,33 @@
 #include <condition_variable>
 #include <deque>
 #include <utility>
+#include <thread>
+#include <future>
 #include <chrono>
 
 #include "utility.hpp"
 #include "context.hpp"
 #include "message.hpp"
 
-namespace st { // simple thread 
+namespace st { // simple thread  
+
+/** 
+ * @brief operation result state
+ *
+ * This is typically handled internally, but is provided for the operations 
+ * which directly return it.
+ * 
+ * closed == 0 to ensure that if the user executes `st::channel::try_recv()`
+ * as a loop's condition, it will correctly break out of the loop when the 
+ * channel is closed (although this implicitly creates a high cpu usage 
+ * busy-wait loop).
+ */
+enum state {
+    closed = 0, /// operation failed because channel was closed
+    failure, /// non-blocking operation failed
+    success /// operation succeeded
+};
+
 namespace detail {
 namespace channel {
 
@@ -72,7 +92,20 @@ struct context {
         return m_closed;
     }
     
-    void close(bool soft=true);
+    inline void close(bool soft=true) {
+        std::unique_lock<std::mutex> lk(m_mtx);
+        if(!m_closed) {
+            m_closed = true;
+
+            if(!soft) {
+                m_msg_q.clear();
+            }
+
+            if(m_msg_q.empty() && m_blockers.size()) {
+                m_blockers.clear(); // allow receivers to terminate
+            }
+        }
+    }
     
     inline std::size_t queued() const {
         std::lock_guard<std::mutex> lk(m_mtx);
@@ -84,10 +117,74 @@ struct context {
         return m_blockers.size();
     }
 
-    void handle_queued_messages(std::unique_lock<std::mutex>& lk);
-    bool send(st::message msg);
-    state recv(st::message& msg, bool block);
-    bool process(st::message& msg);
+    inline void handle_queued_messages(std::unique_lock<std::mutex>& lk) {
+        st::message msg;
+
+        while(m_msg_q.size() && m_blockers.size()) {
+            std::shared_ptr<st::channel::detail::blocker> s = m_blockers.front();
+            m_blockers.pop_front();
+            msg = m_msg_q.front();
+            m_msg_q.pop_front();
+
+            lk.unlock();
+            s->send(msg);
+            lk.lock();
+        }
+
+        if(m_closed && m_blockers.size()) {
+            m_blockers.clear(); // allow receivers to terminate
+        }
+    }
+
+    inline bool send(st::message msg) {
+        std::unique_lock<std::mutex> lk(m_mtx);
+
+        if(m_closed) {
+            return false;
+        } else {
+            m_msg_q.push_back(std::move(msg));
+            handle_queued_messages(lk);
+            return true;
+        } 
+    }
+
+    inline state recv(st::message& msg, bool block) {
+        std::unique_lock<std::mutex> lk(m_mtx);
+
+        do {
+            if(!m_msg_q.empty()) {
+                // can safely loop here until message queue is empty or we can return 
+                // a message, even when block == false
+                while(!m_msg_q.empty()) {
+                    // retrieve message immediately
+                    msg = std::move(m_msg_q.front());
+                    m_msg_q.pop_front();
+
+                    if(msg) {
+                        return st::channel::success;
+                    }
+                }
+            } else if(m_closed) {
+                return st::channel::state::closed;
+            } else if(block) {
+                // block until message is available or channel termination
+                while(!msg && !m_closed) { 
+                    st::channel::detail::blocker::data d(&msg);
+                    m_blockers.push_back(
+                            std::shared_ptr<st::channel::detail::blocker>(
+                                new st::channel::detail::blocker(&d)));
+                    d.wait(lk);
+                }
+
+                if(msg) {
+                    return st::channel::state::success;
+                }
+            } 
+        } while(block); // on blocking receive, loop till we receive a non-task message or channel is closed
+
+        // since we didn't early return out the receive loop, then this is a failed try_recv()
+        return st::channel::state::failure;
+    }
 
     bool m_closed;
     mutable std::mutex m_mtx;
@@ -108,11 +205,6 @@ struct context {
  */
 struct channel : protected st::shared_context<channel,detail::channel::context> {
     inline virtual ~channel() { }
-
-    inline channel& operator=(const channel& rhs) {
-        ctx() = rhs.ctx();
-        return *this;
-    }
 
     /**
      * @brief Construct an allocated channel
@@ -148,23 +240,6 @@ struct channel : protected st::shared_context<channel,detail::channel::context> 
         return ctx() ? ctx()->blocked_receivers() : 0;
     }
 
-    /** 
-     * @brief operation result state
-     *
-     * This is typically handled internally, but is provided for the operations 
-     * which directly return it.
-     * 
-     * closed == 0 to ensure that if the user executes `st::channel::try_recv()`
-     * as a loop's condition, it will correctly break out of the loop when the 
-     * channel is closed (although this implicitly creates a high cpu usage 
-     * busy-wait loop).
-     */
-    enum state {
-        closed = 0, /// operation failed because channel was closed
-        failure, /// non-blocking operation failed
-        success /// operation succeeded
-    };
-
     /**
      * @brief receive a message over the channel
      *
@@ -180,10 +255,6 @@ struct channel : protected st::shared_context<channel,detail::channel::context> 
      *
      * Multiple simultaneous `recv()` calls will be served in the order they 
      * were called.
-     *
-     * Any message received that was sent via a call to 
-     * `st::channel::schedule(...)` will be processed internally (executing the 
-     * sent Callable and optional arguments) and not returned to the user. 
      *
      * @param msg interprocess message object reference to contain the received message 
      * @return `true` on success, `false` if channel is closed
@@ -202,14 +273,14 @@ struct channel : protected st::shared_context<channel,detail::channel::context> 
      * @return the result state of the operation
      */
     inline state try_recv(st::message& msg) {
-        return ctx() ? ctx()->recv(msg, false) : false;
+        return ctx() ? ctx()->recv(msg, false) : state::closed;
     }
    
     /** 
      * @return count of currently unhandled messages sent to the `st::channel`'s queue
      */
     inline std::size_t queued() const {
-        return ctx() ? ctx()->queued() : 0
+        return ctx() ? ctx()->queued() : 0;
     }
 
     /**
@@ -240,9 +311,9 @@ struct channel : protected st::shared_context<channel,detail::channel::context> 
      */
     class iterator : 
         public st::shared_context<iterator, detail::channel::context>, 
-        public std::input_iterator_tag {
-                
-        inline void increment() const {
+        public std::input_iterator_tag 
+    {
+        inline void increment() {
             bool ret = ctx() ? ctx()->recv(msg, true) == state::success : false;
 
             if(!ret) {
@@ -253,6 +324,12 @@ struct channel : protected st::shared_context<channel,detail::channel::context> 
         st::message msg;
 
     public:
+        iterator() { }
+
+        iterator(std::shared_ptr<detail::channel::context> rhs) { 
+            ctx(rhs);
+        }
+        
         inline virtual ~iterator() { }
 
         inline iterator& operator=(const iterator& rhs) {
@@ -261,11 +338,11 @@ struct channel : protected st::shared_context<channel,detail::channel::context> 
             return *this;
         }
 
-        inline T& operator*() const { 
+        inline st::message& operator*() { 
             return msg; 
         }
 
-        inline T* operator->() const { 
+        inline st::message* operator->() { 
             return &msg;
         }
 
@@ -284,8 +361,7 @@ struct channel : protected st::shared_context<channel,detail::channel::context> 
      * @return an iterator to the beginning of the channel
      */
     inline iterator begin() const {
-        iterator it;
-        it.ctx(ctx());
+        iterator it(ctx());
         ++it; // get an initial value
         return it;
     }
@@ -302,33 +378,6 @@ struct channel : protected st::shared_context<channel,detail::channel::context> 
 
     //--------------------------------------------------------------------------
     // Asynchronous Execution
-    
-    /**
-     * @brief wrap a Callable as a generic task and schedule it for execution on a receiver
-     * 
-     * A `Callable` is any data or object which can be executed like a function:
-     * - functions 
-     * - function pointers 
-     * - functors (ex: std::function)
-     * - lambdas 
-     *
-     * The argument Callable `f` will be executed when the message containing it 
-     * is processed by a call to `st::channel::recv()`. The message will be 
-     * handled internally upon receipt and not returned to the user for 
-     * processing (will not cause `st::channel::recv()` to return).
-     *
-     * NOTE: No id value is required for this feature to function! A user only 
-     * needs pass in a Callable. Disambiguation of the sent message is 
-     * automatically done via internal type comparison by the receiver. 
-     *
-     * @param f Callable to execute on target sender
-     * @param as optional remaining arguments for argument function
-     * @return `true` on success, `false` on failure due to the channel being closed
-     */
-    template <typename F, typename... As>
-    bool schedule(F&& f, As&&... as) {
-        return m_ch.send(0, st::channel::task(to_thunk(std::forward<F>(f), std::forward<As>(as)...)));
-    }
 
     /**
      * @brief wrap user function and arguments then asynchronous execute them on a dedicated system thread and send the result of the operation back to this `st::channel`
@@ -357,7 +406,30 @@ struct channel : protected st::shared_context<channel,detail::channel::context> 
         return async_impl(
                 std::integral_constant<bool,isv::value>(),
                 resp_id,
-                to_thunk(std::forward<F>(f), std::forward<As>(as)...));
+                std::forward<F>(f), 
+                std::forward<As>(as)...);
+    }
+    
+    /**
+     * @brief start a timer 
+     *
+     * This method is an abstraction of `st::channel::async()`. Once the timer 
+     * elapses a message containing `resp_id` as its id will be sent back to 
+     * this channel. 
+     *
+     * @param resp_id of the message to be sent back to this channel after timeout
+     * @param timeout a duration to elapse before timer times out
+     * @param payload of the message to be sent back to this channel after timeout
+     * @return `true` if the timer was started, `false` if this `st::channel` is closed
+     */
+    template< class Rep, class Period, typename P>
+    bool timer(std::size_t resp_id, const std::chrono::duration<Rep, Period>& timeout, P&& payload) {
+        return async(
+                resp_id, 
+                [=]() mutable -> decltype(std::forward<P>(payload)) { 
+                    std::this_thread::sleep_for(timeout); 
+                    return std::forward<P>(payload);
+                });
     }
     
     /**
@@ -371,26 +443,26 @@ struct channel : protected st::shared_context<channel,detail::channel::context> 
      * @param timeout a duration to elapse before timer times out
      * @return `true` if the timer was started, `false` if this `st::channel` is closed
      */
-    template< class Rep, class Period, typename F, typename... As>
+    template< class Rep, class Period>
     bool timer(std::size_t resp_id, const std::chrono::duration<Rep, Period>& timeout) {
         return async(
                 resp_id, 
-                [=]() mutable { std::this_thread::sleep_for(timeout); });
+                [=]() mutable -> void { 
+                    std::this_thread::sleep_for(timeout); 
+                });
     }
 
 private:
-    // private task type used by schedule(), an explicit type that can be
-    // identified separately from its parent
-    struct task : public std::function<void()> { };
-
-    inline bool async_impl(std::true_type, std::size_t resp_id, std::function<void()> f) {
+    template <typename F, typename... As>
+    bool async_impl(std::true_type, std::size_t resp_id, F&& f, As&&... as) {
         if(ctx()) {
-            auto self = ctx()
+            auto self = ctx();
 
             // launch a thread and schedule the call
-            std::async([=]() mutable { // capture a copy of the shared send context
-                 f();
-                 self.send(resp_id);
+            std::async([=]() mutable { 
+                 f(std::forward<As>(as)...);
+                 // capture a copy of the shared send context
+                 self->send(st::message::make(resp_id));
             }); 
 
             return true;
@@ -399,14 +471,16 @@ private:
         }
     }
     
-    inline bool async_impl(std::false_type, std::size_t resp_id, std::function<void()> f) {
+    template <typename F, typename... As>
+    bool async_impl(std::false_type, std::size_t resp_id, F&& f, As&&... as) {
         if(ctx()) {
-            auto self = ctx()
+            auto self = ctx();
 
             // launch a thread and schedule the call
-            std::async([=]() mutable { // capture a copy of the shared send context
-                 auto result = f();
-                 self.send(resp_id, result);
+            std::async([=]() mutable { 
+                 auto result = f(std::forward<As>(as)...);
+                 // capture a copy of the shared send context
+                 self->send(st::message::make(resp_id, result));
             }); 
 
             return true;

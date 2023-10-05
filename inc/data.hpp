@@ -77,7 +77,7 @@ struct data {
      */
     template <typename T>
     bool is() const {
-        return m_data_ptr && *m_type_info == st::type_info<T>();
+        return m_data_ptr && *m_type_info == typeid(T);
     }
 
     /**

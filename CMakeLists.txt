@@ -11,18 +11,13 @@ set(HEADER_FILES
     ${CMAKE_CURRENT_LIST_DIR}/inc/context.hpp
     ${CMAKE_CURRENT_LIST_DIR}/inc/data.hpp
     ${CMAKE_CURRENT_LIST_DIR}/inc/message.hpp
+    ${CMAKE_CURRENT_LIST_DIR}/inc/task.hpp
     ${CMAKE_CURRENT_LIST_DIR}/inc/channel.hpp
     ${CMAKE_CURRENT_LIST_DIR}/inc/reply.hpp
-    ${CMAKE_CURRENT_LIST_DIR}/inc/threadpool.hpp
     ${CMAKE_CURRENT_LIST_DIR}/inc/sthread
     )
 
-set(SOURCE_FILES
-    ${CMAKE_CURRENT_LIST_DIR}/src/utility.cpp
-    ${CMAKE_CURRENT_LIST_DIR}/src/channel.cpp
-    )
-
-add_library(${LIBRARY} STATIC ${SOURCE_FILES})
+add_library(${LIBRARY} INTERFACE)
 target_include_directories(${LIBRARY} PUBLIC inc) 
 
 install(FILES ${HEADER_FILES} DESTINATION include/${LIBRARY})

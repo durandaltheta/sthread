@@ -1,9 +1,7 @@
 # Simple Threading and Communication
 ## Quick Links
 
-The overall design of code in this library relies heavily on virtual
-interfaces to implement inherited behavior. Visit the documentation for 
-information and features not detailed in this README.
+The overall design of code in this library relies heavily on virtual interfaces to implement inherited behavior. Visit the documentation for information and features not detailed in this README.
 
 [Documentation](https://durandaltheta.github.io/sthread/)
 
@@ -37,6 +35,7 @@ The library provides a handful of objects which support this goal:
 - `st::channel`
 - `st::message`
 - `st::reply`
+- `st::task`
 
 The core of the behavior of the library is tied to the `st::channel` object, which is responsible for asynchronously sending messages between senders and receivers. A receiver thread can use this object to make a simple message receive loop and process incoming `st::message`s.
 
@@ -133,7 +132,11 @@ The summary of the 4 overloads of `st::message st::message::make(...)` are:
 It should be noted that the `auto` keyword can be used for objects contructed by `make()` calls.
 
 ### Message Data Payloads
-`st::data()` can store any data type. The stored data can be copied to an argument of templated type `T` with `st::data::copy_to(T& t)` or rvalue swapped with `st::data::move_to(T& t)`. Said functions will return `true` if their argument `T` matches the type `T` originally stored in the `st::data`, otherwise they will return `false`.
+`st::data()` can store any data type. Usually the user will not need to manually construct `st::data()`, as `st::message::make(...)` methods do this internally. In the cases where manual construction is necessary `st::data` objects can be constructed with a call to `st::data::make<T>(optional_constructor_args...)`, where type `T` is the type to be stored in the result `st::data`.
+
+`st::data` objects are thin wrappers to `std::unique_ptr<T>` objects, and therefore cannot be lvalue copied (ownership between `st::data` objects must be assigned with `destination_data = std::move(source_data)`).
+
+The stored data can be copied to an argument of templated type `T` with `st::data::copy_to(T& t)` or rvalue swapped with `st::data::move_to(T& t)`. Said functions will return `true` if their argument `T` matches the type `T` originally stored in the `st::data`, otherwise they will return `false`.
 
 #### Example
 ```
@@ -238,6 +241,7 @@ The objects in this library are actually shared pointers to some shared context,
 - `st::message`
 - `st::channel`
 - `st::reply`
+- `st::task`
 
 The user can check if these objects contain an allocated shared context with their `bool` conversion. This is easiest to do by using the object as the argument to an `if()` statement. Given an `st::channel` named `my_channel`:
 ```
@@ -401,7 +405,7 @@ To ensure messages are processed in a timely manner, and to avoid deadlock in ge
 
 Alternatively, if the user function returns `void`, the `st::message::data()` will be unallocated (`st::data::operator bool()` will return `false`).
 
-The user can implement a simple timer mechanism using this functionality by calling `std::this_thread::sleep_for(...)` inside of `user_function`. Another convenience, `st::channel::timer(id, duration)` does exactly this, where `duration` is a `std::chrono::duration` and does not accept a user Callable to execute, sending `id` over the `st::channel` after timeout.
+The user can implement a simple timer mechanism using this functionality by calling `std::this_thread::sleep_for(...)` inside of `user_function`. Another convenience, `st::channel::timer(duration, id, optional_payload)` does exactly this, where `duration` is a `std::chrono::duration` sending `id` (and potentially a payload) in a `st::message` over the `st::channel` after timeout.
 
 #### Example
 ```
@@ -412,35 +416,29 @@ The user can implement a simple timer mechanism using this functionality by call
 #include <sthread>
 
 enum op {
-    print,
-    timeout,
+    timeout
 };
 
+// variant of user_timer returning a value
 std::string user_timer(std::chrono::milliseconds ms, std::string s) {
     std::this_thread::sleep_for(ms);
-
-    // can do things in the user function
     std::cout << "sleep ended on temporary thread" << std::endl;
-
-    // return a string from the timer to show how it can be read by the
-    // recipient of the st::message sent by st::channel:async()
     return s;
-};
+}
 
-void child_thread(st::channel ch, st::channel timeout_conf_ch) {
+// variant of user_timer returning void
+void user_timer(std::chrono::milliseconds ms) {
+    std::this_thread::sleep_for(ms);
+    std::cout << "sleep ended on temporary thread with no return" << std::endl;
+}
+
+void process_timeouts(st::channel ch, st::channel timeout_conf_ch) {
     for(auto msg: ch) { 
         switch(msg.id()) {
-            case op::print:
-                if(msg.data().is<std::string>()) {
-                    std::cout << msg.data.cast_to<std::string>() << std::endl;
-                }
-                break;
             case op::timeout:
-                // always print, even when message is not sent by user_timer()
                 std::cout << "timeout detected" << std::endl;
 
                 if(msg.data().is<std::string>()) {
-                    // print the value returned by user_timer()
                     std::cout << msg.data.cast_to<std::string>() << std::endl;
                 }
 
@@ -454,24 +452,22 @@ void child_thread(st::channel ch, st::channel timeout_conf_ch) {
 int main() {
     auto ch = st::channel::make();
     auto timeout_conf_ch = st::channel::make();
-    std::thread thd(child_thread, ch, timeout_conf_ch);
+    std::thread thd(process_timeouts, ch, timeout_conf_ch);
 
-    // Launch function `user_timer` on a new thread. Send the user_timer's 
-    // return value over the channel with a message id of `op::timeout`
     ch.async(op::timeout, 
              user_timer, 
-             std::chrono::milliseconds(200), 
+             std::chrono::milliseconds(100), 
              std::string("that's all folks!"));
 
-    // Launch a similar timer but no user function is executed and no value returned
-    ch.timer(op::timeout, std::chrono::milliseconds(300));
+    ch.async(op::timeout, user_timer, std::chrono::milliseconds(200));
 
-    ch.send(op::print, std::string("1"));
-    ch.send(op::print, std::string("2"));
-    ch.send(op::print, std::string("3"));
+    ch.timer(op::timeout, std::chrono::milliseconds(300), std::string("timer with payload"));
+    ch.timer(op::timeout, std::chrono::milliseconds(400));
 
     // wait for child thread to indicate it received the timeout confirmation
     st::message msg;
+    timeout_conf_ch.recv(msg);
+    timeout_conf_ch.recv(msg);
     timeout_conf_ch.recv(msg);
     timeout_conf_ch.recv(msg);
 
@@ -484,22 +480,61 @@ int main() {
 Terminal output might be:
 ```
 $./a.out
-1
-2
-3
 sleep ended on temporary thread
 timeout detected
 that's all folks!
+sleep ended on temporary thread with no return
+timeout detected
+timeout detected 
+timer with payload
 timeout detected
 $
 ```
 
 ### Scheduling Functions on User Threads 
-`st::channel`s provide the ability to enqueue functions (actually any `Callable`) for asynchronous execution with `st::channel::schedule(Callable, optional_arguments...)` API. When a message containing a scheduled function is received by a thread it will automatically be executed on that thread before resuming waiting for incoming messages. 
+The utility type `st::task` provides the ability to wrap any `Callable` (and optionally any arguments) for execution. 
 
-In simple terms, `st::channel::async()` executes code on another background thread generated for that purpose, while `st::channel::schedule()` executes code on a thread the user manages (the message receiver).
+A `Callable` is any data or object which can be executed like a function including:
+- functions 
+- function pointers 
+- functors (ex: std::function)
+- lambdas 
 
-`st::channel::schedule()` can accept any `Callable` function, functor, or lambda function, alongside optional arguments, in a similar fashion to standard library features `std::async()` and `std::thread()`.
+`st::task::make(Callable, optional_arguments...)` can be invoked to make a `st::task` which will wrap it's arguments into a task for the user. `st::task` objects can be invoked with the `()` operator.
+
+`st::task` objects when invoked will return a reference to an `st::data` value when invoked containing the returned value of the wrapped `Callable`. If wrapped `Callable` returns void, the resulting `st::data&` will be empty and `== false` when used in an `if` statement.
+
+`st::task` objects are 'lazy', in that once they have been evaluated once, further evaluations will immediately return the previously returned value with no further work.
+
+#### Example
+```
+#include <iostream>
+#include <sthread>
+
+int foo(int a) {
+    std::cout << "foo: " << a << std::endl;
+    return a + 1;
+}
+
+int main() {
+    auto foo_task = st::task::make(foo, 3);
+    if(foo_task().is<int>()) {
+        // can safely invoke task again because it will immediately return its
+        // previous result
+        std::cout << "result: " << foo_task().cast_to<int>() << std::endl;
+    }
+    return 0;
+}
+```
+Terminal output might be:
+```
+$./a.out 
+foo: 3
+result: 4
+$
+```
+
+`st::task`s can be sent over `st::channel`s to implement arbitrary code execution worker threads:
 
 #### Example
 ```
@@ -518,13 +553,25 @@ struct PrinterFunctor {
     }
 };
 
+void executor(st::channel ch) {
+    for(auto msg : ch) { 
+        // execute any received tasks
+        if(msg.data.is<st::task>()) {
+            msg.data.cast_to<st::task>()();
+        }
+    } 
+}
+
 int main() {
+    auto printer_lambda = []{ std::cout << "what a beautiful sunset" << std::endl; };
     auto ch = st::channel::make();
-    // blindly receive messages to process incoming scheduled messages
-    std::thread thd([ch]{ for(auto msg : ch) { } }); 
-    ch.schedule(print, "what a beautiful day");
-    ch.schedule(PrintFunctor, "looks like rain");
-    ch.schedule([]{ std::cout << "what a beautiful sunset" << std::endl; });
+    std::thread thd(executor, ch); 
+
+    // in this example, message id's are arbitrary
+    ch.send(0, st::task::make(print, "what a beautiful day"));
+    ch.send(0, st::task::make(PrintFunctor, "looks like rain"));
+    ch.send(0, st::task::make(printer_lambda));
+
     ch.close();
     thd.join();
     return 0;
@@ -544,7 +591,7 @@ $
 While `st::channel`s are useful for communicating between a single process's threads, they cannot be used for communicating between processes. A simple method for unifying interprocess and interthread communication is to use one thread as a translator, receiving interprocess messages and forwarding them to a main thread over an `st::channel`.
 
 #### Example 
-Given this theoretical `interprocess_messaging.h` API header
+Given this theoretical `interprocess_messaging.h` API header:
 ```
 #ifndef INTERPROCESS_MESSAGING
 #define INTERPROCESS_MESSAGING
