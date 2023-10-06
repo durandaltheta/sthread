@@ -22,7 +22,7 @@ namespace st { // simple thread
  * `st::data` can represent types that are at least lvalue constructable.
  */
 struct data {
-    // type_info helper struck when unallocated
+    // default type_info helper struct when unallocated
     struct unset { };
 
     /// default constructor
