@@ -111,7 +111,7 @@ Static Public Member Functions</h2></td></tr>
 </ul>
 <p><code>st:task</code> accepts no arguments and returns void. It is useful for generically encapsulating operatins which should occur elsewhere.</p>
 <p><code><a class="el" href="structst_1_1task.html" title="wrap any Callable and optional arguments into an executable task">st::task</a></code> objects when invoked will return a reference to an <code><a class="el" href="structst_1_1data.html" title="type erased data container">st::data</a></code> value when invoked containing the returned value of the wrapped <code>Callable</code>. If wrapped <code>Callable</code> returns void, the resulting <code><a class="el" href="structst_1_1data.html" title="type erased data container">st::data</a>&amp;</code> will be empty and <code>== false</code> when used in an <code>if</code> statement.</p>
-<p><code><a class="el" href="structst_1_1task.html" title="wrap any Callable and optional arguments into an executable task">st::task</a></code> objects are 'lazy', in that once they have been evaluated once, further evaluations will immediately return the previously returned value with no further work. </p>
+<p><code><a class="el" href="structst_1_1task.html" title="wrap any Callable and optional arguments into an executable task">st::task</a></code> objects are 'lazy', when they have been evaluated once further evaluations will immediately return the previously returned value with no further work. </p>
 </div><h2 class="groupheader">Member Function Documentation</h2>
 <a id="a64aa5359f59584121cd8cc8273d57487"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a64aa5359f59584121cd8cc8273d57487">&#9670;&nbsp;</a></span>make()</h2>
