@@ -3,7 +3,7 @@
 
 The overall design of code in this library relies heavily on virtual interfaces to implement inherited behavior. Visit the documentation for information and features not detailed in this README.
 
-[Documentation](https://durandaltheta.github.io/sthread/)
+[Documentation](https://durandaltheta.github.io/sthread/annotated.html)
 
 [Unit Test and Example Code](tst/)
 
