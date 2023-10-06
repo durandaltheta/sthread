@@ -17,7 +17,7 @@ jobs:
         run: doxygen 
 
       - name: Deploy to GitHub Pages
-        uses: JamesIves/github-pages-deploy-action@v4.3.3
+        uses: JamesIves/github-pages-deploy-action@v4.4.3
         with:
           token: ${{ secrets.TOKEN }}
           branch: "gh-pages"
