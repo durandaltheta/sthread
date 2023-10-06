@@ -58,7 +58,7 @@ If building on linux, may have to `sudo make install`.
 - `cmake .`
 - `make sthread_tst`
 
-`sthread_tst` binary will be placed in tst/  
+`sthread_tst` binary will be placed in directory `tst/`
 
 ## Usage 
 ### Simple message passing 
@@ -423,6 +423,7 @@ Alternatively, if the user function returns `void`, the `st::message::data()` wi
 The user can implement a simple timer mechanism using this functionality by calling `std::this_thread::sleep_for(...)` inside of `user_function`. Another convenience, `st::channel::timer(duration, id, optional_payload)` does exactly this, where `duration` is a `std::chrono::duration` sending `id` (and potentially a payload) in a `st::message` over the `st::channel` after timeout.
 
 #### Example
+[example source](tst/dealing_with_blocking_functions_ex.cpp)
 ```
 #include <iostream>
 #include <string>
@@ -454,7 +455,7 @@ void process_timeouts(st::channel ch, st::channel timeout_conf_ch) {
                 std::cout << "timeout detected" << std::endl;
 
                 if(msg.data().is<std::string>()) {
-                    std::cout << msg.data.cast_to<std::string>() << std::endl;
+                    std::cout << msg.data().cast_to<std::string>() << std::endl;
                 }
 
                 // let main thread know we processed the timeout
@@ -477,7 +478,7 @@ int main() {
     ch.async(op::timeout, user_timer, std::chrono::milliseconds(200));
 
     ch.timer(op::timeout, std::chrono::milliseconds(300), std::string("timer with payload"));
-    ch.timer(o9-p::timeout, std::chrono::milliseconds(400));
+    ch.timer(op::timeout, std::chrono::milliseconds(400));
 
     // wait for child thread to indicate it received the timeout confirmation
     st::message msg;
@@ -489,7 +490,7 @@ int main() {
     ch.close();
     thd.join(); 
     return 0; 
-};
+}
 ```
 
 Terminal output might be:
@@ -500,7 +501,7 @@ timeout detected
 that's all folks!
 sleep ended on temporary thread with no return
 timeout detected
-timeout detected 
+timeout detected
 timer with payload
 timeout detected
 $
@@ -522,6 +523,7 @@ A `Callable` is any data or object which can be executed like a function includi
 `st::task` objects are 'lazy', in that once they have been evaluated once, further evaluations will immediately return the previously returned value with no further work.
 
 #### Example
+[example source](tst/scheduling_functions_on_user_threads_ex.cpp)
 ```
 #include <iostream>
 #include <sthread>
@@ -552,6 +554,7 @@ $
 `st::task`s can be sent over `st::channel`s to implement arbitrary code execution worker threads:
 
 #### Example
+[example source](tst/scheduling_functions_on_user_threads_ex.cpp)
 ```
 #include <iostream>
 #include <string>
@@ -562,7 +565,7 @@ void print(const char* s) {
     std::cout << s << std::endl;
 }
 
-struct PrinterFunctor { 
+struct PrintFunctor { 
     void operator()(const char* s) {
         std::cout << s << std::endl;
     }
@@ -571,8 +574,8 @@ struct PrinterFunctor {
 void executor(st::channel ch) {
     for(auto msg : ch) { 
         // execute any received tasks
-        if(msg.data.is<st::task>()) {
-            msg.data.cast_to<st::task>()();
+        if(msg.data().is<st::task>()) {
+            msg.data().cast_to<st::task>()();
         }
     } 
 }
@@ -584,7 +587,7 @@ int main() {
 
     // in this example, message id's are arbitrary
     ch.send(0, st::task::make(print, "what a beautiful day"));
-    ch.send(0, st::task::make(PrintFunctor, "looks like rain"));
+    ch.send(0, st::task::make(PrintFunctor(), "looks like rain"));
     ch.send(0, st::task::make(printer_lambda));
 
     ch.close();

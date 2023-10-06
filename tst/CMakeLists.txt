@@ -18,6 +18,8 @@ set(TEST_SOURCE_FILES
     payload_data_type_checking_ex.cpp
     closing_channels_ex.cpp 
     abstracting_message_replies_ex.cpp
+    dealing_with_blocking_functions_ex.cpp
+    scheduling_functions_on_user_threads_ex.cpp
     )
 
 
