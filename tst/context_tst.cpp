@@ -44,7 +44,12 @@ protected:
         EXPECT_TRUE(sctx4 < sctx3);
         EXPECT_TRUE(sctx > sctx4); // greater than comparison
         EXPECT_TRUE(sctx >= sctx4); // greater than or equal comparison
-        EXPECT_TRUE(sctx >= sctx2); // greather than or equal comparison 
+        EXPECT_TRUE(sctx >= sctx2); // greather than or equal comparison  
+        
+        // get and reset
+        EXPECT_NE(sctx.get(), sctx4.get());
+        sctx.reset();
+        EXPECT_EQ(sctx.get(), sctx4.get());
     };
 
     std::function<SHARED_CONTEXT()> m_make;

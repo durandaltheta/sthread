@@ -69,8 +69,12 @@ TEST(example, abstracting_message_replies) {
     value_received_conf_ch.recv(msg); 
 
     // close and join child threads 
+    std::cout << "a" << std::endl;
     ch_a.close();
+    std::cout << "b" << std::endl;
     ch_b.close();
+    std::cout << "c" << std::endl;
     thd_a.join();
     thd_b.join();
+    std::cout << "DEAD" << std::endl;
 }

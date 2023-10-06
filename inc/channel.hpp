@@ -44,38 +44,24 @@ namespace channel {
 struct blocker {
     // stack condition data (not allocated!)
     struct data {
-        data(st::message* m) : msg(m) { }
-
         inline void wait(std::unique_lock<std::mutex>& lk) {
             do {
                 cv.wait(lk);
             } while(!flag);
         }
 
-        inline void signal() {
-            // only call signal once
-            if(!flag) {
-                flag = true;
-                cv.notify_one(); 
-            }
-        }
-
-        inline void send(st::message& m) {
-            *msg = std::move(m);
-            signal();
+        inline void notify() {
+            flag = true;
+            cv.notify_one(); 
         }
 
         bool flag = false;
         std::condition_variable cv;
-        st::message* msg;
     };
 
+    blocker() = delete;
     blocker(data* d) : m_data(d) { }
-    ~blocker(){ m_data->signal(); }
-
-    inline void send(st::message msg){ 
-        m_data->send(msg); 
-    }
+    ~blocker(){ m_data->notify(); }
 
     // a pointer to stack condition data 
     data* m_data;
@@ -102,8 +88,14 @@ struct context {
                 m_msg_q.clear();
             }
 
-            if(m_msg_q.empty() && m_blockers.size()) {
-                m_blockers.clear(); // allow receivers to terminate
+            // unblock all receivers if no messages
+            if(m_msg_q.empty()) {
+                m_blockers.clear(); 
+            } 
+
+            // unblock excess receivers if messages are available
+            while(m_blockers.size() > m_msg_q.size()) {
+                m_blockers.pop_front();
             }
         }
     }
@@ -118,72 +110,43 @@ struct context {
         return m_blockers.size();
     }
 
-    inline void handle_queued_messages(std::unique_lock<std::mutex>& lk) {
-        st::message msg;
-
-        while(m_msg_q.size() && m_blockers.size()) {
-            std::shared_ptr<blocker> s = m_blockers.front();
-            m_blockers.pop_front();
-            msg = m_msg_q.front();
-            m_msg_q.pop_front();
-
-            lk.unlock();
-            s->send(msg);
-            lk.lock();
-        }
-
-        if(m_closed && m_blockers.size()) {
-            m_blockers.clear(); // allow receivers to terminate
-        }
-    }
-
     inline bool send(st::message msg) {
         std::unique_lock<std::mutex> lk(m_mtx);
 
-        if(m_closed) {
+        if(m_closed || !msg) {
             return false;
         } else {
             m_msg_q.push_back(std::move(msg));
-            handle_queued_messages(lk);
+
+            while(m_msg_q.size() && m_blockers.size()) {
+                m_blockers.pop_front();
+            }
             return true;
         } 
     }
 
     inline state recv(st::message& msg, bool block) {
+        msg.reset();
+
         std::unique_lock<std::mutex> lk(m_mtx);
 
         do {
             if(!m_msg_q.empty()) {
-                // can safely loop here until message queue is empty or we can return 
-                // a message, even when block == false
-                while(!m_msg_q.empty()) {
-                    // retrieve message immediately
-                    msg = std::move(m_msg_q.front());
-                    m_msg_q.pop_front();
-
-                    if(msg) {
-                        return st::state::success;
-                    }
-                }
+                msg = std::move(m_msg_q.front());
+                m_msg_q.pop_front();
+                return st::state::success;
             } else if(m_closed) {
                 return st::state::closed;
             } else if(block) {
                 // block until message is available or channel termination
-                while(!msg && !m_closed) { 
-                    blocker::data d(&msg);
-                    m_blockers.push_back(
-                            std::shared_ptr<blocker>(
-                                new blocker(&d)));
-                    d.wait(lk);
-                }
-
-                if(msg) {
-                    return st::state::success;
-                }
+                blocker::data d; // stack condition and flag 
+                // ~blocker() will notify condition
+                m_blockers.push_back(std::shared_ptr<blocker>(new blocker(&d)));
+                d.wait(lk);
             } 
-        } while(block); // on blocking receive, loop till we receive a non-task message or channel is closed
+        } while(block); 
 
-        // since we didn't early return out the receive loop, then this is a failed try_recv()
+        // failed try_recv()
         return st::state::failure;
     }
 
@@ -289,7 +252,8 @@ struct channel : public st::shared_context<channel,detail::channel::context> {
      *
      * This method is non-blocking.
      *
-     * This method will immediately return if the channel is closed.
+     * This method will immediately return `false` if the channel is closed or 
+     * if argument is an empty `st::message`.
      *
      * @param as arguments passed to `st::message::make()`
      * @return `true` on success, `false` if the `st::channel` is closed

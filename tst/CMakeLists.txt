@@ -13,11 +13,11 @@ set(TEST_SOURCE_FILES
     channel_tst.cpp 
     reply_tst.cpp
     task_tst.cpp 
-    #message_passing_ex.cpp
-    #message_payloads_ex.cpp
-    #payload_data_type_checking_ex.cpp
-    #closing_channels_ex.cpp 
-    #abstracting_message_replies_ex.cpp
+    message_passing_ex.cpp
+    message_payloads_ex.cpp
+    payload_data_type_checking_ex.cpp
+    closing_channels_ex.cpp 
+    abstracting_message_replies_ex.cpp
     )
 
 

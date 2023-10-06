@@ -62,14 +62,18 @@ public:
     virtual ~shared_context() { }
 
     inline void* get() {
-        return ctx().get();
+        return this->ctx().get();
+    }
+
+    inline void reset() {
+        this->ctx().reset();
     }
 
     /**
      * @return `true` if object is allocated, else `false`
      */
     inline operator bool() const {
-        return this->ctx().operator bool();
+        return (bool)(this->ctx());
     }
 
     /**
