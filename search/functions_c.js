@@ -1,5 +1,6 @@
 var searchData=
 [
-  ['send_93',['send',['../structst_1_1channel.html#a2acf1a19224571f235913014841b0684',1,'st::channel::send()'],['../structst_1_1worker.html#ab39d120e79c2a64a4f0fd5b71fd64760',1,'st::worker::send()'],['../structst_1_1executor.html#ae7d8ab4f64b7b2479e79a11d6c31705f',1,'st::executor::send()']]],
-  ['shutdown_94',['shutdown',['../structst_1_1worker.html#a3f98d0479ad642ed572fd723caeb893d',1,'st::worker::shutdown()'],['../structst_1_1executor.html#a0108d5f0f3a5cd584001d4c5822f51d0',1,'st::executor::shutdown()']]]
+  ['timer_89',['timer',['../structst_1_1channel.html#a4fc3f6c097bfc260091b522fffdc9b98',1,'st::channel::timer(std::size_t resp_id, const std::chrono::duration&lt; Rep, Period &gt; &amp;timeout, P &amp;&amp;payload)'],['../structst_1_1channel.html#a07bf656bbec13e93ab35fb956669a492',1,'st::channel::timer(std::size_t resp_id, const std::chrono::duration&lt; Rep, Period &gt; &amp;timeout)']]],
+  ['try_5frecv_90',['try_recv',['../structst_1_1channel.html#a099cbcfb4f29df7a6fb3c4500e21c173',1,'st::channel']]],
+  ['type_5finfo_91',['type_info',['../structst_1_1data.html#abccf74d6a784f2798f73c0053516d193',1,'st::data']]]
 ];

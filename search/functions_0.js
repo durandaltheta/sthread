@@ -1,5 +1,4 @@
 var searchData=
 [
-  ['blocked_5freceivers_65',['blocked_receivers',['../structst_1_1channel.html#acfde7b7ed9474753d080bacab42f8139',1,'st::channel']]],
-  ['blocked_5fsenders_66',['blocked_senders',['../structst_1_1channel.html#a859f99084fba8b8e4c7e9040941769b6',1,'st::channel']]]
+  ['async_66',['async',['../structst_1_1channel.html#a0291ed63f29947152463a0cdfe14d9c3',1,'st::channel']]]
 ];

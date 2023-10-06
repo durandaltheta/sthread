@@ -1,5 +1,5 @@
 var searchData=
 [
-  ['machine_56',['machine',['../structst_1_1state_1_1machine.html',1,'st::state']]],
-  ['message_57',['message',['../structst_1_1message.html',1,'st']]]
+  ['fint_5ffunctor_48',['fint_functor',['../structstt_1_1task_1_1fint__functor.html',1,'stt::task']]],
+  ['fstring_5ffunctor_49',['fstring_functor',['../structstt_1_1task_1_1fstring__functor.html',1,'stt::task']]]
 ];

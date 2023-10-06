@@ -1,4 +1,5 @@
 var searchData=
 [
-  ['get_5fweight_18',['get_weight',['../structst_1_1worker.html#a863e47912a13157526607609056761b8',1,'st::worker']]]
+  ['fint_5ffunctor_11',['fint_functor',['../structstt_1_1task_1_1fint__functor.html',1,'stt::task']]],
+  ['fstring_5ffunctor_12',['fstring_functor',['../structstt_1_1task_1_1fstring__functor.html',1,'stt::task']]]
 ];

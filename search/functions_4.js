@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['full_76',['full',['../structst_1_1channel.html#af213e3f4004d2567772792474949e72a',1,'st::channel']]]
+  ['end_75',['end',['../structst_1_1channel.html#a0173fc4b0b49246bb6c2aa4ab865a270',1,'st::channel']]]
 ];

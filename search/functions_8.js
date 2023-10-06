@@ -1,6 +1,8 @@
 var searchData=
 [
-  ['operator_20bool_83',['operator bool',['../structst_1_1result.html#a4cb861d4420a826a0f012c3be249ca4c',1,'st::result::operator bool()'],['../structst_1_1state_1_1machine_1_1status.html#a053209581db8188f2bd8db371928b005',1,'st::state::machine::status::operator bool()']]],
-  ['operator_28_29_84',['operator()',['../structst_1_1processor.html#a519ff1237b4bd5794f8b3d71cee8d277',1,'st::processor']]],
-  ['operator_3c_85',['operator&lt;',['../structst_1_1worker_1_1weight.html#af4420017c2a78e925f13717d9c650e3b',1,'st::worker::weight']]]
+  ['operator_20bool_81',['operator bool',['../structst_1_1shared__context.html#a744fc19d6612651166ace65bca61c805',1,'st::shared_context::operator bool()'],['../structst_1_1data.html#ac9b49089f26624520ba81161ae95ff1e',1,'st::data::operator bool()']]],
+  ['operator_21_3d_82',['operator!=',['../structst_1_1shared__context.html#a63d3f64caff49816e0dd03ba2930ab4c',1,'st::shared_context']]],
+  ['operator_3c_83',['operator&lt;',['../structst_1_1shared__context.html#af474be1ee2549dd4950cc4684eb39170',1,'st::shared_context']]],
+  ['operator_3d_84',['operator=',['../structst_1_1shared__context.html#a7cb1c3a0c5876a2eef5d3c60f608531e',1,'st::shared_context::operator=()'],['../structst_1_1data.html#ad85eabc1dc71dfbe54b58adee7a45933',1,'st::data::operator=()']]],
+  ['operator_3d_3d_85',['operator==',['../structst_1_1shared__context.html#a4b50025bec84f9f5c1afe585e92471f3',1,'st::shared_context']]]
 ];

@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['queued_87',['queued',['../structst_1_1channel.html#ae8aadf196a461711905255b1d129026e',1,'st::channel']]]
+  ['recv_87',['recv',['../structst_1_1channel.html#a6a14871912401c4b59f16594eef809b1',1,'st::channel']]]
 ];

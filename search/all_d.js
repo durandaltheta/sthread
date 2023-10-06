@@ -1,7 +1,12 @@
 var searchData=
 [
-  ['task_47',['task',['../structst_1_1processor.html#af1c935ab88bcac5156186ce87ce94859',1,'st::processor']]],
-  ['this_5fworker_48',['this_worker',['../structst_1_1worker.html#aec29be3a5f0972e678a756ff2a718a35',1,'st::worker']]],
-  ['try_5fsend_49',['try_send',['../structst_1_1channel.html#ae0429626e7f10e18a1c3b79c0e3a80be',1,'st::channel::try_send()'],['../structst_1_1worker.html#a0fda1a895fc2ed37febec526c44c61f2',1,'st::worker::try_send()'],['../structst_1_1executor.html#a233db22a695c28d7f99429935cdb1e82',1,'st::executor::try_send()']]],
-  ['type_5fcode_50',['type_code',['../structst_1_1message.html#af3118f193af7802a5ead4a6d8a8e390f',1,'st::message::type_code()'],['../structst_1_1state.html#ace0d92dec99c8d4af418c76d5d377228',1,'st::state::type_code()']]]
+  ['send_29',['send',['../structst_1_1channel.html#af2979fdcf0cb337e9db495481fd6a478',1,'st::channel::send()'],['../structst_1_1reply.html#aca890aa1d0b2f0d340fe92d6590e95e0',1,'st::reply::send()']]],
+  ['shared_5fcontext_30',['shared_context',['../structst_1_1shared__context.html',1,'st']]],
+  ['shared_5fcontext_3c_20channel_2c_20detail_3a_3achannel_3a_3acontext_20_3e_31',['shared_context&lt; channel, detail::channel::context &gt;',['../structst_1_1shared__context.html',1,'st']]],
+  ['shared_5fcontext_3c_20iterator_2c_20detail_3a_3achannel_3a_3acontext_20_3e_32',['shared_context&lt; iterator, detail::channel::context &gt;',['../structst_1_1shared__context.html',1,'st']]],
+  ['shared_5fcontext_3c_20message_2c_20detail_3a_3amessage_3a_3acontext_20_3e_33',['shared_context&lt; message, detail::message::context &gt;',['../structst_1_1shared__context.html',1,'st']]],
+  ['shared_5fcontext_3c_20reply_2c_20detail_3a_3areply_3a_3acontext_20_3e_34',['shared_context&lt; reply, detail::reply::context &gt;',['../structst_1_1shared__context.html',1,'st']]],
+  ['shared_5fcontext_3c_20task_2c_20detail_3a_3atask_3a_3acontext_20_3e_35',['shared_context&lt; task, detail::task::context &gt;',['../structst_1_1shared__context.html',1,'st']]],
+  ['shared_5fcontext_5ftest_36',['shared_context_test',['../structstt_1_1shared__context__test.html',1,'stt']]],
+  ['simple_20threading_20and_20communication_37',['Simple Threading and Communication',['../md__r_e_a_d_m_e.html',1,'']]]
 ];
