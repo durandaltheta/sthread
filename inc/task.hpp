@@ -81,9 +81,9 @@ struct context {
  * If wrapped `Callable` returns void, the resulting `st::data&` will be empty 
  * and `== false` when used in an `if` statement.
  *
- * `st::task` objects are 'lazy', in that once they have been evaluated once, 
- * further evaluations will immediately return the previously returned value 
- * with no further work.
+ * `st::task` objects are 'lazy', when they have been evaluated once further 
+ * evaluations will immediately return the previously returned value with no 
+ * further work.
  */
 struct task : public st::shared_context<task, detail::task::context> {
     inline virtual ~task() { }
