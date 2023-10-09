@@ -8,5 +8,5 @@ var searchData=
   ['shared_5fcontext_3c_20reply_2c_20detail_3a_3areply_3a_3acontext_20_3e_34',['shared_context&lt; reply, detail::reply::context &gt;',['../structst_1_1shared__context.html',1,'st']]],
   ['shared_5fcontext_3c_20task_2c_20detail_3a_3atask_3a_3acontext_20_3e_35',['shared_context&lt; task, detail::task::context &gt;',['../structst_1_1shared__context.html',1,'st']]],
   ['shared_5fcontext_5ftest_36',['shared_context_test',['../structstt_1_1shared__context__test.html',1,'stt']]],
-  ['simple_20threading_20and_20communication_37',['Simple Threading and Communication',['../md__r_e_a_d_m_e.html',1,'']]]
+  ['simple_20c_2b_2b_20threading_20and_20communication_37',['Simple C++ Threading and Communication',['../md__r_e_a_d_m_e.html',1,'']]]
 ];
