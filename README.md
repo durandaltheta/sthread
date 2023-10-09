@@ -672,6 +672,10 @@ enum my_api {
 #endif
 ```
 
+User can open interprocess messaging queue during initialization and launch an
+interprocess receiver thread which forwards received message data to the main 
+thread. The main thread is set up so that it can process both interprocess and 
+internal messaging over its `st::channel`:
 ```
 #include <iostream>
 #include <string>
