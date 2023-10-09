@@ -514,7 +514,7 @@ The utility type `st::task` provides the ability to wrap any `Callable` (and opt
 A `Callable` is any data or object which can be executed like a function including:
 - functions 
 - function pointers 
-- functors (ex: std::function)
+- functors (ex: `std::function`)
 - lambdas 
 
 `st::task::make(Callable, optional_arguments...)` can be invoked to make a `st::task` which will wrap it's arguments into a task for the user. `st::task` objects can be invoked with the `()` operator.
