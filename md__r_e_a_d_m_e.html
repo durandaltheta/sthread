@@ -568,7 +568,7 @@ Example</h3>
 <div class="line">    auto ch = st::channel::make();</div>
 <div class="line">    std::thread thd(executor, ch); </div>
 <div class="line"> </div>
-<div class="line">    // in this example, message id&#39;s are arbitrary</div>
+<div class="line">    // in this example message ids are arbitrary</div>
 <div class="line">    ch.send(0, st::task::make(print, &quot;what a beautiful day&quot;));</div>
 <div class="line">    ch.send(0, st::task::make(PrintFunctor(), &quot;looks like rain&quot;));</div>
 <div class="line">    ch.send(0, st::task::make(printer_lambda));</div>
