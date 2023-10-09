@@ -643,7 +643,7 @@ With the user's `my_public_api.h` API header for interprocess communication:
 ```
 #ifndef MY_PUBLIC_API
 #define MY_PUBLIC_API
-const char* INTERPROCESS_QUEUE_NAME = "my_interprocess_queue_name"
+const char* INTERPROCESS_QUEUE_NAME = "my_interprocess_queue_name";
 
 enum my_public_api {
     INTERPROCESS_OPERATION_1 = 0,
