@@ -28,7 +28,7 @@ The overall design of code in this library relies heavily on virtual interfaces 
 [Interprocess Considerations](#interprocess-considerations)
 
 ## Purpose 
-This library's purpose is to simplify setting up useful c++ threading, and to enable trivial inter-thread message passing of C++ objects. That is, message passing with support for proper C++ construction and destruction instead of blind `memcpy()` calls, allowing C++ objects to be passed around.
+This library's purpose is to simplify setting up useful C++ threading, and to enable trivial inter-thread message passing of C++ objects. That is, message passing with support for proper C++ construction and destruction instead of blind `memcpy()` calls, allowing C++ objects to be passed around.
 
 The library provides a handful of objects which support this goal:
 - `st::channel`
