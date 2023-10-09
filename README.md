@@ -41,7 +41,9 @@ The core of the behavior of the library is tied to the `st::channel` object, whi
 Each of the above objects is actually a thinly wrapped shared pointer to some internal data. The internal data must be constructed by a call to that object's associated static `make()` method. This means that once these objects are constructed, they can be passed around efficiently like any other variable. In the case of `st::channel` all of its public methods are threadsafe.
 
 ## Requirements
-- C++11 
+- C++11 compatible compiler toolchain
+- make
+- cmake
 
 ## Git Submodules
 This project uses Googletest as a submodule to build unit tests. If unit tests are needed try cloning this project with submodules:
