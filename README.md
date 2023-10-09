@@ -7,7 +7,7 @@ The overall design of code in this library relies heavily on virtual interfaces 
 
 [Unit Test and Example Code](tst/)
 
-#### Usage:
+## Quick Links:
 [Simple Message Passing](#simple-message-passing) 
 
 [A Closer Look at Channel Send Operations](#a-closer-look-at-channel-send-operations) 
