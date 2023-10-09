@@ -70,8 +70,6 @@ Quick Links</h1>
 <p>The overall design of code in this library relies heavily on virtual interfaces to implement inherited behavior. Visit the documentation for information and features not detailed in this README.</p>
 <p><a href="https://durandaltheta.github.io/sthread/annotated.html">Documentation</a></p>
 <p><a href="tst/">Unit Test and Example Code</a></p>
-<h1><a class="anchor" id="autotoc_md3"></a>
-Quick Links:</h1>
 <p><a href="#simple-message-passing">Simple Message Passing</a></p>
 <p><a href="#a-closer-look-at-channel-send-operations">A Closer Look at Channel Send Operations</a></p>
 <p><a href="#message-data-payloads">Message Data Payloads</a></p>
@@ -82,7 +80,7 @@ Quick Links:</h1>
 <p><a href="#dealing-with-blocking-functions">Dealing with Blocking Functions</a></p>
 <p><a href="#scheduling-functions-on-user-threads">Scheduling Functions on User Threads</a></p>
 <p><a href="#interprocess-considerations">Interprocess Considerations</a></p>
-<h1><a class="anchor" id="autotoc_md4"></a>
+<h1><a class="anchor" id="autotoc_md3"></a>
 Purpose</h1>
 <p>This library's purpose is to simplify setting up useful c++ threading, and to enable trivial inter-thread message passing of C++ objects. That is, message passing with support for proper C++ construction and destruction instead of blind <code>memcpy()</code> calls, allowing C++ objects to be passed around.</p>
 <p>The library provides a handful of objects which support this goal:</p><ul>
@@ -93,36 +91,36 @@ Purpose</h1>
 </ul>
 <p>The core of the behavior of the library is tied to the <code><a class="el" href="structst_1_1channel.html" title="Interthread message passing queue.">st::channel</a></code> object, which is responsible for asynchronously sending messages between senders and receivers. A receiver thread can use this object to make a simple message receive loop and process incoming <code><a class="el" href="structst_1_1message.html" title="interthread type erased message container">st::message</a></code>s.</p>
 <p>Each of the above objects is actually a thinly wrapped shared pointer to some internal data. The internal data must be constructed by a call to that object's associated static <code>make()</code> method. This means that once these objects are constructed, they can be passed around efficiently like any other variable. In the case of <code><a class="el" href="structst_1_1channel.html" title="Interthread message passing queue.">st::channel</a></code> all of its public methods are threadsafe.</p>
-<h1><a class="anchor" id="autotoc_md5"></a>
+<h1><a class="anchor" id="autotoc_md4"></a>
 Requirements</h1>
 <ul>
 <li>C++11</li>
 </ul>
-<h1><a class="anchor" id="autotoc_md6"></a>
+<h1><a class="anchor" id="autotoc_md5"></a>
 Git Submodules</h1>
 <p>This project uses Googletest as a submodule to build unit tests. If unit tests are needed try cloning this project with submodules:</p><ul>
 <li>git clone &ndash;recurse-submodules <a href="https://github.com/durandaltheta/sthread">https://github.com/durandaltheta/sthread</a></li>
 </ul>
-<h1><a class="anchor" id="autotoc_md7"></a>
+<h1><a class="anchor" id="autotoc_md6"></a>
 Installation</h1>
 <ul>
 <li><code>cmake .</code></li>
 <li><code>make install</code></li>
 </ul>
 <p>If building on linux, may have to <code>sudo make install</code>.</p>
-<h1><a class="anchor" id="autotoc_md8"></a>
+<h1><a class="anchor" id="autotoc_md7"></a>
 Build Unit Tests</h1>
 <ul>
 <li><code>cmake .</code></li>
 <li><code>make sthread_tst</code></li>
 </ul>
 <p><code>sthread_tst</code> binary will be placed in directory <code>tst/</code></p>
-<h1><a class="anchor" id="autotoc_md9"></a>
+<h1><a class="anchor" id="autotoc_md8"></a>
 Usage</h1>
-<h2><a class="anchor" id="autotoc_md10"></a>
+<h2><a class="anchor" id="autotoc_md9"></a>
 Simple message passing</h2>
 <p>All that is required to send/receive messages between threads is that each thread has a copy of a constructed <code><a class="el" href="structst_1_1channel.html" title="Interthread message passing queue.">st::channel</a></code> object. Messages can be sent with a call to <code>bool st::message::send(...)</code> and messages can be received by calling <code>bool <a class="el" href="structst_1_1channel.html#a6a14871912401c4b59f16594eef809b1" title="receive a message over the channel">st::channel::recv(st::message&amp; msg)</a></code>. However, the simplest solution is to make use of <code><a class="el" href="structst_1_1channel.html" title="Interthread message passing queue.">st::channel</a></code> iterators in a range-for loop. <code><a class="el" href="structst_1_1channel.html" title="Interthread message passing queue.">st::channel</a></code> iterators can also be returned with calls to <code><a class="el" href="structst_1_1channel.html#a01d46295d248d7848c7156e43d27e1e5">st::channel::begin()</a></code> and <code><a class="el" href="structst_1_1channel.html#a0173fc4b0b49246bb6c2aa4ab865a270">st::channel::end()</a></code>.</p>
-<h3><a class="anchor" id="autotoc_md11"></a>
+<h3><a class="anchor" id="autotoc_md10"></a>
 Example</h3>
 <p><a href="tst/message_passing_ex.cpp">example source</a> </p><div class="fragment"><div class="line">#include &lt;iostream&gt;</div>
 <div class="line">#include &lt;string&gt;</div>
@@ -167,7 +165,7 @@ Example</h3>
 <div class="line">child thread says: world</div>
 <div class="line">Thanks for all the fish!</div>
 <div class="line">$</div>
-</div><!-- fragment --><h2><a class="anchor" id="autotoc_md12"></a>
+</div><!-- fragment --><h2><a class="anchor" id="autotoc_md11"></a>
 A Closer Look at Channel Send Operations</h2>
 <p>Arguments passed to <code>st::channel::send(...)</code> are internally passed to <code><a class="el" href="structst_1_1message.html" title="interthread type erased message container">st::message</a> st::message::make(...)</code> function before sending to its destination. <code>st::message::make(...)</code> will generate an allocated <code><a class="el" href="structst_1_1message.html" title="interthread type erased message container">st::message</a></code> object which contains message identification and an optional data payload.</p>
 <p>The summary of the 4 overloads of <code><a class="el" href="structst_1_1message.html" title="interthread type erased message container">st::message</a> st::message::make(...)</code> are:</p>
@@ -182,12 +180,12 @@ A Closer Look at Channel Send Operations</h2>
 <li><code><a class="el" href="structst_1_1data.html" title="type erased data container">st::data</a>&amp; <a class="el" href="structst_1_1message.html#ae2e78ac509a3c971cdd5f7a82d4d2625" title="optional type erased payload data">st::message::data()</a></code>: Return a reference to the payload <code><a class="el" href="structst_1_1data.html" title="type erased data container">st::data</a></code> stored in the message</li>
 </ul>
 <p>It should be noted that the <code>auto</code> keyword can be used for objects contructed by <code>make()</code> calls.</p>
-<h2><a class="anchor" id="autotoc_md13"></a>
+<h2><a class="anchor" id="autotoc_md12"></a>
 Message Data Payloads</h2>
 <p><code><a class="el" href="structst_1_1data.html" title="type erased data container">st::data()</a></code> can store any data type. Usually the user will not need to manually construct <code><a class="el" href="structst_1_1data.html" title="type erased data container">st::data()</a></code>, as <code>st::message::make(...)</code> methods do this internally. In the cases where manual construction is necessary <code><a class="el" href="structst_1_1data.html" title="type erased data container">st::data</a></code> objects can be constructed with a call to <code><a class="el" href="structst_1_1data.html#afe1ea2c7dd24d9c54c7133ce1405f482" title="construct a data payload using explicit template typing instead of by deduction">st::data::make</a>&lt;T&gt;(optional_constructor_args...)</code>, where type <code>T</code> is the type to be stored in the result <code><a class="el" href="structst_1_1data.html" title="type erased data container">st::data</a></code>.</p>
 <p><code><a class="el" href="structst_1_1data.html" title="type erased data container">st::data</a></code> objects are thin wrappers to <code>std::unique_ptr&lt;T&gt;</code> objects, and therefore cannot be lvalue copied (ownership between <code><a class="el" href="structst_1_1data.html" title="type erased data container">st::data</a></code> objects must be assigned with <code>destination_data = std::move(source_data)</code>).</p>
 <p>The stored data can be copied to an argument of templated type <code>T</code> with <code><a class="el" href="structst_1_1data.html#a88b7ca6d8a91f7bb411d505b02519030" title="copy the data payload to argument t">st::data::copy_to(T&amp; t)</a></code> or rvalue swapped with <code><a class="el" href="structst_1_1data.html#acc1ba9d77b2eee7671f266d0bfb69789" title="rvalue swap the data payload to argument t">st::data::move_to(T&amp; t)</a></code>. Said functions will return <code>true</code> if their argument <code>T</code> matches the type <code>T</code> originally stored in the <code><a class="el" href="structst_1_1data.html" title="type erased data container">st::data</a></code>, otherwise they will return <code>false</code>.</p>
-<h3><a class="anchor" id="autotoc_md14"></a>
+<h3><a class="anchor" id="autotoc_md13"></a>
 Example</h3>
 <p><a href="tst/message_payloads_ex.cpp">example source</a> </p><div class="fragment"><div class="line">#include &lt;iostream&gt;</div>
 <div class="line">#include &lt;string&gt;</div>
@@ -229,7 +227,7 @@ Example</h3>
 <div class="line">hello again</div>
 <div class="line">message data was not a string</div>
 <div class="line">$</div>
-</div><!-- fragment --><h2><a class="anchor" id="autotoc_md15"></a>
+</div><!-- fragment --><h2><a class="anchor" id="autotoc_md14"></a>
 Payload Data Type Checking</h2>
 <p>Payload <code><a class="el" href="structst_1_1data.html" title="type erased data container">st::data</a></code> types can also be checked with <code>bool <a class="el" href="structst_1_1data.html#aa8ee8dbbd7169b8cdc2d846095d480d5" title="determine at runtime whether the type erased data type code matches the templated type code.">st::data::is</a>&lt;T&gt;()</code> (returns <code>true</code> if types match, else <code>false</code>) which is useful if a message's data might contain several different potential types. If <code><a class="el" href="structst_1_1data.html" title="type erased data container">st::data</a></code> is unallocated then <code><a class="el" href="structst_1_1data.html#aa8ee8dbbd7169b8cdc2d846095d480d5" title="determine at runtime whether the type erased data type code matches the templated type code.">st::data::is</a>&lt;T&gt;()</code> will always return <code>false</code> (<code>st::data::operator bool()</code> conversion will also be <code>false</code>).</p>
 <p>Additionally, the type stored in <code><a class="el" href="structst_1_1data.html" title="type erased data container">st::data</a></code> can be cast to a reference with a call to <code>T&amp; <a class="el" href="structst_1_1data.html#ad4c439d0b52b1dc8c0706b25ba21e058" title="cast message data payload to templated type reference">st::data::cast_to</a>&lt;T&gt;()</code>. However, this functionality is only safe when used inside of an <code><a class="el" href="structst_1_1data.html#aa8ee8dbbd7169b8cdc2d846095d480d5" title="determine at runtime whether the type erased data type code matches the templated type code.">st::data::is</a>&lt;T&gt;()</code> check.</p>
@@ -238,7 +236,7 @@ Payload Data Type Checking</h2>
 <p>Typically, it is safe to send c-style strings with a hardcoded value, as such strings are stored in the program's global data. However, local stack arrays of characters, or, even worse, allocated c-strings must be carefully considered when sending over a message.</p>
 <p>Furthermore, compiler rules around array and pointer conversions may sometimes cause unexpected types to be stored in <code><a class="el" href="structst_1_1data.html" title="type erased data container">st::data</a></code> if the type is not explicit. Therefore when using raw c-strings it may be a necessary to explicitly cast it to the expected type whenever assigning a payload to an <code><a class="el" href="structst_1_1message.html" title="interthread type erased message container">st::message</a></code>: <code><a class="el" href="structst_1_1message.html#ad97a780bc24dd0f4d5fe20b193a9d9e7" title="convenience function for templating">st::message::make</a>(my_id, (const char*)"my string")</code>.</p>
 <p>A simple workaround to these headaches is to encapsulate c-style strings within a c++ <code>std::string</code>, which will make typing consistent and explicit.</p>
-<h3><a class="anchor" id="autotoc_md16"></a>
+<h3><a class="anchor" id="autotoc_md15"></a>
 Example</h3>
 <p><a href="tst/payload_data_type_checking_ex.cpp">example source</a> </p><div class="fragment"><div class="line">#include &lt;iostream&gt;</div>
 <div class="line">#include &lt;string&gt;</div>
@@ -277,7 +275,7 @@ Example</h3>
 </div><!-- fragment --><p>Terminal output might be: </p><div class="fragment"><div class="line">$./a.out</div>
 <div class="line">hello 1 more time</div>
 <div class="line">$</div>
-</div><!-- fragment --><h2><a class="anchor" id="autotoc_md17"></a>
+</div><!-- fragment --><h2><a class="anchor" id="autotoc_md16"></a>
 Object Lifecycles</h2>
 <p>The objects in this library are actually shared pointers to some shared context, whose context needs to be allocated with a static call to their respective <code>make()</code> functions. Objects in this category include:</p><ul>
 <li><code><a class="el" href="structst_1_1message.html" title="interthread type erased message container">st::message</a></code></li>
@@ -292,12 +290,12 @@ Object Lifecycles</h2>
 <div class="line">}</div>
 </div><!-- fragment --><p>Attempting to use API of these objects when they are <em>NOT</em> allocated (other than static allocation functions or the <code>bool</code> conversion) will typically result in a failure return value of <code>false</code>. Alternatively, a successful call will return <code>true</code>. This means that users generally don't need to handle exceptions, but they do need to pay attention to return values of methods.</p>
 <p>When the last object holding a copy of some shared context goes out of scope, that object will be neatly shutdown and be destroyed. As such, the user is responsible for keeping copies of the above objects when they are created with an allocator function (<code>make()</code>), otherwise they may unexpectedly shutdown.</p>
-<h2><a class="anchor" id="autotoc_md18"></a>
+<h2><a class="anchor" id="autotoc_md17"></a>
 Closing Channels</h2>
 <p>Operations on <code><a class="el" href="structst_1_1channel.html" title="Interthread message passing queue.">st::channel</a></code>'s shared context can be shutdown early with a call to <code>close()</code>, causing operations which use that shared context to fail.</p>
 <p>For example, the default behavior for <code><a class="el" href="structst_1_1channel.html#a569ae1a23f523975df09e541485a0475" title="st::channel is set to the closed state">st::channel::close()</a></code> is to cause all current and future all <code><a class="el" href="structst_1_1channel.html#af2979fdcf0cb337e9db495481fd6a478" title="send an st::message with given parameters into the internal message queue">st::channel::send()</a></code> operations to fail early but to allow <code><a class="el" href="structst_1_1channel.html#a6a14871912401c4b59f16594eef809b1" title="receive a message over the channel">st::channel::recv()</a></code> to continue succeeding until the internal message queue is empty. Alternatively, the user can specify a "hard" close by calling <code>st::channel::close(false)</code> to immediately end all send and recieve operations on the object, though this is rarely the preferred behavior.</p>
 <p>The user can call <code>bool closed()</code>on these objects to check if an object has been closed or is still running.</p>
-<h3><a class="anchor" id="autotoc_md19"></a>
+<h3><a class="anchor" id="autotoc_md18"></a>
 Example</h3>
 <p><a href="tst/closing_channels_ex.cpp">example source</a> </p><div class="fragment"><div class="line">#include &lt;iostream&gt;</div>
 <div class="line">#include &lt;string&gt;</div>
@@ -331,12 +329,12 @@ Example</h3>
 <div class="line">you say goodbye</div>
 <div class="line">and I say hello</div>
 <div class="line">$</div>
-</div><!-- fragment --><h2><a class="anchor" id="autotoc_md20"></a>
+</div><!-- fragment --><h2><a class="anchor" id="autotoc_md19"></a>
 Abstracting Message Replies</h2>
 <p>Dealing with enumerations when message passing can be complicated when API grows large and painful when enumerations conflict with each other. This typically requires abstraction between multiple APIs such that multiple points in the program do not know anything about the other.</p>
 <p>As a convenience, the user can create an <code><a class="el" href="structst_1_1reply.html" title="object capable of sending a st::message back to an st::channel">st::reply</a></code> object to abstract sending a response back over an <code><a class="el" href="structst_1_1channel.html" title="Interthread message passing queue.">st::channel</a></code> which hides information about the receiver, simplifying request/response API.</p>
 <p><code>st::reply::make(...)</code> will take an <code><a class="el" href="structst_1_1channel.html" title="Interthread message passing queue.">st::channel</a></code> and an unsigned integer <code><a class="el" href="structst_1_1message.html" title="interthread type erased message container">st::message</a></code> id. When <code>st::reply::send(T t)</code> is called, an <code><a class="el" href="structst_1_1message.html" title="interthread type erased message container">st::message</a></code> containing the given <code><a class="el" href="structst_1_1message.html" title="interthread type erased message container">st::message</a></code> id and an optional payload <code>t</code> is sent to the stored <code><a class="el" href="structst_1_1channel.html" title="Interthread message passing queue.">st::channel</a></code>.</p>
-<h3><a class="anchor" id="autotoc_md21"></a>
+<h3><a class="anchor" id="autotoc_md20"></a>
 Example</h3>
 <p><a href="tst/abstracting_message_replies_ex.cpp">example source</a> </p><div class="fragment"><div class="line">#include &lt;iostream&gt;</div>
 <div class="line">#include &lt;string&gt;</div>
@@ -416,14 +414,14 @@ Example</h3>
 </div><!-- fragment --><p>Terminal output might be: </p><div class="fragment"><div class="line">$./a.out </div>
 <div class="line">received foofaa!</div>
 <div class="line">$</div>
-</div><!-- fragment --><h2><a class="anchor" id="autotoc_md22"></a>
+</div><!-- fragment --><h2><a class="anchor" id="autotoc_md21"></a>
 Dealing with Blocking Functions</h2>
 <p>To ensure messages are processed in a timely manner, and to avoid deadlock in general, it is important to avoid calling functions which will block for indeterminate periods within a message receiving thread. If the user needs to call such a function a solution is to make use of the standard library's <code>std::async()</code> feature to execute arbitrary code on a separate, dedicated system thread, then <code>send()</code> the result back to through the caller's <code><a class="el" href="structst_1_1channel.html" title="Interthread message passing queue.">st::channel</a></code> when the call completes.</p>
 <p><code><a class="el" href="structst_1_1channel.html#a0291ed63f29947152463a0cdfe14d9c3" title="asynchronously execute user Callable on a system thread">st::channel::async()</a></code> is provided for exactly this purpose, sending an <code><a class="el" href="structst_1_1message.html" title="interthread type erased message container">st::message</a></code> back through the channel to a receiver when the scheduled function (actually any <code>Callable</code>) completes. The resulting <code><a class="el" href="structst_1_1message.html" title="interthread type erased message container">st::message</a></code> will have the same id passed to <code><a class="el" href="structst_1_1channel.html#a0291ed63f29947152463a0cdfe14d9c3" title="asynchronously execute user Callable on a system thread">st::channel::async()</a></code> and the payload will be the return value of the executed function:</p>
 <p><code>st::channel::async(std::size_t resp_id, user_function, optional_function_args...)</code></p>
 <p>Alternatively, if the user function returns <code>void</code>, the <code><a class="el" href="structst_1_1message.html#ae2e78ac509a3c971cdd5f7a82d4d2625" title="optional type erased payload data">st::message::data()</a></code> will be unallocated (<code>st::data::operator bool()</code> will return <code>false</code>).</p>
 <p>The user can implement a simple timer mechanism using this functionality by calling <code>std::this_thread::sleep_for(...)</code> inside of <code>user_function</code>. Another convenience, <code>st::channel::timer(duration, id, optional_payload)</code> does exactly this, where <code>duration</code> is a <code>std::chrono::duration</code> sending <code>id</code> (and potentially a payload) in a <code><a class="el" href="structst_1_1message.html" title="interthread type erased message container">st::message</a></code> over the <code><a class="el" href="structst_1_1channel.html" title="Interthread message passing queue.">st::channel</a></code> after timeout.</p>
-<h3><a class="anchor" id="autotoc_md23"></a>
+<h3><a class="anchor" id="autotoc_md22"></a>
 Example</h3>
 <p><a href="tst/dealing_with_blocking_functions_ex.cpp">example source</a> </p><div class="fragment"><div class="line">#include &lt;iostream&gt;</div>
 <div class="line">#include &lt;string&gt;</div>
@@ -501,7 +499,7 @@ Example</h3>
 <div class="line">timer with payload</div>
 <div class="line">timeout detected</div>
 <div class="line">$</div>
-</div><!-- fragment --><h2><a class="anchor" id="autotoc_md24"></a>
+</div><!-- fragment --><h2><a class="anchor" id="autotoc_md23"></a>
 Scheduling Functions on User Threads</h2>
 <p>The utility type <code><a class="el" href="structst_1_1task.html" title="wrap any Callable and optional arguments into an executable task">st::task</a></code> provides the ability to wrap any <code>Callable</code> (and optionally any arguments) for execution.</p>
 <p>A <code>Callable</code> is any data or object which can be executed like a function including:</p><ul>
@@ -513,7 +511,7 @@ Scheduling Functions on User Threads</h2>
 <p><code>st::task::make(Callable, optional_arguments...)</code> can be invoked to make a <code><a class="el" href="structst_1_1task.html" title="wrap any Callable and optional arguments into an executable task">st::task</a></code> which will wrap it's arguments into a task for the user. <code><a class="el" href="structst_1_1task.html" title="wrap any Callable and optional arguments into an executable task">st::task</a></code> objects can be invoked with the <code>()</code> operator.</p>
 <p><code><a class="el" href="structst_1_1task.html" title="wrap any Callable and optional arguments into an executable task">st::task</a></code> objects when invoked will return a reference to an <code><a class="el" href="structst_1_1data.html" title="type erased data container">st::data</a></code> value when invoked containing the returned value of the wrapped <code>Callable</code>. If wrapped <code>Callable</code> returns void, the resulting <code><a class="el" href="structst_1_1data.html" title="type erased data container">st::data</a>&amp;</code> will be empty and <code>== false</code> when used in an <code>if</code> statement.</p>
 <p><code><a class="el" href="structst_1_1task.html" title="wrap any Callable and optional arguments into an executable task">st::task</a></code> objects are 'lazy', in that once they have been evaluated once, further evaluations will immediately return the previously returned value with no further work.</p>
-<h3><a class="anchor" id="autotoc_md25"></a>
+<h3><a class="anchor" id="autotoc_md24"></a>
 Example</h3>
 <p><a href="tst/scheduling_functions_on_user_threads_ex.cpp">example source</a> </p><div class="fragment"><div class="line">#include &lt;iostream&gt;</div>
 <div class="line">#include &lt;sthread&gt;</div>
@@ -537,7 +535,7 @@ Example</h3>
 <div class="line">result: 4</div>
 <div class="line">$</div>
 </div><!-- fragment --><p><code><a class="el" href="structst_1_1task.html" title="wrap any Callable and optional arguments into an executable task">st::task</a></code>s can be sent over <code><a class="el" href="structst_1_1channel.html" title="Interthread message passing queue.">st::channel</a></code>s to implement arbitrary code execution worker threads:</p>
-<h3><a class="anchor" id="autotoc_md26"></a>
+<h3><a class="anchor" id="autotoc_md25"></a>
 Example</h3>
 <p><a href="tst/scheduling_functions_on_user_threads_ex.cpp">example source</a> </p><div class="fragment"><div class="line">#include &lt;iostream&gt;</div>
 <div class="line">#include &lt;string&gt;</div>
@@ -582,10 +580,10 @@ Example</h3>
 <div class="line">looks like rain </div>
 <div class="line">what a beautiful sunset</div>
 <div class="line">$</div>
-</div><!-- fragment --><h2><a class="anchor" id="autotoc_md27"></a>
+</div><!-- fragment --><h2><a class="anchor" id="autotoc_md26"></a>
 Interprocess Considerations</h2>
 <p>While <code><a class="el" href="structst_1_1channel.html" title="Interthread message passing queue.">st::channel</a></code>s are useful for communicating between a single process's threads, they cannot be used for communicating between processes. A simple method for unifying interprocess and interthread communication is to use one thread as a translator, receiving interprocess messages and forwarding them to a main thread over an <code><a class="el" href="structst_1_1channel.html" title="Interthread message passing queue.">st::channel</a></code>.</p>
-<h3><a class="anchor" id="autotoc_md28"></a>
+<h3><a class="anchor" id="autotoc_md27"></a>
 Example</h3>
 <p>Given this theoretical <code>interprocess_messaging.h</code> API header: </p><div class="fragment"><div class="line">#ifndef INTERPROCESS_MESSAGING</div>
 <div class="line">#define INTERPROCESS_MESSAGING</div>
