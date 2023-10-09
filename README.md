@@ -586,7 +586,7 @@ int main() {
     auto ch = st::channel::make();
     std::thread thd(executor, ch); 
 
-    // in this example, message id's are arbitrary
+    // in this example message ids are arbitrary
     ch.send(0, st::task::make(print, "what a beautiful day"));
     ch.send(0, st::task::make(PrintFunctor(), "looks like rain"));
     ch.send(0, st::task::make(printer_lambda));
