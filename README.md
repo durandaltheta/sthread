@@ -63,7 +63,7 @@ If building on linux, may have to `sudo make install`.
 
 ## Usage 
 ### Simple message passing 
-All that is required to send/receive messages between threads is that each thread has a copy of a constructed `st::channel` object. Messages can be sent with a call to `bool st::message::send(...)` and messages can be received by calling `bool st::channel::recv(st::message& msg)`. However, the simplest solution is to make use of `st::channel` iterators in a range-for loop. `st::channel` iterators can also be returned with calls to `st::channel::begin()` and `st::channel::end()`.
+All that is required to send/receive messages between threads is that each thread has a copy of a constructed `st::channel` object. Messages can be sent with a call to `bool st::channel::send(...)` and messages can be received by calling `bool st::channel::recv(st::message& msg)`. However, the simplest solution is to make use of `st::channel` iterators in a range-for loop. `st::channel` iterators can also be returned with calls to `st::channel::begin()` and `st::channel::end()`.
 
 #### Example 
 [example source](tst/message_passing_ex.cpp)
