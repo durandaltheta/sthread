@@ -138,7 +138,7 @@ It should be noted that the `auto` keyword can be used for objects contructed by
 
 `st::data` objects are thin wrappers to `std::unique_ptr<T>` objects, and therefore cannot be lvalue copied (ownership between `st::data` objects must be assigned with `destination_data = std::move(source_data)`).
 
-The stored data can be copied to an argument of templated type `T` with `st::data::copy_to(T& t)` or rvalue swapped with `st::data::move_to(T& t)`. Said functions will return `true` if their argument `T` matches the type `T` originally stored in the `st::data`, otherwise they will return `false`.
+The value stored in an `st::data` can be copied to an argument of templated type `T` with `st::data::copy_to(T& t)` or rvalue swapped with `st::data::move_to(T& t)`. Said functions will return `true` if their argument `T` matches the type `T` originally stored in the `st::data`, otherwise they will return `false`.
 
 #### Example
 [example source](tst/message_payloads_ex.cpp)
