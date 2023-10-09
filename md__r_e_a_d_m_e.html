@@ -683,10 +683,6 @@ Example</h3>
 <div class="line">                    // ...</div>
 <div class="line">                    break;</div>
 <div class="line">                // handle other public API operations...</div>
-<div class="line">                case INTERPROCESS_SHUTDOWN:</div>
-<div class="line">                    // end message processing and cleanup</div>
-<div class="line">                    ch.close(); </div>
-<div class="line">                    break;</div>
 <div class="line">                // handle private API operations...</div>
 <div class="line">                case my_api::interprocess_receive_error:</div>
 <div class="line">                    if(msg.data().copy_to(error)) {</div>
@@ -695,6 +691,10 @@ Example</h3>
 <div class="line">                        std::cerr &lt;&lt; &quot;interprocess queue receive failed; message type unknown&quot; &lt;&lt; std::endl;</div>
 <div class="line">                    }</div>
 <div class="line">                    ret = 1;</div>
+<div class="line">                    // fallthrough to shutdown case</div>
+<div class="line">                case INTERPROCESS_SHUTDOWN:</div>
+<div class="line">                    // end message processing and cleanup</div>
+<div class="line">                    ch.close(); </div>
 <div class="line">                    break;</div>
 <div class="line">                case my_api::internal_operation_2:</div>
 <div class="line">                    // ...</div>
