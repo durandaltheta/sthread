@@ -1,4 +1,4 @@
-# Simple Threading and Communication
+# Simple C++ Threading and Communication
 ## Quick Links
 
 The overall design of code in this library relies heavily on virtual interfaces to implement inherited behavior. Visit the documentation for information and features not detailed in this README.
