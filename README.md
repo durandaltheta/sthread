@@ -421,7 +421,7 @@ To ensure messages are processed in a timely manner, and to avoid deadlock in ge
 
 Alternatively, if the user function returns `void`, the `st::message::data()` will be unallocated (`st::data::operator bool()` will return `false`).
 
-The user can implement a simple timer mechanism using this functionality by calling `std::this_thread::sleep_for(...)` inside of `user_function`. Another convenience, `st::channel::timer(duration, id, optional_payload)` does exactly this, where `duration` is a `std::chrono::duration` sending `id` (and potentially a payload) in a `st::message` over the `st::channel` after timeout.
+The user can implement a simple timer mechanism using this functionality by calling `std::this_thread::sleep_for(...)` inside of `user_function`. Another convenience, `st::channel::timer(id, duration, optional_payload)` does exactly this, where `duration` is a `std::chrono::duration` sending `id` (and potentially a payload) in a `st::message` over the `st::channel` after timeout.
 
 #### Example
 [example source](tst/dealing_with_blocking_functions_ex.cpp)
