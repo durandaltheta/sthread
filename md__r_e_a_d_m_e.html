@@ -507,7 +507,7 @@ Scheduling Functions on User Threads</h2>
 <p>A <code>Callable</code> is any data or object which can be executed like a function including:</p><ul>
 <li>functions</li>
 <li>function pointers</li>
-<li>functors (ex: std::function)</li>
+<li>functors (ex: <code>std::function</code>)</li>
 <li>lambdas</li>
 </ul>
 <p><code>st::task::make(Callable, optional_arguments...)</code> can be invoked to make a <code><a class="el" href="structst_1_1task.html" title="wrap any Callable and optional arguments into an executable task">st::task</a></code> which will wrap it's arguments into a task for the user. <code><a class="el" href="structst_1_1task.html" title="wrap any Callable and optional arguments into an executable task">st::task</a></code> objects can be invoked with the <code>()</code> operator.</p>
