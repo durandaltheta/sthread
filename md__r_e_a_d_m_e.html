@@ -636,7 +636,7 @@ Example</h3>
 <div class="line">    internal_operation_n</div>
 <div class="line">};</div>
 <div class="line">#endif</div>
-</div><!-- fragment --><div class="fragment"><div class="line">#include &lt;iostream&gt;</div>
+</div><!-- fragment --><p>User can open interprocess messaging queue during initialization and launch an interprocess receiver thread which forwards received message data to the main thread. The main thread is set up so that it can process both interprocess and internal messaging over its <code><a class="el" href="structst_1_1channel.html" title="Interthread message passing queue.">st::channel</a></code>: </p><div class="fragment"><div class="line">#include &lt;iostream&gt;</div>
 <div class="line">#include &lt;string&gt;</div>
 <div class="line">#include &lt;thread&gt;</div>
 <div class="line">#include &lt;sthread&gt;</div>
