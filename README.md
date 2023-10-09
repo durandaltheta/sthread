@@ -720,10 +720,6 @@ int main() {
                     // ...
                     break;
                 // handle other public API operations...
-                case INTERPROCESS_SHUTDOWN:
-                    // end message processing and cleanup
-                    ch.close(); 
-                    break;
                 // handle private API operations...
                 case my_api::interprocess_receive_error:
                     if(msg.data().copy_to(error)) {
@@ -732,6 +728,10 @@ int main() {
                         std::cerr << "interprocess queue receive failed; message type unknown" << std::endl;
                     }
                     ret = 1;
+                    // fallthrough to shutdown case
+                case INTERPROCESS_SHUTDOWN:
+                    // end message processing and cleanup
+                    ch.close(); 
                     break;
                 case my_api::internal_operation_2:
                     // ...
