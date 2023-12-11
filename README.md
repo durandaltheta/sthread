@@ -471,13 +471,17 @@ int main() {
     auto timeout_conf_ch = st::channel::make();
     std::thread thd(process_timeouts, ch, timeout_conf_ch);
 
+    // asynchronously invoke the user_timer variant which accepts an argument
     ch.async(op::timeout, 
              user_timer, 
              std::chrono::milliseconds(100), 
              std::string("that's all folks!"));
 
+    // asynchronously invoke the user_timer variant which accepts no arguments
     ch.async(op::timeout, user_timer, std::chrono::milliseconds(200));
 
+    // launch library provided timer implementation which behaves similarly to 
+    // example user_timer functions
     ch.timer(op::timeout, std::chrono::milliseconds(300), std::string("timer with payload"));
     ch.timer(op::timeout, std::chrono::milliseconds(400));
 
@@ -530,15 +534,19 @@ When invoked `st::task` objects will return a reference to an `st::data` value c
 #include <sthread>
 
 int foo(int a) {
+    // printing to prove when the function is evaluated
     std::cout << "foo: " << a << std::endl;
     return a + 1;
 }
 
 int main() {
     auto foo_task = st::task::make(foo, 3);
+
+    // we invoke task with '()' to force it to evaluate. It returns a st::data&
+    // we can introspect with st::data::is<int>() to check the return type
     if(foo_task().is<int>()) {
-        // can safely invoke task again because it will immediately return its
-        // previous result
+        // Calling '()' again will immediately return the task's previous return 
+        // value without re-executing the underlying function
         std::cout << "result: " << foo_task().cast_to<int>() << std::endl;
     }
     return 0;
@@ -745,17 +753,17 @@ int main() {
                     // ...
                     break;
             }
-        }
-        
-        // shutdown interprocess queue to end interprocess_receive_thread
-        if(0 != error = interprocess_close_queue(hdl)) {
-            std::cerr << "interprocess queue close failed with error[" << error << "]" << std::endl;
-            ret = 1;
+            
+            // shutdown interprocess queue to end interprocess_receive_thread
+            if(0 != error = interprocess_close_queue(hdl)) {
+                std::cerr << "interprocess queue close failed with error[" << error << "]" << std::endl;
+                ret = 1;
+            }
+
+            interprocess_receive_thread.join();
         }
 
-        interprocess_receive_thread.join();
-
-        // shutdown and join any other child threads...
+        // any other cleanup...
     } else {
         std::cerr << "failed to open interprocess queue[" << INTERPROCESS_QUEUE_NAME << "] with error[" << error << "]" << std::endl;
         ret = 1;

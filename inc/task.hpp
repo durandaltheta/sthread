@@ -102,6 +102,8 @@ struct task : public st::shared_context<task, detail::task::context> {
 
     inline data& operator()() {
         if(!ctx()) {
+            // ensure this function can return a valid reference by constructing 
+            // an empty context
             ctx(std::make_shared<detail::task::context>());
         }
 
