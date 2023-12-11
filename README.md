@@ -123,7 +123,7 @@ Arguments passed to `st::channel::send(...)` are internally passed to `st::messa
 The summary of the 4 overloads of `st::message st::message::make(...)` are:
 
 - `st::message st::message st::message::make(ID id)`: Returns a constructed message which returns argument unsigned integer `id` as `st::message::id()`. This message has no payload.
-- `template <typename T> st::message st::message st::message::make(ID id, T&& t)`: Same as the previous invocation but additionally accepts and stores a payload `t` of any type (compiler deduced) `T`. The will be stored in the message as a type erased `st::data`. Type `T` is forwarded using a universal reference, properly deducing if it needs to lvalue or rvalue copy its argument.
+- `template <typename T> st::message st::message st::message::make(ID id, T&& t)`: Same as the previous invocation but additionally accepts and stores a payload `t` of any type (compiler deduced) `T`. The argument `T` value will be stored in the message as a type erased `st::data`. Type `T` is forwarded to the `st::data` constructor using a universal reference, properly deducing if it needs to lvalue or rvalue copy its argument.
 - `st::message st::message::make()`: Returns a default allocated `st::message`. This message has an id of 0 and no payload.
 - `st::message st::message::make(st::message)`: Returns its argument immediately with no changes 
 
