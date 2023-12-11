@@ -753,15 +753,15 @@ int main() {
                     // ...
                     break;
             }
-            
-            // shutdown interprocess queue to end interprocess_receive_thread
-            if(0 != error = interprocess_close_queue(hdl)) {
-                std::cerr << "interprocess queue close failed with error[" << error << "]" << std::endl;
-                ret = 1;
-            }
-
-            interprocess_receive_thread.join();
         }
+        
+        // shutdown interprocess queue to end interprocess_receive_thread
+        if(0 != error = interprocess_close_queue(hdl)) {
+            std::cerr << "interprocess queue close failed with error[" << error << "]" << std::endl;
+            ret = 1;
+        }
+
+        interprocess_receive_thread.join();
 
         // any other cleanup...
     } else {
